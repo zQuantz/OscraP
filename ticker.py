@@ -1,4 +1,4 @@
-from const import date_today, named_date_fmt
+from const import date_today, named_date_fmt, DIR
 from bs4 import BeautifulSoup
 from datetime import datetime
 from threading import Thread
@@ -16,17 +16,17 @@ DIVIDENDS = "https://finance.yahoo.com/quote/{ticker}/key-statistics?p={ticker}"
 PARSER = "lxml"
 
 def fmt(str_number):
-	return float(str_number.replace(',', '').replace('$', '').replace('%', '').replace('-', '0'))
+	return float(str_number.replace(',', '').replace('$', '').replace('%', '').replace('-', '0').replace('', '0'))
 
 class Ticker(Thread):
 
 	def __init__(self, ticker):
 
 		Thread.__init__(self)
+		self.stats = []
 		self.ticker = ticker
 		self.START = START.format(ticker = ticker)
 		self.pages = [BeautifulSoup(requests.get(self.START, headers = headers_mobile).text, PARSER)]
-		self.stats = []
 
 	def initialize(self):
 
@@ -44,8 +44,8 @@ class Ticker(Thread):
 			else:
 				self.div = 0
 		except Exception as e:
+			print("Dividend Error. Setting to Zero.")
 			self.div = 0
-			print(e)
 
 		## Expirations
 		bs = self.pages[0]
@@ -65,62 +65,56 @@ class Ticker(Thread):
 
 			calls = bs.find("table", {"class" : "calls"})
 			puts = bs.find("table", {"class" : "puts"})
-
-			if not calls or not puts:
-				continue
-
-			call_options = []
-			for row in calls.find_all("tr")[1:]:
-				es = [e for e in row.find_all("td")[2:]]
-				self.stats.append([
-						date_today,
-						self.current_price,
-						fmt(es[0].text),
-						fmt(es[1].text),
-						self.div,
-						expiry_date_fmt,
-						np.round(max(expiration_days / 252, 0), 6),
-						'C',
-						fmt(es[-1].text),
-						fmt(es[2].text),
-						fmt(es[3].text),
-						fmt(es[-2].text),
-						fmt(es[-3].text),
-
-					])
 			
-			put_options = []
-			for row in puts.find_all("tr")[1:]:
-				es = [e for e in row.find_all("td")[2:]]
-				self.stats.append([
-						date_today,
-						self.current_price,
-						fmt(es[0].text),
-						fmt(es[1].text),
-						self.div,
-						expiry_date_fmt,
-						np.round(max(expiration_days / 252, 0), 6),
-						'P',
-						fmt(es[-1].text),
-						fmt(es[2].text),
-						fmt(es[3].text),
-						fmt(es[-2].text),
-						fmt(es[-3].text),
+			if calls:
 
-					])
+				call_options = []
+				for row in calls.find_all("tr")[1:]:
+					es = [e for e in row.find_all("td")[2:]]
+					self.stats.append([
+							date_today,
+							self.current_price,
+							fmt(es[0].text),
+							fmt(es[1].text),
+							self.div,
+							expiry_date_fmt,
+							np.round(max(expiration_days / 252, 0), 6),
+							'C',
+							fmt(es[-1].text),
+							fmt(es[2].text),
+							fmt(es[3].text),
+							fmt(es[-2].text),
+							fmt(es[-3].text),
 
-		df = pd.DataFrame(self.stats, columns = ['CurrentDate', 'StockPrice', 'StrikePrice', 'OptionPrice', 'DividendYield', 'ExpierationDate', 'TimeToExpiry', 
-											     'OptionType', 'ImpliedVolatility', 'Bid', 'Ask', 'Volume',
-											     'OpenInterest'])
-		df.to_csv("{}_{}.csv".format(self.ticker, date_today), index=False)
+						])
+			if puts:
+			
+				put_options = []
+				for row in puts.find_all("tr")[1:]:
+					es = [e for e in row.find_all("td")[2:]]
+					self.stats.append([
+							date_today,
+							self.current_price,
+							fmt(es[0].text),
+							fmt(es[1].text),
+							self.div,
+							expiry_date_fmt,
+							np.round(max(expiration_days / 252, 0), 6),
+							'P',
+							fmt(es[-1].text),
+							fmt(es[2].text),
+							fmt(es[3].text),
+							fmt(es[-2].text),
+							fmt(es[-3].text),
+
+						])
+
+		df = pd.DataFrame(self.stats, columns = ['CurrentDate', 'StockPrice', 'StrikePrice', 'OptionPrice', 'DividendYield',
+											     'ExpierationDate', 'TimeToExpiry', 'OptionType', 'ImpliedVolatility', 'Bid',
+											     'Ask', 'Volume', 'OpenInterest'])
+		df.to_csv(f"{DIR}/option_data/{self.ticker}_{date_today}.csv", index=False)
 
 	def run(self):
 
 		self.initialize()
 		self.scrape_options()
-
-if __name__ == '__main__':
-
-	t = Ticker(sys.argv[1])
-	t.start()
-	t.join()

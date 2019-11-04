@@ -1,0 +1,2 @@
+# */5 * * * * /home/zquantz/anaconda3/bin/python /home/zquantz/Documents/Quant/$
+
