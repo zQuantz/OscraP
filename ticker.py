@@ -1,6 +1,6 @@
 from const import date_today, named_date_fmt, DIR
+from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
-from datetime import datetime
 from threading import Thread
 import pandas as pd
 import numpy as np
@@ -12,11 +12,14 @@ import joblib
 headers_mobile = { 'User-Agent' : 'Mozilla/5.0 (iPhone; CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B137 Safari/601.1'}
 START = "https://finance.yahoo.com/quote/{ticker}/options?p={ticker}"
 SUMMARY = "https://finance.yahoo.com/quote/{ticker}/"
+OHLC = "https://finance.yahoo.com/quote/{ticker}/history?period1={yesterday}&period2={today}&interval=1d&filter=history&frequency=1d"
 DIVIDENDS = "https://finance.yahoo.com/quote/{ticker}/key-statistics?p={ticker}"
 PARSER = "lxml"
 
 def fmt(str_number):
-	return float(str_number.replace(',', '').replace('$', '').replace('%', '').replace('-', '0').replace('', '0'))
+	if str_number == '':
+		return 0
+	return float(str_number.replace(',', '').replace('$', '').replace('%', '').replace('-', '0'))
 
 class Ticker(Thread):
 
@@ -30,13 +33,9 @@ class Ticker(Thread):
 
 	def initialize(self):
 
-		## Current Price
+		## Dividends
 		response = requests.get(SUMMARY.format(ticker = self.ticker), headers = headers_mobile)
 		bs = BeautifulSoup(response.text, PARSER)
-		price = bs.find("body").find("span", {"class" :' '.join(['Trsdu(0.3s)', 'Trsdu(0.3s)', 'Fw(b)', 'Fz(36px)', 'Mb(-4px)', 'D(b)'])}).text
-		self.current_price = fmt(price)
-
-		## Dividends
 		div = bs.find("body").find("td", {"data-test" : "DIVIDEND_AND_YIELD-value"})
 		try:
 			if "N/A" not in div.text:
@@ -46,6 +45,29 @@ class Ticker(Thread):
 		except Exception as e:
 			print("Dividend Error. Setting to Zero.")
 			self.div = 0
+
+		## OHLC
+		today = datetime.now()
+		yesterday = today - timedelta(days=1)
+
+		today = int(today.timestamp())
+		yesterday = int(yesterday.timestamp())
+
+		bs = BeautifulSoup(requests.get(OHLC.format(ticker = self.ticker, yesterday = yesterday, today = today),
+						   headers = headers_mobile).content, PARSER)
+		prices = bs.find("tr", {"class" : "BdT Bdc($seperatorColor) Ta(end) Fz(s) Whs(nw)"}).find_all("td")
+		prices = [price.text for price in prices]
+		self.current_price = fmt(prices[-2])
+		
+		ohlc_date = datetime.strptime(prices[0], "%b %d, %Y").strftime("%Y-%m-%d")
+		assert ohlc_date == date_today
+
+		self.open = fmt(prices[1])
+		self.high = fmt(prices[2])
+		self.low = fmt(prices[3])
+		self.close = fmt(prices[4])
+		self.adj_close = fmt(prices[5])
+		self.volume = fmt(prices[6])
 
 		## Expirations
 		bs = self.pages[0]
@@ -73,7 +95,12 @@ class Ticker(Thread):
 					es = [e for e in row.find_all("td")[2:]]
 					self.stats.append([
 							date_today,
-							self.current_price,
+							self.open,
+							self.high,
+							self.low,
+							self.close,
+							self.adj_close,
+							self.volume,
 							fmt(es[0].text),
 							fmt(es[1].text),
 							self.div,
@@ -94,7 +121,12 @@ class Ticker(Thread):
 					es = [e for e in row.find_all("td")[2:]]
 					self.stats.append([
 							date_today,
-							self.current_price,
+							self.open,
+							self.high,
+							self.low,
+							self.close,
+							self.adj_close,
+							self.volume,
 							fmt(es[0].text),
 							fmt(es[1].text),
 							self.div,
@@ -109,10 +141,11 @@ class Ticker(Thread):
 
 						])
 
-		df = pd.DataFrame(self.stats, columns = ['CurrentDate', 'StockPrice', 'StrikePrice', 'OptionPrice', 'DividendYield',
-											     'ExpierationDate', 'TimeToExpiry', 'OptionType', 'ImpliedVolatility', 'Bid',
+		df = pd.DataFrame(self.stats, columns = ['CurrentDate', 'Open', 'High', 'Low', 'Close', 'AdjClose', 'StockVolume', 
+												 'StrikePrice', 'OptionPrice', 'DividendYield', 'ExpierationDate', 
+												 'TimeToExpiry', 'OptionType', 'ImpliedVolatility', 'Bid',
 											     'Ask', 'Volume', 'OpenInterest'])
-		df.to_csv(f"{DIR}/option_data/{self.ticker}_{date_today}.csv", index=False)
+		df.to_csv(f"{DIR}/option_data/{date_today}/{self.ticker}_{date_today}.csv", index=False)
 
 	def run(self):
 
