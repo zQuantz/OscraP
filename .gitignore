@@ -4,3 +4,4 @@ option_data/
 data/
 out.log
 tmp/
+!data/merged_ticker_list.txt

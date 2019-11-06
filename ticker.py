@@ -13,7 +13,6 @@ headers_mobile = { 'User-Agent' : 'Mozilla/5.0 (iPhone; CPU iPhone OS 9_1 like M
 START = "https://finance.yahoo.com/quote/{ticker}/options?p={ticker}"
 SUMMARY = "https://finance.yahoo.com/quote/{ticker}/"
 OHLC = "https://finance.yahoo.com/quote/{ticker}/history?period1={yesterday}&period2={today}&interval=1d&filter=history&frequency=1d"
-DIVIDENDS = "https://finance.yahoo.com/quote/{ticker}/key-statistics?p={ticker}"
 PARSER = "lxml"
 
 def fmt(str_number):
@@ -31,20 +30,44 @@ class Ticker(Thread):
 		self.START = START.format(ticker = ticker)
 		self.pages = [BeautifulSoup(requests.get(self.START, headers = headers_mobile).text, PARSER)]
 
+	def get_dividends(self, bs):
+
+		### STOCK
+		table = bs.find("table", attrs={"class" : "W(100%) M(0) Bdcl(c)"})
+		rows = table.find_all("td")
+
+		for i in range(len(rows)):
+
+		    if 'Dividend' in rows[i].text:
+
+		    	div = rows[i+1].text
+
+		    	if 'N/A' in div:
+		    		div = 0
+		    		break
+
+		    	div = fmt(div.split('(')[1][:-1])
+		    	break
+
+		## ETF
+		for i in range(len(rows)):
+		    if rows[i].text == 'Yield':
+		    	div = fmt(rows[i+1].text)
+		    	break
+
+		print("Div", div)
+
+		if div is None:
+			return 0
+		else:
+			return div / 100
+
 	def initialize(self):
 
 		## Dividends
 		response = requests.get(SUMMARY.format(ticker = self.ticker), headers = headers_mobile)
 		bs = BeautifulSoup(response.text, PARSER)
-		div = bs.find("body").find("td", {"data-test" : "DIVIDEND_AND_YIELD-value"})
-		try:
-			if "N/A" not in div.text:
-				self.div = float(re.search("\((.*?)\)", div.text)[0][1:-2]) / 100
-			else:
-				self.div = 0
-		except Exception as e:
-			print("Dividend Error. Setting to Zero.")
-			self.div = 0
+		self.div = self.get_dividends(bs)
 
 		## OHLC
 		today = datetime.now()
