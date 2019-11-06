@@ -36,13 +36,13 @@ def send_scraping_report(successful, failures):
 	part1 = MIMEText(text, "plain")
 	message.attach(part1)
 
-	filename = f'{DIR}/option_data/{date_today}/successful_tickers.txt'
+	filename = f'{DIR}/options_data/{date_today}/successful_tickers.txt'
 	with open(filename, 'r') as file:
 		attachment = MIMEText(file.read())
 	attachment.add_header('Content-Disposition', 'attachment', filename=filename)           
 	message.attach(attachment)
 
-	filename = f'{DIR}/option_data/{date_today}/failed_tickers.txt'
+	filename = f'{DIR}/options_data/{date_today}/failed_tickers.txt'
 	with open(filename, 'r') as file:
 		attachment = MIMEText(file.read())
 	attachment.add_header('Content-Disposition', 'attachment', filename=filename)           

@@ -168,7 +168,7 @@ class Ticker(Thread):
 												 'StrikePrice', 'OptionPrice', 'DividendYield', 'ExpierationDate', 
 												 'TimeToExpiry', 'OptionType', 'ImpliedVolatility', 'Bid',
 											     'Ask', 'Volume', 'OpenInterest'])
-		df.to_csv(f"{DIR}/option_data/{date_today}/{self.ticker}_{date_today}.csv", index=False)
+		df.to_csv(f"{DIR}/options_data/{date_today}/{self.ticker}_{date_today}.csv", index=False)
 
 	def run(self):
 

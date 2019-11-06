@@ -14,7 +14,7 @@ with open(f'{DIR}/data/tickers.pickle', 'rb') as file:
 if __name__ == '__main__':
 
 	## Make storage directory
-	os.mkdir(f'{DIR}/option_data/{date_today}')
+	os.mkdir(f'{DIR}/options_data/{date_today}')
 
 	###############################
 	### Collecting
@@ -45,7 +45,7 @@ if __name__ == '__main__':
 	### Logging
 	###############################
 
-	collected_tickers = [file.split('_')[0] for file in os.listdir(f'{DIR}/option_data/{date_today}')]
+	collected_tickers = [file.split('_')[0] for file in os.listdir(f'{DIR}/options_data/{date_today}')]
 
 	success = []
 	failure = []
@@ -56,16 +56,16 @@ if __name__ == '__main__':
 		else:
 			failure.append(ticker)
 
-	with open(f'{DIR}/option_data/{date_today}/successful_tickers.txt', 'w') as file:
+	with open(f'{DIR}/options_data/{date_today}/successful_tickers.txt', 'w') as file:
 		
 		file.write(f"Ticker\tCompany Name\tFile Size\n")
 		for ticker in success:
 
-			size = os.stat(f'{DIR}/option_data/{date_today}/{ticker}_{date_today}.csv').st_size / 1000
+			size = os.stat(f'{DIR}/options_data/{date_today}/{ticker}_{date_today}.csv').st_size / 1000
 			size = "%.2f kb" % size
 			file.write(f"{ticker}\t{ticker_dict[ticker]}\t{size}\n")
 
-	with open(f'{DIR}/option_data/{date_today}/failed_tickers.txt', 'w') as file:
+	with open(f'{DIR}/options_data/{date_today}/failed_tickers.txt', 'w') as file:
 		
 		file.write(f"Ticker\tCompany Name\tFile Size\n")
 		for ticker in failure:
