@@ -35,7 +35,7 @@ if __name__ == '__main__':
 			except:
 				tickers_to_scrape[ticker] = 'No Description.'
 
-	for row in df.values[:100]:
+	for row in df.values[:30]:
 		tickers_to_scrape[row[0]] = row[1]
 
 	with open(f'{DIR}/data/tickers.pickle', 'wb') as file:

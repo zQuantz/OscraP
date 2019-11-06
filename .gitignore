@@ -1,7 +1,5 @@
 __pycache__
 .ipynb_checkpoints
 option_data/
-data/
 out.log
 tmp/
-!data/merged_ticker_list.txt
