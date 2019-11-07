@@ -3,7 +3,9 @@ from joblib import Parallel, delayed
 from const import DIR, date_today
 from datetime import datetime
 
+
 from ticker import Ticker
+import shutil
 import sys, os
 import pickle
 import time
@@ -20,8 +22,8 @@ if __name__ == '__main__':
 	### Collecting
 	###############################
 	
-	#ticker_list = ["SPY", "FDX", "PYPL", "CSCO", "AAPL", "GE", "UVXY"]
-	for ticker in ticker_dict:
+	ticker_list = ["SPY", "FDX", "PYPL", "CSCO", "AAPL", "GE", "UVXY"][:1]
+	for ticker in ticker_list:
 		
 		try:
 			
@@ -71,4 +73,5 @@ if __name__ == '__main__':
 		for ticker in failure:
 			file.write(f"{ticker}\t{ticker_dict[ticker]}\n")
 
+	shutil.make_archive(f"{DIR}/options_data/{date_today}", "zip", f"{DIR}/options_data/{date_today}")
 	send_scraping_report(success, failure)

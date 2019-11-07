@@ -2,7 +2,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
+from email import encoders
 from const import date_today, DIR
+import numpy as np
 import smtplib, ssl
 
 def send_scraping_report(successful, failures):
@@ -26,8 +28,8 @@ def send_scraping_report(successful, failures):
 	total = ls + lf
 	text = f"""
 		Summary
-		Successful Tickers: {ls} , {ls / total}
-		Failed Tickers: {lf} , {lf / total}
+		Successful Tickers: {ls} , {np.round((ls / total) * 100, 2)}%
+		Failed Tickers: {lf} , {np.round((lf / total) * 100, 2)}%
 
 		See attached for a breakdown of the tickers and file sizes.
 	"""
@@ -47,6 +49,14 @@ def send_scraping_report(successful, failures):
 		attachment = MIMEText(file.read())
 	attachment.add_header('Content-Disposition', 'attachment', filename=filename)           
 	message.attach(attachment)
+
+	filename = f'{DIR}/options_data/{date_today}.zip'
+	with open(filename, 'rb') as file:
+		msg = MIMEBase('application', 'zip')
+		msg.set_payload(file.read())
+	encoders.encode_base64(msg)
+	msg.add_header('Content-Disposition', 'attachment', filename=filename)           
+	message.attach(msg)
 
 	# Create secure connection with server and send email
 	context = ssl.create_default_context()
