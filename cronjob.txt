@@ -1,2 +1,2 @@
-# */5 * * * * /home/zquantz/anaconda3/bin/python /home/zquantz/Documents/Quant/OptionScraper/job.py >> /home/zquantz/Documents/Quant/OptionScraper/out.log
+# 00 20 * * 1-5 /home/zquantz/anaconda3/bin/python /home/zquantz/Documents/Quant/OptionScraper/job.py >> /home/zquantz/Documents/Quant/OptionScraper/out.log
 
