@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
 	with open(f'{DIR}/options_data/{date_today}/failed_tickers.txt', 'w') as file:
 		
-		file.write(f"Ticker\tCompany Name\tFile Size\n")
+		file.write(f"Ticker\tCompany Name\n")
 		for ticker in failure:
 			file.write(f"{ticker}\t{ticker_dict[ticker]}\n")
 
