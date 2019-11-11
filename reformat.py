@@ -21,7 +21,6 @@ if __name__ == '__main__':
 				cols = df.columns
 				cols = [col if col != 'ExpierationDate' else 'ExpirationDate' for col in cols]
 				df.columns = cols
-				print(df)
 				df = format_option_chain(df)
 				df.to_csv(f"{DIR}/options_data/{folder}/{file}", index=False)
 
