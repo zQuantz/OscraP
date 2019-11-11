@@ -2,6 +2,7 @@ from const import date_today, named_date_fmt, DIR
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from threading import Thread
+from utils import *
 import pandas as pd
 import numpy as np
 import requests
@@ -165,9 +166,11 @@ class Ticker(Thread):
 						])
 
 		df = pd.DataFrame(self.stats, columns = ['CurrentDate', 'Open', 'High', 'Low', 'Close', 'AdjClose', 'StockVolume', 
-												 'StrikePrice', 'OptionPrice', 'DividendYield', 'ExpierationDate', 
+												 'StrikePrice', 'OptionPrice', 'DividendYield', 'ExpirationDate', 
 												 'TimeToExpiry', 'OptionType', 'ImpliedVolatility', 'Bid',
 											     'Ask', 'Volume', 'OpenInterest'])
+
+		df = format_option_chain(df)
 		df.to_csv(f"{DIR}/options_data/{date_today}/{self.ticker}_{date_today}.csv", index=False)
 
 	def run(self):
