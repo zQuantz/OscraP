@@ -24,8 +24,9 @@ def format_option_chain(df):
 	call_cols = call_cols[:-1]
 	put_cols = put_cols[1:-1]
 
-	ndf = I.merge(C, how='outer', on='StrikePrice').merge(P, how='outer', on='StrikePrice')
-	ndf = ndf[info_cols[:-1] + call_cols[:-1] + ['StrikePrice'] + put_cols[1:]]
+	ndf = I.merge(C, how='inner', on=['ExpirationDate', 'StrikePrice']).merge(P, how='inner', on=['ExpirationDate', 'StrikePrice'])
+	ndf = ndf[info_cols + call_cols + ['StrikePrice'] + put_cols]
+	ndf = ndf.sort_values(['ExpirationDate','StrikePrice']).dropna()
 	ndf.columns = [col.split('_')[0] for col in ndf.columns]
 
 	return ndf
