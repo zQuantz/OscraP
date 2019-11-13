@@ -1,5 +1,8 @@
+from const import DIR
 import pandas as pd
 import numpy as np
+import sys, os
+import shutil
 
 
 def format_option_chain(df):
@@ -30,3 +33,72 @@ def format_option_chain(df):
 	ndf.columns = [col.split('_')[0] for col in ndf.columns]
 
 	return ndf
+
+def reformat_all_folders():
+	"""
+	Shouldnt be used on already formatted folders. I added a safe check that protects against an empty dataframe after twice formatting.
+	"""
+
+	for folder in os.listdir(f"{DIR}/options_data"):
+		
+		if os.path.isdir(f"{DIR}/options_data/{folder}"):
+			
+			for file in os.listdir(f"{DIR}/options_data/{folder}"):
+				
+				ext = file.split('.')[-1]
+				if ext == 'txt':
+					continue
+
+				df = pd.read_csv(f"{DIR}/options_data/{folder}/{file}")
+				cols = df.columns
+				cols = [col if col != 'ExpierationDate' else 'ExpirationDate' for col in cols]
+				df.columns = cols
+
+				if 'OptionType.1' in df.columns:
+					continue
+				
+				print(folder, file)
+				df = format_option_chain(df)
+				df.to_csv(f"{DIR}/options_data/{folder}/{file}", index=False)
+
+			try:
+				os.remove(f"{DIR}/options_data/{folder}.zip")
+			except Exception as e:
+				print("Folder", folder, "not fold, Error:", e)
+			shutil.make_archive(f"{DIR}/options_data/{folder}", "zip", f"{DIR}/options_data/{folder}")
+
+def convert_IV_to_percentage():
+	"""
+	Shouldnt be used on already formatted files
+	"""
+
+	for folder in os.listdir(f"{DIR}/options_data"):
+		
+		if os.path.isdir(f"{DIR}/options_data/{folder}"):
+			
+			for file in os.listdir(f"{DIR}/options_data/{folder}"):
+				
+				ext = file.split('.')[-1]
+				if ext == 'txt':
+					continue
+
+				df = pd.read_csv(f"{DIR}/options_data/{folder}/{file}")
+				cols = df.columns
+				cols = [col if col != 'ExpierationDate' else 'ExpirationDate' for col in cols]
+				df.columns = cols
+
+				
+				if df['ImpliedVolatility'].mean() < 3:
+					continue
+
+				print(folder, file)
+				for col in df.columns:
+					if 'ImpliedVolatility' in col:
+						df[col] = df[col] / 100
+				df.to_csv(f"{DIR}/options_data/{folder}/{file}", index=False)
+
+			try:
+				os.remove(f"{DIR}/options_data/{folder}.zip")
+			except Exception as e:
+				print("Folder", folder, "not fold, Error:", e)
+			shutil.make_archive(f"{DIR}/options_data/{folder}", "zip", f"{DIR}/options_data/{folder}")
