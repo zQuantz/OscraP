@@ -22,8 +22,8 @@ if __name__ == '__main__':
 	### Collecting
 	###############################
 	
-	ticker_list = ["SPY", "FDX", "PYPL", "CSCO", "AAPL", "GE", "UVXY"][:1]
-	for ticker in ticker_list:
+	#ticker_list = ["SPY", "FDX", "PYPL", "CSCO", "AAPL", "GE", "UVXY"][:1]
+	for ticker in ticker_dict:
 		
 		try:
 			
@@ -32,7 +32,7 @@ if __name__ == '__main__':
 			thread = Ticker(ticker)
 			thread.start(); thread.join();
 			
-			time.sleep(30)
+			time.sleep(5)
 			print(ticker, "was collected successfully.")
 		
 		except Exception as e:
