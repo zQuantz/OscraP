@@ -4,7 +4,6 @@ import numpy as np
 import sys, os
 import shutil
 
-
 def format_option_chain(df):
 
 	info_cols = ['CurrentDate', 'Open', 'High', 'Low', 'Close', 'StockVolume', 'DividendYield', 'StrikePrice', 'ExpirationDate']
