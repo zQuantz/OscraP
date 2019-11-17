@@ -21,15 +21,16 @@ def fmt(str_number):
 		return 0
 	return float(str_number.replace(',', '').replace('$', '').replace('%', '').replace('-', '0'))
 
-class Ticker(Thread):
+class Ticker():
 
 	def __init__(self, ticker):
 
-		Thread.__init__(self)
 		self.stats = []
 		self.ticker = ticker
 		self.START = START.format(ticker = ticker)
 		self.pages = [BeautifulSoup(requests.get(self.START, headers = headers_mobile).text, PARSER)]
+		self.initialize()
+		self.scrape_options()
 
 	def get_dividends(self, bs):
 
@@ -55,8 +56,6 @@ class Ticker(Thread):
 		    if rows[i].text == 'Yield':
 		    	div = fmt(rows[i+1].text)
 		    	break
-
-		print("Div", div)
 
 		if div is None:
 			return 0
@@ -172,8 +171,3 @@ class Ticker(Thread):
 
 		df = format_option_chain(df)
 		df.to_csv(f"{DIR}/options_data/{date_today}/{self.ticker}_{date_today}.csv", index=False)
-
-	def run(self):
-
-		self.initialize()
-		self.scrape_options()

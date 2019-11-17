@@ -1,8 +1,7 @@
+from const import DIR, date_today, logger
 from alert import send_scraping_report
 from joblib import Parallel, delayed
-from const import DIR, date_today
 from datetime import datetime
-
 
 from ticker import Ticker
 import shutil
@@ -27,20 +26,17 @@ if __name__ == '__main__':
 		
 		try:
 			
-			print("Processing:", ticker)
+			logger.info(f"Processing: {ticker}")
 			
 			thread = Ticker(ticker)
-			thread.start(); thread.join();
 			
 			time.sleep(5)
-			print(ticker, "was collected successfully.")
+			logger.info(f"{ticker} was collected successfully.")
 		
 		except Exception as e:
 			
-			print(ticker, "was not collected successfully.")
-			print(e)
-
-		print()
+			logger.info(f"{ticker} was not collected successfully.")
+			logger.warning(e)
 
 
 	###############################
