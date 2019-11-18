@@ -67,6 +67,67 @@ def reformat_all_folders():
 				print("Folder", folder, "not fold, Error:", e)
 			shutil.make_archive(f"{DIR}/options_data/{folder}", "zip", f"{DIR}/options_data/{folder}")
 
+def reformat_all_folders_again():
+	"""
+	Shouldnt be used on already formatted folders. I added a safe check that protects against an empty dataframe after twice formatting.
+	"""
+
+	for folder in os.listdir(f"{DIR}/options_data"):
+		
+		if os.path.isdir(f"{DIR}/options_data/{folder}"):
+			
+			for file in os.listdir(f"{DIR}/options_data/{folder}"):
+				
+				ext = file.split('.')[-1]
+				if ext == 'txt':
+					continue
+
+				df = pd.read_csv(f"{DIR}/options_data/{folder}/{file}")
+				new_cols = df.columns.tolist()
+				
+				idx_oi = new_cols.index("TimeToExpiry")
+				idx_ot = new_cols.index("OptionType")
+				new_cols[idx_oi] = "OptionType"
+				new_cols[idx_ot] = "OpenInterest"
+
+				idx_oi = new_cols.index("Bid.1")
+				idx_ot = new_cols.index("Ask.1")
+				new_cols[idx_oi] = "Ask.1"
+				new_cols[idx_ot] = "Bid.1"
+
+				df = df[new_cols]
+
+
+				new_rows = []
+				for row in df.values:
+				    tmp_c, tmp_p = [], []
+				    i = row[0:9]
+				    c = row[9:17]
+				    p = row[16:25]
+				    p = p[::-1]
+				    assert len(c) == len(p)
+				    
+				    tmp_c.extend(i.tolist())
+				    tmp_c.extend(c.tolist())
+				    
+				    tmp_p.extend(i.tolist())
+				    tmp_p.extend(p.tolist())
+				    
+				    new_rows.append(tmp_c)
+				    new_rows.append(tmp_p)
+
+				ndf = pd.DataFrame(new_rows)
+				ndf.columns = new_cols[:-7]
+				df = ndf.sort_values(["ExpirationDate", "OptionType", "StrikePrice"])
+
+				df.to_csv(f"{DIR}/options_data/{folder}/{file}", index=False)
+
+			try:
+				os.remove(f"{DIR}/options_data/{folder}.zip")
+			except Exception as e:
+				print("Folder", folder, "not fold, Error:", e)
+			shutil.make_archive(f"{DIR}/options_data/{folder}", "zip", f"{DIR}/options_data/{folder}")
+
 def convert_IV_to_percentage():
 	"""
 	Shouldnt be used on already formatted files

@@ -169,5 +169,4 @@ class Ticker():
 												 'TimeToExpiry', 'OptionType', 'ImpliedVolatility', 'Bid',
 											     'Ask', 'Volume', 'OpenInterest'])
 
-		df = format_option_chain(df)
 		df.to_csv(f"{DIR}/options_data/{date_today}/{self.ticker}_{date_today}.csv", index=False)
