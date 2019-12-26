@@ -7,7 +7,7 @@ DIR = os.path.realpath(os.path.dirname(__file__))
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-fh = logging.FileHandler('scraper.log')
+fh = logging.FileHandler(f'{DIR}/scraper.log')
 formatter = logging.Formatter('%(asctime)s - %(message)s')
 fh.setLevel(logging.DEBUG)
 fh.setFormatter(formatter)

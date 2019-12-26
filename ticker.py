@@ -1,25 +1,25 @@
 from const import date_today, named_date_fmt, DIR
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
-from threading import Thread
-from utils import *
 import pandas as pd
 import numpy as np
 import requests
-import json, re
 import sys, os
-import joblib
 
 headers_mobile = { 'User-Agent' : 'Mozilla/5.0 (iPhone; CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B137 Safari/601.1'}
+OHLC = "https://finance.yahoo.com/quote/{ticker}/history?period1={yesterday}&period2={today}&interval=1d&filter=history&frequency=1d"
 START = "https://finance.yahoo.com/quote/{ticker}/options?p={ticker}"
 SUMMARY = "https://finance.yahoo.com/quote/{ticker}/"
-OHLC = "https://finance.yahoo.com/quote/{ticker}/history?period1={yesterday}&period2={today}&interval=1d&filter=history&frequency=1d"
 PARSER = "lxml"
 
 def fmt(str_number):
+	
 	if str_number == '':
 		return 0
-	return float(str_number.replace(',', '').replace('$', '').replace('%', '').replace('-', '0'))
+
+	for token in ',$%':
+		str_number = str_number.replace(token, '')
+	return float(str_number.replace('-', '0'))
 
 class Ticker():
 
@@ -34,71 +34,53 @@ class Ticker():
 
 	def get_dividends(self, bs):
 
-		### STOCK
-		table = bs.find("table", attrs={"class" : "W(100%) M(0) Bdcl(c)"})
-		rows = table.find_all("td")
+		table = bs.find_all("table")[1]
+		div = table.find("td", {"data-test" : "DIVIDEND_AND_YIELD-value"})
 
-		for i in range(len(rows)):
-
-		    if 'Dividend' in rows[i].text:
-
-		    	div = rows[i+1].text
-
-		    	if 'N/A' in div:
-		    		div = 0
-		    		break
-
-		    	div = fmt(div.split('(')[1][:-1])
-		    	break
-
-		## ETF
-		for i in range(len(rows)):
-		    if rows[i].text == 'Yield':
-		    	div = fmt(rows[i+1].text)
-		    	break
-
-		if div is None:
-			return 0
+		if not div:
+			div = table.find("td", {"data-test" : "TD_YIELD-value"}).text
 		else:
-			return div / 100
+			div = div.text.split(' ')[1][1:-1]
+			div = div.replace('N/A', '')
+
+		return fmt(div) / 100
 
 	def initialize(self):
 
-		## Dividends
 		response = requests.get(SUMMARY.format(ticker = self.ticker), headers = headers_mobile)
 		bs = BeautifulSoup(response.text, PARSER)
 		self.div = self.get_dividends(bs)
 
-		## OHLC
 		today = datetime.now()
 		yesterday = today - timedelta(days=1)
 
 		today = int(today.timestamp())
 		yesterday = int(yesterday.timestamp())
 
-		bs = BeautifulSoup(requests.get(OHLC.format(ticker = self.ticker, yesterday = yesterday, today = today),
-						   headers = headers_mobile).content, PARSER)
-		prices = bs.find("tr", {"class" : "BdT Bdc($seperatorColor) Ta(end) Fz(s) Whs(nw)"}).find_all("td")
+		ohlc = OHLC.format(ticker = self.ticker, yesterday = yesterday, today = today)
+		bs = BeautifulSoup(requests.get(ohlc, headers = headers_mobile).content, PARSER)
+
+		prices = bs.find("table", {"data-test" : "historical-prices"})
+		prices = prices.find_all("tr")[1]
 		prices = [price.text for price in prices]
-		self.current_price = fmt(prices[-2])
-		
+
 		ohlc_date = datetime.strptime(prices[0], "%b %d, %Y").strftime("%Y-%m-%d")
 		assert ohlc_date == date_today
 
-		self.open = fmt(prices[1])
-		self.high = fmt(prices[2])
-		self.low = fmt(prices[3])
-		self.close = fmt(prices[4])
-		self.adj_close = fmt(prices[5])
-		self.volume = fmt(prices[6])
+		prices = list(map(fmt, prices[1:]))
+		self.open = prices[0]
+		self.high = prices[1]
+		self.low = prices[2]
+		self.close = prices[3]
+		self.adj_close = prices[4]
+		self.volume = prices[5]
 
-		## Expirations
 		bs = self.pages[0]
-		self.expiry_in_unix, self.expiry_as_string = list(zip(*[(option.get("value"), option.text) for option in bs.find_all("option")]))
+		self.expirations = [(option.get("value"), option.text) for option in bs.find_all("option")]
 
 	def scrape_options(self):
 
-		for expiry, expiry_date in zip(self.expiry_in_unix, self.expiry_as_string):
+		for expiry, expiry_date in self.expirations:
 
 			dt = datetime.fromtimestamp(int(expiry))
 			expiry_date_fmt = datetime.strptime(expiry_date, named_date_fmt)
@@ -113,7 +95,6 @@ class Ticker():
 			
 			if calls:
 
-				call_options = []
 				for row in calls.find_all("tr")[1:]:
 					es = [e for e in row.find_all("td")[2:]]
 					self.stats.append([
@@ -139,7 +120,6 @@ class Ticker():
 						])
 			if puts:
 			
-				put_options = []
 				for row in puts.find_all("tr")[1:]:
 					es = [e for e in row.find_all("td")[2:]]
 					self.stats.append([
