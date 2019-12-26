@@ -2,16 +2,12 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
-from email import encoders
 from const import date_today, DIR
+from email import encoders
 import numpy as np
 import smtplib, ssl
 
 def send_scraping_report(successful, failures):
-
-	####################################
-	## EMAIL SETUP
-	####################################
 
 	sender_email = "zqretrace@gmail.com"
 	receiver_email = "zqretrace@gmail.com, zach.barillaro@gmail.com, mp0941745@gmail.com, josephfalvo@outlook.com, lucasmduarte17@gmail.com"
@@ -34,9 +30,7 @@ def send_scraping_report(successful, failures):
 		See attached for a breakdown of the tickers and file sizes.
 	"""
 
-	## Add text and html options
-	part1 = MIMEText(text, "plain")
-	message.attach(part1)
+	message.attach(MIMEText(text, "plain"))
 
 	filename = f'{DIR}/options_data/{date_today}/successful_tickers.txt'
 	with open(filename, 'r') as file:
@@ -58,7 +52,6 @@ def send_scraping_report(successful, failures):
 	msg.add_header('Content-Disposition', 'attachment', filename=filename)           
 	message.attach(msg)
 
-	# Create secure connection with server and send email
 	context = ssl.create_default_context()
 	with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
 	    server.login(sender_email, password)

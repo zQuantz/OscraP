@@ -164,6 +164,62 @@ def convert_IV_to_percentage():
 				print("Folder", folder, "not fold, Error:", e)
 			shutil.make_archive(f"{DIR}/options_data/{folder}", "zip", f"{DIR}/options_data/{folder}")
 
+def fix_broken_column_names():
+
+	sorted_cols = [
+		'CurrentDate',
+ 		'Open',
+ 		'High',
+ 		'Low',
+ 		'Close',
+		'AdjClose',
+		'StockVolume',
+		'DividendYield',
+		'ExpirationDate',
+		'TimeToExpiry',
+		'OptionType',
+		'StrikePrice',
+		'Bid',
+		'OptionPrice',
+		'Ask',
+		'ImpliedVolatility',
+		'OpenInterest',
+		'Volume'
+	]
+
+	for folder in os.listdir(f"{DIR}/options_data"):
+		
+		if os.path.isdir(f"{DIR}/options_data/{folder}"):
+			
+			for file in os.listdir(f"{DIR}/options_data/{folder}"):
+				
+				print(folder, file)
+
+				ext = file.split('.')[-1]
+				if ext == 'txt':
+					continue
+
+				df = pd.read_csv(f"{DIR}/options_data/{folder}/{file}")
+
+				if 'OpenInterest.1' in df.columns:
+
+					df['AdjClose'] = df.Close
+					df = df.drop('OpenInterest.1', axis=1)
+
+					expiration_days = np.busday_count(df.CurrentDate, df.ExpirationDate)
+					expiration_days = np.round(expiration_days / 252, decimals=6)
+					expiration_days = np.array([expiration_days, np.zeros(len(expiration_days))]).T
+					df['TimeToExpiry'] = np.max(expiration_days, axis=1)
+
+				df = df[sorted_cols]
+				df.to_csv(f"{DIR}/options_data/{folder}/{file}", index=False)
+
+			try:
+				os.remove(f"{DIR}/options_data/{folder}.zip")
+			except Exception as e:
+				print("Folder", folder, "not fold, Error:", e)
+			shutil.make_archive(f"{DIR}/options_data/{folder}", "zip", f"{DIR}/options_data/{folder}")
+
 def create_ticker_dict():
 
 	tickers = {}

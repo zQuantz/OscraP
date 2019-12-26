@@ -1,12 +1,11 @@
 from const import DIR, date_today, logger
 from alert import send_scraping_report
-from joblib import Parallel, delayed
 from datetime import datetime
 
 from ticker import Ticker
-import shutil
 import sys, os
 import pickle
+import shutil
 import time
 
 with open(f'{DIR}/data/tickers.pickle', 'rb') as file:
@@ -14,21 +13,19 @@ with open(f'{DIR}/data/tickers.pickle', 'rb') as file:
 
 if __name__ == '__main__':
 
-	## Make storage directory
 	os.mkdir(f'{DIR}/options_data/{date_today}')
 
 	###############################
 	### Collecting
 	###############################
 	
-	#ticker_list = ["SPY", "FDX", "PYPL", "CSCO", "AAPL", "GE", "UVXY"][:1]
 	for ticker in ticker_dict:
 		
 		try:
 			
 			logger.info(f"Processing: {ticker}")
 			
-			thread = Ticker(ticker)
+			Ticker(ticker)
 			
 			time.sleep(5)
 			logger.info(f"{ticker} was collected successfully.")
@@ -37,7 +34,6 @@ if __name__ == '__main__':
 			
 			logger.info(f"{ticker} was not collected successfully.")
 			logger.warning(e)
-
 
 	###############################
 	### Logging
