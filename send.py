@@ -1,4 +1,4 @@
-from const import DIR, date_today, option_cols, option_new_cols, equity_cols, equity_new_cols
+from const import DIR, date_today, option_cols, option_new_cols, equity_cols, equity_new_cols, logger
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 from email.mime.text import MIMEText
@@ -12,6 +12,7 @@ import numpy as np
 def send_to_database():
 
 	import os
+	loger.info("Sending data to SQL.")
 
 	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
 	conn = engine.connect()
@@ -38,7 +39,7 @@ def send_to_database():
 		es.columns = equity_new_cols
 		equities.append(es.iloc[:1, :])
 
-		print("Processed:", ticker, len(options), len(equities))
+		logger.info(f"Processing {ticker} for database ingestion.")
 
 	if len(options) == 0:
 		return
