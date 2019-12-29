@@ -67,3 +67,4 @@ if __name__ == '__main__':
 
 	shutil.make_archive(f"{DIR}/options_data/{date_today}", "zip", f"{DIR}/options_data/{date_today}")
 	send_scraping_report(success, failure)
+	send_to_database()
