@@ -1,4 +1,5 @@
-from const import DIR
+from const import DIR, date_today, option_cols, option_new_cols, equity_cols, equity_new_cols, logger
+import sqlalchemy as sql
 import pandas as pd
 import numpy as np
 import sys, os
@@ -163,6 +164,61 @@ def convert_IV_to_percentage():
 			except Exception as e:
 				print("Folder", folder, "not fold, Error:", e)
 			shutil.make_archive(f"{DIR}/options_data/{folder}", "zip", f"{DIR}/options_data/{folder}")
+
+def data_to_database():
+
+	print("Sending data to SQL.")
+
+	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
+	conn = engine.connect()
+
+	conn.execute('DELETE FROM options;')
+	conn.execute('DELETE FROM equities;')
+
+	folders = os.listdir(f'{DIR}/options_data')
+	folders = sorted(folders)
+	for folder in folders:
+
+		if not os.path.isdir(f'{DIR}/options_data/{folder}'):
+			continue
+
+		print("\n\n\n- - - - - - - - - -  - - - - - -")
+		print("Processing folder:", folder)
+
+		options = []
+		equities = []
+
+		for file in os.listdir(f'{DIR}/options_data/{folder}'):
+
+			if '.txt' in file:
+				continue
+
+			ticker = file.split('_')[0]
+			df = pd.read_csv(f'{DIR}/options_data/{folder}/{file}')
+			df['Ticker'] = ticker
+			df['OptionID'] = (df.Ticker + ' ' + df.ExpirationDate + ' ' + df.OptionType 
+							  + np.round(df.StrikePrice, 2).astype(str))
+
+			opts = df[option_cols]
+			opts.columns = option_new_cols
+			options.append(opts)
+
+			eqts = df[equity_cols]
+			eqts.columns = equity_new_cols
+			equities.append(eqts.iloc[:1, :])
+
+			print(f"Processing {ticker} for database ingestion.")
+
+		if len(options) == 0:
+			return
+
+		options = pd.concat(options)
+		options.to_sql(name='options', con=conn, if_exists='append', index=False, chunksize=10_000)
+
+		equities = pd.concat(equities)
+		equities.to_sql(name='equities', con=conn, if_exists='append', index=False, chunksize=10_000)
+
+	conn.close()
 
 def fix_broken_column_names():
 
