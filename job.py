@@ -1,5 +1,5 @@
+from send import send_scraping_report, send_to_database
 from const import DIR, date_today, logger
-from alert import send_scraping_report
 from datetime import datetime
 
 from ticker import Ticker
@@ -66,5 +66,25 @@ if __name__ == '__main__':
 			file.write(f"{ticker}\t{ticker_dict[ticker]}\n")
 
 	shutil.make_archive(f"{DIR}/options_data/{date_today}", "zip", f"{DIR}/options_data/{date_today}")
-	send_scraping_report(success, failure)
-	send_to_database()
+
+	###############################
+	### Database & Alerts
+	###############################
+
+	max_tries = 5
+	ctr = 0
+
+	while ctr < max_tries:
+		
+		try:
+			db_counts = send_to_database()
+			db_flag = 1
+			break
+		except Exception as e:
+			logger.warning(e)
+			db_counts = (0, 0)
+			db_flag = 0
+
+		ctr += 1
+
+	send_scraping_report(success, failure, db_flag, db_counts, ctr)

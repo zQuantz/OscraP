@@ -8,51 +8,57 @@ import sqlalchemy as sql
 import pandas as pd
 import smtplib, ssl
 import numpy as np
+import os
 
 def send_to_database():
 
-	import os
-	loger.info("Sending data to SQL.")
+	logger.info("Sending data to SQL.")
 
 	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
 	conn = engine.connect()
 
-	options = []
-	equities = []
+	with engine.connect() as conn:
 
-	for file in os.listdir(f'{DIR}/options_data/{date_today}'):
+		pre = conn.execute("SELECT COUNT(*) FROM options;").fetchone()[0]
 
-		if '.txt' in file:
-			continue
+		options = []
+		equities = []
 
-		ticker = file.split('_')[0]
-		df = pd.read_csv(f'{DIR}/options_data/{date_today}/{file}')
-		df['Ticker'] = ticker
-		df['OptionID'] = (df.Ticker + ' ' + df.ExpirationDate + ' ' + df.OptionType 
-						  + np.round(df.StrikePrice, 2).astype(str))
+		for file in os.listdir(f'{DIR}/options_data/{date_today}'):
 
-		os = df[option_cols]
-		os.columns = option_new_cols
-		options.append(os)
+			if '.txt' in file:
+				continue
 
-		es = df[equity_cols]
-		es.columns = equity_new_cols
-		equities.append(es.iloc[:1, :])
+			ticker = file.split('_')[0]
+			df = pd.read_csv(f'{DIR}/options_data/{date_today}/{file}')
+			df['Ticker'] = ticker
+			df['OptionID'] = (df.Ticker + ' ' + df.ExpirationDate + ' ' + df.OptionType
+							  + np.round(df.StrikePrice, 2).astype(str))
 
-		logger.info(f"Processing {ticker} for database ingestion.")
+			opts = df[option_cols]
+			opts.columns = option_new_cols
+			options.append(opts)
 
-	if len(options) == 0:
-		return
+			eqts = df[equity_cols]
+			eqts.columns = equity_new_cols
+			equities.append(eqts.iloc[:1, :])
 
-	options = pd.concat(options)
-	options.to_sql(name='options', con=conn, if_exists='append', index=False, chunksize=1000)
+			logger.info(f"Processing {ticker} for database ingestion.")
 
-	equities = pd.concat(equities)
-	equities.to_sql(name='equities', con=conn, if_exists='append', index=False, chunksize=1000)
+		if len(options) == 0:
+			return
 
-	conn.close()
+		options = pd.concat(options)
+		options.to_sql(name='options', con=conn, if_exists='append', index=False, chunksize=10_000)
 
-def send_scraping_report(successful, failures):
+		equities = pd.concat(equities)
+		equities.to_sql(name='equities', con=conn, if_exists='append', index=False, chunksize=10_000)
+
+		post = conn.execute("SELECT COUNT(*) FROM options;").fetchone()[0]
+
+	return (pre, post)
+
+def send_scraping_report(successful, failures, db_flag, db_counts, indexing_faults):
 
 	sender_email = "zqretrace@gmail.com"
 	receiver_email = "zqretrace@gmail.com, zach.barillaro@gmail.com, mp0941745@gmail.com, josephfalvo@outlook.com, lucasmduarte17@gmail.com"
@@ -71,6 +77,12 @@ def send_scraping_report(successful, failures):
 		Summary
 		Successful Tickers: {ls} , {np.round((ls / total) * 100, 2)}%
 		Failed Tickers: {lf} , {np.round((lf / total) * 100, 2)}%
+
+		Database Ingestion: {db_flag} - {["Failure", "Success"][db_flag]}
+		Starting Row Count: {db_counts[0]}
+		Ending Row Count: {db_counts[1]}
+		New Rows Added: {db_counts[1] - db_counts[0]}
+		Total Indexing Attempts: {indexing_faults + 1}
 
 		See attached for a breakdown of the tickers and file sizes.
 	"""
