@@ -78,7 +78,7 @@ def send_scraping_report(successful, failures, db_flag, db_counts, indexing_faul
 		Successful Tickers: {ls} , {np.round((ls / total) * 100, 2)}%
 		Failed Tickers: {lf} , {np.round((lf / total) * 100, 2)}%
 
-		Database Ingestion: {db_flag} - {["Failure", "Success"][db_flag]}
+		Database Ingestion: {["Failure", "Success"][db_flag]}
 		Starting Row Count: {db_counts[0]}
 		Ending Row Count: {db_counts[1]}
 		New Rows Added: {db_counts[1] - db_counts[0]}
