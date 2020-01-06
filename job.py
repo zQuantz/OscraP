@@ -18,7 +18,6 @@ if __name__ == '__main__':
 	###############################
 	### Collecting
 	###############################
-	
 	for ticker in ticker_dict:
 		
 		try:

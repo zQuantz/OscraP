@@ -13,13 +13,12 @@ import os
 def send_to_database():
 
 	logger.info("Sending data to SQL.")
-
 	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
-	conn = engine.connect()
 
 	with engine.connect() as conn:
 
-		pre = conn.execute("SELECT COUNT(*) FROM options;").fetchone()[0]
+		options_pre = conn.execute("SELECT COUNT(*) FROM options;").fetchone()[0]
+		equities_pre = conn.execute("SELECT COUNT(*) FROM equities;").fetchone()[0]
 
 		options = []
 		equities = []
@@ -54,9 +53,10 @@ def send_to_database():
 		equities = pd.concat(equities)
 		equities.to_sql(name='equities', con=conn, if_exists='append', index=False, chunksize=10_000)
 
-		post = conn.execute("SELECT COUNT(*) FROM options;").fetchone()[0]
+		options_post = conn.execute("SELECT COUNT(*) FROM options;").fetchone()[0]
+		equities_post = conn.execute("SELECT COUNT(*) FROM equities;").fetchone()[0]
 
-	return (pre, post)
+	return [(options_pre, options_post), (equities_pre, equities_post)]
 
 def send_scraping_report(successful, failures, db_flag, db_counts, indexing_faults):
 
@@ -70,6 +70,8 @@ def send_scraping_report(successful, failures, db_flag, db_counts, indexing_faul
 	message["From"] = sender_email
 	message["To"] = receiver_email
 
+	options_counts, equities_counts = db_counts
+
 	ls = len(successful)
 	lf = len(failures)
 	total = ls + lf
@@ -78,11 +80,20 @@ def send_scraping_report(successful, failures, db_flag, db_counts, indexing_faul
 		Successful Tickers: {ls} , {np.round((ls / total) * 100, 2)}%
 		Failed Tickers: {lf} , {np.round((lf / total) * 100, 2)}%
 
+		Ingestion Summary
 		Database Ingestion: {["Failure", "Success"][db_flag]}
-		Starting Row Count: {db_counts[0]}
-		Ending Row Count: {db_counts[1]}
-		New Rows Added: {db_counts[1] - db_counts[0]}
 		Total Indexing Attempts: {indexing_faults + 1}
+
+		Options Summary
+		Starting Row Count: {options_counts[0]}
+		Ending Row Count: {options_counts[1]}
+		New Rows Added: {options_counts[1] - options_counts[0]}
+
+		Equities Summary
+		Starting Row Count: {equities_counts[0]}
+		Ending Row Count: {equities_counts[1]}
+		New Rows Added: {equities_counts[1] - equities_counts[0]}
+		
 
 		See attached for a breakdown of the tickers and file sizes.
 	"""
