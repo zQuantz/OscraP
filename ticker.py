@@ -12,13 +12,18 @@ START = "https://finance.yahoo.com/quote/{ticker}/options?p={ticker}"
 SUMMARY = "https://finance.yahoo.com/quote/{ticker}/"
 PARSER = "lxml"
 
+
 def fmt(str_number):
 	
 	if str_number == '':
 		return 0
 
+	if str_number == 'N/A':
+		return 0
+
 	for token in ',$%':
 		str_number = str_number.replace(token, '')
+
 	return float(str_number.replace('-', '0'))
 
 class Ticker():
