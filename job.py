@@ -85,5 +85,5 @@ if __name__ == '__main__':
 			db_flag = 0
 
 		ctr += 1
-
+	
 	send_scraping_report(success, failure, db_flag, db_counts, ctr)
