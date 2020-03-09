@@ -1,9 +1,12 @@
 from const import DIR, date_today, option_cols, option_new_cols, equity_cols, equity_new_cols, logger
+
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
+
+from datetime import datetime, timedelta
 import sqlalchemy as sql
 import pandas as pd
 import smtplib, ssl
@@ -11,6 +14,10 @@ import numpy as np
 import os
 
 def send_to_database():
+
+	def binarize(x):
+	    q = np.quantile(x, 0.25)
+	    return not (x.values[-1] >= q)[0]
 
 	logger.info("Sending data to SQL.")
 	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
@@ -56,9 +63,29 @@ def send_to_database():
 		options_post = conn.execute("SELECT COUNT(*) FROM options;").fetchone()[0]
 		equities_post = conn.execute("SELECT COUNT(*) FROM equities;").fetchone()[0]
 
-	return [(options_pre, options_post), (equities_pre, equities_post)]
+		tickers = [
+			"AAPL", "TSLA", "MSFT", "F", "XOP", "SPY", "JKS", "V", "DOL.TO", "WEED.TO"
+		]
+		dt = datetime.now() - timedelta(days=60)
+		query = sql.text(f"""
+			SELECT
+				ticker, date_current
+			FROM
+				options
+			WHERE
+				ticker in :tickers
+			AND date_current >= {dt.strftime("%Y-%m-%d")}
+			"""
+		)
+		query = query.bindparams(tickers=tickers)
+		quantile_flags = pd.read_sql(query, conn)
+		quantile_flags = quantile_flags.groupby(["ticker"]).apply(lambda x: 
+				binarize(x.groupby('date_current').count())
+			)
 
-def send_scraping_report(successful, failures, db_flag, db_counts, indexing_faults):
+	return [(options_pre, options_post), (equities_pre, equities_post), quantile_flags]
+
+def send_scraping_report(successful, failures, db_flag, db_stats, indexing_faults):
 
 	sender_email = "zqretrace@gmail.com"
 	receiver_email = "zqretrace@gmail.com, zach.barillaro@gmail.com, mp0941745@gmail.com, josephfalvo@outlook.com, lucasmduarte17@gmail.com"
@@ -70,7 +97,7 @@ def send_scraping_report(successful, failures, db_flag, db_counts, indexing_faul
 	message["From"] = sender_email
 	message["To"] = receiver_email
 
-	options_counts, equities_counts = db_counts
+	options_counts, equities_counts, quantile_flags = db_stats
 
 	ls = len(successful)
 	lf = len(failures)
@@ -85,6 +112,7 @@ def send_scraping_report(successful, failures, db_flag, db_counts, indexing_faul
 		Total Indexing Attempts: {indexing_faults + 1}
 
 		Options Summary
+		Unhealthy Tickers: {', '.join(quantile_flags[quantile_flags].index)}
 		Starting Row Count: {options_counts[0]}
 		Ending Row Count: {options_counts[1]}
 		New Rows Added: {options_counts[1] - options_counts[0]}
@@ -93,7 +121,6 @@ def send_scraping_report(successful, failures, db_flag, db_counts, indexing_faul
 		Starting Row Count: {equities_counts[0]}
 		Ending Row Count: {equities_counts[1]}
 		New Rows Added: {equities_counts[1] - equities_counts[0]}
-		
 
 		See attached for a breakdown of the tickers and file sizes.
 	"""
@@ -120,9 +147,18 @@ def send_scraping_report(successful, failures, db_flag, db_counts, indexing_faul
 	msg.add_header('Content-Disposition', 'attachment', filename=filename)           
 	message.attach(msg)
 
+	os.system("rm log.log")
+	os.system("echo | tail -2000 scraper.log > log.log")
+
+	filename = f'{DIR}/log.log'
+	with open(filename, 'r') as file:
+		attachment = MIMEText(file.read())
+	attachment.add_header('Content-Disposition', 'attachment', filename=filename)           
+	message.attach(attachment)
+
 	context = ssl.create_default_context()
 	with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
-	    server.login(sender_email, password)
-	    server.sendmail(
-	        sender_email, receiver_email_list, message.as_string()
-	    )
+		server.login(sender_email, password)
+		server.sendmail(
+			sender_email, receiver_email_list, message.as_string()
+	)

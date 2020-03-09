@@ -12,30 +12,33 @@ START = "https://finance.yahoo.com/quote/{ticker}/options?p={ticker}"
 SUMMARY = "https://finance.yahoo.com/quote/{ticker}/"
 PARSER = "lxml"
 
-
-def fmt(str_number):
-	
-	if str_number == '':
-		return 0
-
-	if str_number == 'N/A':
-		return 0
-
-	for token in ',$%':
-		str_number = str_number.replace(token, '')
-
-	return float(str_number.replace('-', '0'))
-
 class Ticker():
 
-	def __init__(self, ticker):
+	def __init__(self, ticker, logger):
 
-		self.stats = []
+		self.logger = logger
 		self.ticker = ticker
+		
+		self.stats = []
 		self.START = START.format(ticker = ticker)
 		self.pages = [BeautifulSoup(requests.get(self.START, headers = headers_mobile).text, PARSER)]
+
 		self.initialize()
 		self.scrape_options()
+
+	def fmt(self, str_number, metric=''):
+	
+		if str_number == '':
+			return 0
+
+		if str_number == 'N/A':
+			self.logger.info(f'N/A - {this.ticker}, {metric}')
+			return 0
+
+		for token in ',$%':
+			str_number = str_number.replace(token, '')
+
+		return float(str_number.replace('-', '0'))
 
 	def get_dividends(self, bs):
 
@@ -48,7 +51,7 @@ class Ticker():
 			div = div.text.split(' ')[1][1:-1]
 			div = div.replace('N/A', '')
 
-		return fmt(div) / 100
+		return self.fmt(div, 'div') / 100
 
 	def initialize(self):
 
@@ -72,7 +75,7 @@ class Ticker():
 		ohlc_date = datetime.strptime(prices[0], "%b %d, %Y").strftime("%Y-%m-%d")
 		assert ohlc_date == date_today
 
-		prices = list(map(fmt, prices[1:]))
+		prices = list(map(self.fmt, prices[1:], ['Open', 'High', 'Low', 'Close', 'AdjClose', 'Volume']))
 		self.open = prices[0]
 		self.high = prices[1]
 		self.low = prices[2]
@@ -82,6 +85,31 @@ class Ticker():
 
 		bs = self.pages[0]
 		self.expirations = [(option.get("value"), option.text) for option in bs.find_all("option")]
+
+	def append_options(self, table, expiry_date_fmt, expiration_days, symbol):
+
+		for row in table.find_all("tr")[1:]:
+			es = [e for e in row.find_all("td")[2:]]
+			self.stats.append([
+					date_today,
+					self.open,
+					self.high,
+					self.low,
+					self.close,
+					self.adj_close,
+					self.volume,
+					self.fmt(es[0].text, 'Strike Price'),
+					self.fmt(es[1].text, 'Option Price'),
+					self.div,
+					expiry_date_fmt,
+					np.round(max(expiration_days / 252, 0), 6),
+					symbol,
+					self.fmt(es[-1].text, 'Implied Volatility') / 100,
+					self.fmt(es[2].text, 'Bid'),
+					self.fmt(es[3].text, 'Ask'),
+					self.fmt(es[-2].text, 'Volume'),
+					self.fmt(es[-3].text, 'Open Interest')
+				])
 
 	def scrape_options(self):
 
@@ -99,55 +127,10 @@ class Ticker():
 			puts = bs.find("table", {"class" : "puts"})
 			
 			if calls:
-
-				for row in calls.find_all("tr")[1:]:
-					es = [e for e in row.find_all("td")[2:]]
-					self.stats.append([
-							date_today,
-							self.open,
-							self.high,
-							self.low,
-							self.close,
-							self.adj_close,
-							self.volume,
-							fmt(es[0].text),
-							fmt(es[1].text),
-							self.div,
-							expiry_date_fmt,
-							np.round(max(expiration_days / 252, 0), 6),
-							'C',
-							fmt(es[-1].text) / 100,
-							fmt(es[2].text),
-							fmt(es[3].text),
-							fmt(es[-2].text),
-							fmt(es[-3].text),
-
-						])
-			if puts:
+				self.append_options(calls, expiry_date_fmt, expiration_days, 'C')
 			
-				for row in puts.find_all("tr")[1:]:
-					es = [e for e in row.find_all("td")[2:]]
-					self.stats.append([
-							date_today,
-							self.open,
-							self.high,
-							self.low,
-							self.close,
-							self.adj_close,
-							self.volume,
-							fmt(es[0].text),
-							fmt(es[1].text),
-							self.div,
-							expiry_date_fmt,
-							np.round(max(expiration_days / 252, 0), 6),
-							'P',
-							fmt(es[-1].text) / 100,
-							fmt(es[2].text),
-							fmt(es[3].text),
-							fmt(es[-2].text),
-							fmt(es[-3].text),
-
-						])
+			if puts:
+				self.append_options(puts, expiry_date_fmt, expiration_days, 'P')
 
 		df = pd.DataFrame(self.stats, columns = ['CurrentDate', 'Open', 'High', 'Low', 'Close', 'AdjClose', 'StockVolume', 
 												 'StrikePrice', 'OptionPrice', 'DividendYield', 'ExpirationDate', 

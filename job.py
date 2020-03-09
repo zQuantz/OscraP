@@ -3,6 +3,7 @@ from const import DIR, date_today, logger
 from datetime import datetime
 
 from ticker import Ticker
+import pandas as pd
 import sys, os
 import pickle
 import shutil
@@ -11,20 +12,15 @@ import time
 with open(f'{DIR}/data/tickers.pickle', 'rb') as file:
 	ticker_dict = pickle.load(file)
 
-if __name__ == '__main__':
+def collect_data():
 
-	os.mkdir(f'{DIR}/options_data/{date_today}')
-
-	###############################
-	### Collecting
-	###############################
 	for ticker in ticker_dict:
 		
 		try:
 			
 			logger.info(f"Processing: {ticker}")
 			
-			Ticker(ticker)
+			Ticker(ticker, logger)
 			
 			time.sleep(5)
 			logger.info(f"{ticker} was collected successfully.")
@@ -34,9 +30,27 @@ if __name__ == '__main__':
 			logger.info(f"{ticker} was not collected successfully.")
 			logger.warning(e)
 
-	###############################
-	### Logging
-	###############################
+def database_and_alerts():
+
+	max_tries = 5
+	ctr = 0
+
+	while ctr < max_tries:
+		
+		try:
+			db_stats = send_to_database()
+			db_flag = 1
+			break
+		except Exception as e:
+			logger.warning(e)
+			db_stats = (0, 0, pd.DataFrame({"None" : [True]}))
+			db_flag = 0
+
+		ctr += 1
+
+	return db_flag, db_stats, ctr
+
+def log_scraper_health():
 
 	collected_tickers = [file.split('_')[0] for file in os.listdir(f'{DIR}/options_data/{date_today}')]
 
@@ -66,24 +80,22 @@ if __name__ == '__main__':
 
 	shutil.make_archive(f"{DIR}/options_data/{date_today}", "zip", f"{DIR}/options_data/{date_today}")
 
-	###############################
-	### Database & Alerts
-	###############################
+	return success, failure
 
-	max_tries = 5
-	ctr = 0
+def main():
 
-	while ctr < max_tries:
-		
-		try:
-			db_counts = send_to_database()
-			db_flag = 1
-			break
-		except Exception as e:
-			logger.warning(e)
-			db_counts = (0, 0)
-			db_flag = 0
+	collect_data()
+	success, failure = log_scraper_health()
+	db_flag, db_stats, ctr = database_and_alerts()
 
-		ctr += 1
-	
-	send_scraping_report(success, failure, db_flag, db_counts, ctr)
+	send_scraping_report(success, failure, db_flag, db_stats, ctr)
+
+if __name__ == '__main__':
+
+	logger.info(f"OPTION SCRAPER - {date_today}")
+	logger.info(f"Job initiated.")
+	os.mkdir(f'{DIR}/options_data/{date_today}')
+
+	main()
+
+	logger.info("Job terminated.")
