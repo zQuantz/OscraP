@@ -32,7 +32,7 @@ class Ticker():
 			return 0
 
 		if str_number == 'N/A':
-			self.logger.info(f'N/A - {this.ticker}, {metric}')
+			self.logger.info(f'N/A - {self.ticker}, {metric}')
 			return 0
 
 		for token in ',$%':
