@@ -2,6 +2,12 @@ from datetime import datetime
 import logging
 import os
 
+## Formatters
+CONVERTER = {"M" : 1_000_000}
+CONVERTER["B"] = CONVERTER["M"] * 1_000
+CONVERTER["T"] = CONVERTER["B"] * 1_000
+NUMBERS = ''.join([str(i) for i in range(10)])
+
 ## Logging
 DIR = os.path.realpath(os.path.dirname(__file__))
 logger = logging.getLogger(__name__)
@@ -29,3 +35,5 @@ equity_cols = ['Ticker', 'CurrentDate', 'Open', 'High', 'Low', 'Close',
 			   'AdjClose', 'StockVolume', 'DividendYield']
 equity_new_cols = ['ticker', 'date_current', 'open', 'high', 'low', 'close',
 				   'adj_close', 'stock_volume', 'dividend_yield']
+
+key_stats_cols = ["Feature", "Modifier", "Value"]

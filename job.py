@@ -14,21 +14,23 @@ with open(f'{DIR}/data/tickers.pickle', 'rb') as file:
 
 def collect_data():
 
+	ticker_dict = {
+		"AAPL" : "None",
+		"JKS" : "None",
+		"XOP" : "None",
+		"DOL.TO" : "None",
+		"BA" : "None",
+		"SPLK" : "None",
+		"SQ" : "None"
+	}
+
 	for ticker in ticker_dict:
 		
 		try:
-			
-			logger.info(f"Processing: {ticker}")
-			
-			Ticker(ticker, logger)
-			
-			time.sleep(5)
-			logger.info(f"{ticker} was collected successfully.")
-		
+			Ticker(ticker, logger) ; time.sleep(5)
+			logger.info(f"{ticker},Ticker,Success,")
 		except Exception as e:
-			
-			logger.info(f"{ticker} was not collected successfully.")
-			logger.warning(e)
+			logger.warning(f"{ticker},Ticker,Failure,{e}")
 
 def database_and_alerts():
 
@@ -65,37 +67,44 @@ def log_scraper_health():
 
 	with open(f'{DIR}/options_data/{date_today}/successful_tickers.txt', 'w') as file:
 		
-		file.write(f"Ticker\tCompany Name\tFile Size\n")
+		file.write(f"Ticker,Company Name,File Size\n")
 		for ticker in success:
 
 			size = os.stat(f'{DIR}/options_data/{date_today}/{ticker}_{date_today}.csv').st_size / 1000
 			size = "%.2f kb" % size
-			file.write(f"{ticker}\t{ticker_dict[ticker]}\t{size}\n")
+			file.write(f"{ticker},{ticker_dict[ticker]},{size}\n")
 
 	with open(f'{DIR}/options_data/{date_today}/failed_tickers.txt', 'w') as file:
 		
-		file.write(f"Ticker\tCompany Name\n")
+		file.write(f"Ticker,Company Name\n")
 		for ticker in failure:
-			file.write(f"{ticker}\t{ticker_dict[ticker]}\n")
+			file.write(f"{ticker},{ticker_dict[ticker]}\n")
 
 	shutil.make_archive(f"{DIR}/options_data/{date_today}", "zip", f"{DIR}/options_data/{date_today}")
 
 	return success, failure
 
+def init_folders():
+
+	os.mkdir(f'{DIR}/Data/{date_today}')
+	os.mkdir(f'{DIR}/Data/{date_today}/options_data')
+	os.mkdir(f'{DIR}/Data/{date_today}/stock_data')
+	os.mkdir(f'{DIR}/Data/{date_today}/key_stats_data')
+
 def main():
 
 	collect_data()
-	success, failure = log_scraper_health()
-	db_flag, db_stats, ctr = database_and_alerts()
+	# success, failure = log_scraper_health()
+	# db_flag, db_stats, ctr = database_and_alerts()
 
-	send_scraping_report(success, failure, db_flag, db_stats, ctr)
+	# send_scraping_report(success, failure, db_flag, db_stats, ctr)
 
 if __name__ == '__main__':
 
-	logger.info(f"OPTION SCRAPER - {date_today}")
-	logger.info(f"Job initiated.")
-	os.mkdir(f'{DIR}/options_data/{date_today}')
 
+	logger.info(f"SCRAPER,JOB,INITIATED,{date_today}")
+
+	init_folders()
 	main()
 
-	logger.info("Job terminated.")
+	logger.info(f"SCRAPER,JOB,TERMINATED,{date_today}")
