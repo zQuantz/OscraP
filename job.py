@@ -1,4 +1,5 @@
 from send import send_scraping_report, send_to_database
+from unit_tests import check_number_of_options
 from const import DIR, date_today, logger
 from datetime import datetime
 
@@ -14,90 +15,131 @@ with open(f'{DIR}/data/tickers.pickle', 'rb') as file:
 
 def collect_data():
 
-	ticker_dict = {
-		"AAPL" : "None",
-		"JKS" : "None",
-		"XOP" : "None",
-		"DOL.TO" : "None",
-		"BA" : "None",
-		"SPLK" : "None",
-		"SQ" : "None"
-	}
+	# ticker_dict = {
+	# 	"TSLA" : "None",
+	# 	"DOL.TO" : "None",
+	# 	"BA" : "None",
+	# 	"SPLK" : "None",
+	# 	"SQ" : "None"
+	# }
 
 	for ticker in ticker_dict:
 		
 		try:
+
 			Ticker(ticker, logger) ; time.sleep(5)
 			logger.info(f"{ticker},Ticker,Success,")
+
 		except Exception as e:
+
 			logger.warning(f"{ticker},Ticker,Failure,{e}")
+
+def collect_data_again(unhealthy_tickers):
+
+	for ticker in unhealthy_tickers:
+		
+		try:
+
+			ticker = Ticker(ticker, logger) ; time.sleep(5)
+			unhealthy_tickers[ticker]['new_options'] = len(ticker.options)
+			logger.info(f"{ticker},Re-Ticker,Success,")
+
+		except Exception as e:
+
+			unhealthy_tickers[ticker]['new_options'] = -1
+			logger.warning(f"{ticker},Re-Ticker,Failure,{e}")
+
+	return unhealthy_tickers
 
 def database_and_alerts():
 
 	max_tries = 5
-	ctr = 0
+	indexing_faults = 0
 
-	while ctr < max_tries:
+	while indexing_faults < max_tries:
 		
 		try:
+
 			db_stats = send_to_database()
 			db_flag = 1
 			break
+
 		except Exception as e:
+
 			logger.warning(e)
 			db_stats = (0, 0, pd.DataFrame({"None" : [True]}))
 			db_flag = 0
 
-		ctr += 1
+		indexing_faults += 1
 
-	return db_flag, db_stats, ctr
+	return db_flag, db_stats, indexing_faults
 
 def log_scraper_health():
 
-	collected_tickers = [file.split('_')[0] for file in os.listdir(f'{DIR}/options_data/{date_today}')]
+	collected_options = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date_today}/options')]
+	collected_equities = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date_today}/equities')]
+	collected_analysis = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date_today}/analysis')]
+	collected_key_stats = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date_today}/key_stats')]
 
-	success = []
-	failure = []
+	success = {
+		"options" : 0,
+		"equities" : 0,
+		"key_stats" : 0,
+		"analysis" : 0
+	}
+
+	failure = {
+		"options" : 0,
+		"equities" : 0,
+		"key_stats" : 0,
+		"analysis" : 0
+	}
 
 	for ticker in ticker_dict:
-		if ticker in collected_tickers:
-			success.append(ticker)
+
+		if ticker in collected_options:
+			success['options'] += 1
 		else:
-			failure.append(ticker)
+			failure['options'] += 1
 
-	with open(f'{DIR}/options_data/{date_today}/successful_tickers.txt', 'w') as file:
-		
-		file.write(f"Ticker,Company Name,File Size\n")
-		for ticker in success:
+		if ticker in collected_equities:
+			success['equities'] += 1
+		else:
+			failure['equities'] += 1
 
-			size = os.stat(f'{DIR}/options_data/{date_today}/{ticker}_{date_today}.csv').st_size / 1000
-			size = "%.2f kb" % size
-			file.write(f"{ticker},{ticker_dict[ticker]},{size}\n")
+		if ticker in collected_analysis:
+			success['analysis'] += 1
+		else:
+			failure['analysis'] += 1
 
-	with open(f'{DIR}/options_data/{date_today}/failed_tickers.txt', 'w') as file:
-		
-		file.write(f"Ticker,Company Name\n")
-		for ticker in failure:
-			file.write(f"{ticker},{ticker_dict[ticker]}\n")
+		if ticker in collected_key_stats:
+			success['key_stats'] += 1
+		else:
+			failure['key_stats'] += 1
 
-	shutil.make_archive(f"{DIR}/options_data/{date_today}", "zip", f"{DIR}/options_data/{date_today}")
+	shutil.make_archive(f"{DIR}/financial_data/{date_today}", "zip", f"{DIR}/financial_data/{date_today}")
 
 	return success, failure
 
 def init_folders():
 
-	os.mkdir(f'{DIR}/Data/{date_today}')
-	os.mkdir(f'{DIR}/Data/{date_today}/options_data')
-	os.mkdir(f'{DIR}/Data/{date_today}/stock_data')
-	os.mkdir(f'{DIR}/Data/{date_today}/key_stats_data')
+	os.mkdir(f'{DIR}/financial_data/{date_today}')
+	os.mkdir(f'{DIR}/financial_data/{date_today}/options')
+	os.mkdir(f'{DIR}/financial_data/{date_today}/equities')
+	os.mkdir(f'{DIR}/financial_data/{date_today}/key_stats')
+	os.mkdir(f'{DIR}/financial_data/{date_today}/analysis')
 
 def main():
 
 	collect_data()
-	# success, failure = log_scraper_health()
-	# db_flag, db_stats, ctr = database_and_alerts()
 
-	# send_scraping_report(success, failure, db_flag, db_stats, ctr)
+	unhealthy_tickers = check_number_of_options()
+	if len(unhealthy_tickers) > 0:
+		unhealthy_tickers = collect_data_again(unhealthy_tickers)
+
+	success, failure = log_scraper_health()
+	db_flag, db_stats, indexing_faults = database_and_alerts()
+	send_scraping_report(success, failure, unhealthy_tickers, db_flag, db_stats, indexing_faults)
 
 if __name__ == '__main__':
 

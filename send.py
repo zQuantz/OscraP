@@ -1,4 +1,4 @@
-from const import DIR, date_today, option_cols, option_new_cols, equity_cols, equity_new_cols, logger
+from const import DIR, date_today, logger
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
@@ -19,40 +19,52 @@ def send_to_database():
 	    q = np.quantile(x, 0.25)
 	    return not (x.values[-1] >= q)[0]
 
-	logger.info("Sending data to SQL.")
-	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
+	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_test")
 
 	with engine.connect() as conn:
 
 		options_pre = conn.execute("SELECT COUNT(*) FROM options;").fetchone()[0]
 		equities_pre = conn.execute("SELECT COUNT(*) FROM equities;").fetchone()[0]
+		analysis_pre = conn.execute("SELECT COUNT(*) FROM analysis;").fetchone()[0]
+		key_stats_pre = conn.execute("SELECT COUNT(*) FROM key_stats;").fetchone()[0]
 
 		options = []
 		equities = []
+		analysis = []
+		key_stats = []
 
-		for file in os.listdir(f'{DIR}/options_data/{date_today}'):
-
-			if '.txt' in file:
-				continue
+		for file in os.listdir(f'{DIR}/financial_data/{date_today}/options'):
 
 			ticker = file.split('_')[0]
-			df = pd.read_csv(f'{DIR}/options_data/{date_today}/{file}')
-			df['Ticker'] = ticker
-			df['OptionID'] = (df.Ticker + ' ' + df.ExpirationDate + ' ' + df.OptionType
-							  + np.round(df.StrikePrice, 2).astype(str))
+			df = pd.read_csv(f'{DIR}/financial_data/{date_today}/options/{file}')
+			df['ticker'] = ticker
+			df['option_id'] = (df.ticker + ' ' + df.expiration_date + ' ' + df.option_type
+							  + np.round(df.strike_price, 2).astype(str))
+			options.append(df)
 
-			opts = df[option_cols]
-			opts.columns = option_new_cols
-			options.append(opts)
+		for file in os.listdir(f'{DIR}/financial_data/{date_today}/equities'):
 
-			eqts = df[equity_cols]
-			eqts.columns = equity_new_cols
-			equities.append(eqts.iloc[:1, :])
+			ticker = file.split('_')[0]
+			df = pd.read_csv(f'{DIR}/financial_data/{date_today}/equities/{file}')
+			df['ticker'] = ticker
 
-			logger.info(f"Processing {ticker} for database ingestion.")
+			equities.append(df.iloc[:1, :])
 
-		if len(options) == 0:
-			return
+		for file in os.listdir(f'{DIR}/financial_data/{date_today}/analysis'):
+
+			ticker = file.split('_')[0]
+			df = pd.read_csv(f'{DIR}/financial_data/{date_today}/analysis/{file}')
+			df['ticker'] = ticker
+			df['date_current'] = date_today
+			analysis.append(df)
+
+		for file in os.listdir(f'{DIR}/financial_data/{date_today}/key_stats'):
+
+			ticker = file.split('_')[0]
+			df = pd.read_csv(f'{DIR}/financial_data/{date_today}/key_stats/{file}')
+			df['ticker'] = ticker
+			df['date_current'] = date_today
+			key_stats.append(df)
 
 		options = pd.concat(options)
 		options.to_sql(name='options', con=conn, if_exists='append', index=False, chunksize=10_000)
@@ -60,32 +72,20 @@ def send_to_database():
 		equities = pd.concat(equities)
 		equities.to_sql(name='equities', con=conn, if_exists='append', index=False, chunksize=10_000)
 
+		analysis = pd.concat(analysis)
+		analysis.to_sql(name='analysis', con=conn, if_exists='append', index=False, chunksize=10_000)
+
+		key_stats = pd.concat(key_stats)
+		key_stats.to_sql(name='key_stats', con=conn, if_exists='append', index=False, chunksize=10_000)
+
 		options_post = conn.execute("SELECT COUNT(*) FROM options;").fetchone()[0]
 		equities_post = conn.execute("SELECT COUNT(*) FROM equities;").fetchone()[0]
+		analysis_post = conn.execute("SELECT COUNT(*) FROM analysis;").fetchone()[0]
+		key_stats_post = conn.execute("SELECT COUNT(*) FROM key_stats;").fetchone()[0]
 
-		tickers = [
-			"AAPL", "TSLA", "MSFT", "F", "XOP", "SPY", "JKS", "V", "DOL.TO", "WEED.TO"
-		]
-		dt = datetime.now() - timedelta(days=60)
-		query = sql.text(f"""
-			SELECT
-				ticker, date_current
-			FROM
-				options
-			WHERE
-				ticker in :tickers
-			AND date_current >= {dt.strftime("%Y-%m-%d")}
-			"""
-		)
-		query = query.bindparams(tickers=tickers)
-		quantile_flags = pd.read_sql(query, conn)
-		quantile_flags = quantile_flags.groupby(["ticker"]).apply(lambda x: 
-				binarize(x.groupby('date_current').count())
-			)
+	return [(options_pre, options_post), (equities_pre, equities_post), (analysis_pre, analysis_post), (key_stats_pre, key_stats_post)]
 
-	return [(options_pre, options_post), (equities_pre, equities_post), quantile_flags]
-
-def send_scraping_report(successful, failures, db_flag, db_stats, indexing_faults):
+def send_scraping_report(successful, failures, unhealthy_tickers, db_flag, db_stats, indexing_faults):
 
 	sender_email = "zqretrace@gmail.com"
 	receiver_email = "zqretrace@gmail.com, zach.barillaro@gmail.com, mp0941745@gmail.com, josephfalvo@outlook.com, lucasmduarte17@gmail.com"
@@ -97,49 +97,71 @@ def send_scraping_report(successful, failures, db_flag, db_stats, indexing_fault
 	message["From"] = sender_email
 	message["To"] = receiver_email
 
-	options_counts, equities_counts, quantile_flags = db_stats
+	if len(unhealthy_tickers) > 0:
 
-	ls = len(successful)
-	lf = len(failures)
-	total = ls + lf
+		unhealthy_tickers_str = """
+		Quantile (25%), First Run Count, Second Run Count, Delta\n
+		"""
+
+		for ticker in unhealthy_tickers:
+			
+			q = unhealthy_tickers[ticker]['quantile']
+			o = unhealthy_tickers[ticker]['options']
+			no = unhealthy_tickers[ticker]['new_options']
+			d = no - o
+
+			unhealthy_tickers_str += f"""
+			{q}, {o}, {no}, {d} \n
+		"""
+
+	else:
+
+		unhealthy_tickers_str = ""
+
+	options_counts, equities_counts, analysis_counts, key_stats_counts = db_stats
+	total = successful['options'] + failures['options']
+
 	text = f"""
-		Summary
-		Successful Tickers: {ls} , {np.round((ls / total) * 100, 2)}%
-		Failed Tickers: {lf} , {np.round((lf / total) * 100, 2)}%
-
 		Ingestion Summary
 		Database Ingestion: {["Failure", "Success"][db_flag]}
 		Total Indexing Attempts: {indexing_faults + 1}
 
 		Options Summary
-		Unhealthy Tickers: {', '.join(quantile_flags[quantile_flags].index)}
+		Successful Tickers: {successful['options']}, {np.round(successful['options'] / total * 100, 2)}%
+		Failed Tickers: {failures['options']}, {np.round(failures['options'] / total * 100, 2)}%
 		Starting Row Count: {options_counts[0]}
 		Ending Row Count: {options_counts[1]}
 		New Rows Added: {options_counts[1] - options_counts[0]}
 
+		Unhealthy Summary
+		{unhealthy_tickers_str}
+
 		Equities Summary
+		Successful Tickers: {successful['equities']}, {np.round(successful['equities'] / total * 100, 2)}%
+		Failed Tickers: {failures['equities']}, {np.round(failures['equities'] / total * 100, 2)}%
 		Starting Row Count: {equities_counts[0]}
 		Ending Row Count: {equities_counts[1]}
 		New Rows Added: {equities_counts[1] - equities_counts[0]}
 
+		Equities Summary
+		Successful Tickers: {successful['analysis']}, {np.round(successful['analysis'] / total * 100, 2)}%
+		Failed Tickers: {failures['analysis']}, {np.round(failures['analysis'] / total * 100, 2)}%
+		Starting Row Count: {analysis_counts[0]}
+		Ending Row Count: {analysis_counts[1]}
+		New Rows Added: {analysis_counts[1] - analysis_counts[0]}
+
+		Key Statistics Summary
+		Successful Tickers: {successful['key_stats']}, {np.round(successful['key_stats'] / total * 100, 2)}%
+		Failed Tickers: {failures['key_stats']}, {np.round(failures['key_stats'] / total * 100, 2)}%
+		Starting Row Count: {key_stats_counts[0]}
+		Ending Row Count: {key_stats_counts[1]}
+		New Rows Added: {key_stats_counts[1] - key_stats_counts[0]}
+
 		See attached for a breakdown of the tickers and file sizes.
 	"""
-
 	message.attach(MIMEText(text, "plain"))
 
-	filename = f'{DIR}/options_data/{date_today}/successful_tickers.txt'
-	with open(filename, 'r') as file:
-		attachment = MIMEText(file.read())
-	attachment.add_header('Content-Disposition', 'attachment', filename=filename)      
-	message.attach(attachment)
-
-	filename = f'{DIR}/options_data/{date_today}/failed_tickers.txt'
-	with open(filename, 'r') as file:
-		attachment = MIMEText(file.read())
-	attachment.add_header('Content-Disposition', 'attachment', filename=filename)           
-	message.attach(attachment)
-
-	filename = f'{DIR}/options_data/{date_today}.zip'
+	filename = f'{DIR}/financial_data/{date_today}.zip'
 	with open(filename, 'rb') as file:
 		msg = MIMEBase('application', 'zip')
 		msg.set_payload(file.read())
@@ -147,9 +169,7 @@ def send_scraping_report(successful, failures, db_flag, db_stats, indexing_fault
 	msg.add_header('Content-Disposition', 'attachment', filename=filename)           
 	message.attach(msg)
 
-	os.system("rm log.log")
-	os.system("echo | tail -2000 scraper.log > log.log")
-
+	os.system(f"bash {DIR}/utils/truncate_log_file.sh")
 	filename = f'{DIR}/log.log'
 	with open(filename, 'r') as file:
 		attachment = MIMEText(file.read())
@@ -160,5 +180,5 @@ def send_scraping_report(successful, failures, db_flag, db_stats, indexing_fault
 	with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
 		server.login(sender_email, password)
 		server.sendmail(
-			sender_email, receiver_email_list, message.as_string()
+			sender_email, receiver_email_list[:2], message.as_string()
 	)
