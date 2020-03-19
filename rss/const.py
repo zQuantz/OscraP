@@ -5,11 +5,11 @@ import os
 ## Logging
 DIR = os.path.realpath(os.path.dirname(__file__))
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.CRITICAL)
 
 fh = logging.FileHandler(f'{DIR}/rss.log')
 formatter = logging.Formatter('%(asctime)s - %(message)s')
-fh.setLevel(logging.DEBUG)
+fh.setLevel(logging.CRITICAL)
 fh.setFormatter(formatter)
 logger.addHandler(fh)
 
