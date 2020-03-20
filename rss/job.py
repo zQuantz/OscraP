@@ -5,7 +5,7 @@ from feed import Feed
 import pandas as pd
 import sys, os
 
-df = pd.read_csv('data/rss.csv')
+df = pd.read_csv(f'{DIR}/data/rss.csv')
 df.columns = ['source', 'feed']
 
 sources = df.groupby('source').apply(lambda x: 
