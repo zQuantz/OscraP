@@ -23,12 +23,12 @@ def move_files():
 
 def send_to_bucket(zip_folder):
 
-    storage_client = storage.Client()
-    bucket = storage_client.bucket("oscrap_storage")
+	storage_client = storage.Client()
+	bucket = storage_client.bucket("oscrap_storage")
 
-    destination_name = zip_folder.split('/')[-1]
-    blob = bucket.blob(destination_name)
-    blob.upload_from_filename(zip_folder)
+	destination_name = zip_folder.split('/')[-1]
+	blob = bucket.blob(destination_name)
+	blob.upload_from_filename(zip_folder)
 
 if __name__ == '__main__':
 
