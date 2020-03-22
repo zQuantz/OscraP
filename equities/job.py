@@ -10,7 +10,7 @@ import pickle
 import shutil
 import time
 
-with open(f'{DIR}/data/tickers.pickle', 'rb') as file:
+with open(f'{DIR}/static/tickers.pickle', 'rb') as file:
 	ticker_dict = pickle.load(file)
 
 def collect_data():
