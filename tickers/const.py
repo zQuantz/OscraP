@@ -3,17 +3,23 @@ import logging
 import os
 
 ## Formatters
-CONVERTER = {"M" : 1_000_000}
+NUMBERS = ''.join([str(i) for i in range(10)])
+
+CONVERTER = {"K" : 1_000}
+CONVERTER["M"] = CONVERTER["K"] * 1_000
 CONVERTER["B"] = CONVERTER["M"] * 1_000
 CONVERTER["T"] = CONVERTER["B"] * 1_000
-NUMBERS = ''.join([str(i) for i in range(10)])
+for key in CONVERTER.copy():
+	CONVERTER[key.lower()] = CONVERTER[key]
+
+print(CONVERTER)
 
 ## Logging
 DIR = os.path.realpath(os.path.dirname(__file__))
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-fh = logging.FileHandler(f'{DIR}/scraper.log')
+fh = logging.FileHandler(f'{DIR}/tickers.log')
 formatter = logging.Formatter('%(asctime)s - %(message)s')
 fh.setLevel(logging.DEBUG)
 fh.setFormatter(formatter)
