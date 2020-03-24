@@ -1,5 +1,7 @@
-from const import CONVERTER, NUMBERS, DIR, date_today
+from const import COLUMNS, DIR, date_today
+from alert import email_ticker_table
 from joblib import Parallel, delayed
+from index import index_instruments
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
@@ -11,23 +13,20 @@ import time
 
 ###################################################################################################
 
+NUMBERS = ''.join([str(i) for i in range(10)])
+
+CONVERTER = {"K" : 1_000}
+CONVERTER["M"] = CONVERTER["K"] * 1_000
+CONVERTER["B"] = CONVERTER["M"] * 1_000
+CONVERTER["T"] = CONVERTER["B"] * 1_000
+for key in CONVERTER.copy():
+	CONVERTER[key.lower()] = CONVERTER[key]
+
 EXCHANGES = [
 	"American Stock Exchange",
 	"NASDAQ Stock Exchange",
 	"New York Stock Exchange",
 	"Toronto Stock Exchange"
-]
-
-COLUMNS = [
-	'ticker',
-	'name',
-	'exchange_code',
-	'exchange_name',
-	'sector',
-	'industry',
-	'instrument_type',
-	'market_cap',
-	'flag'
 ]
 
 LETTERS = sorted(set(string.ascii_letters.lower()))
@@ -36,7 +35,9 @@ YAHOO_PROFILE = "https://ca.finance.yahoo.com/quote/{TICKER}/profile?p={TICKER}"
 YAHOO_QUOTE = "https://ca.finance.yahoo.com/quote/{TICKER}/?p={TICKER}"
 URL = "http://eoddata.com/{INDEX}/{EXCHANGE}/{SYMBOL}.htm"
 FEATURES = "lxml"
+
 SLEEP = 0.5
+N_JOBS = 2
 
 ###################################################################################################
 
@@ -162,24 +163,25 @@ def scrape(exchange_code, exchange_name, modifier=''):
 				industry,
 				instrument_type,
 				np.round(market_cap, 3),
-				flag
 			])
 
 			print(stats[-1]) 
 			time.sleep(SLEEP)
 
-		df = pd.DataFrame(stats, columns = COLUMNS)
-		df.to_csv(f'{DIR}/instrument_data/{date_today}/{exchange_code}_tickers.csv', index=False)
+	df = pd.DataFrame(stats, columns = COLUMNS)
+	df.to_csv(f'{DIR}/instrument_data/{date_today}/{exchange_code}_tickers.csv', index=False)
 
 def main():
 
-	os.mkdir(f"{DIR}/instrument_data/{date_today}")
+	# os.mkdir(f"{DIR}/instrument_data/{date_today}")
 
-	Parallel(n_jobs=2)(
-		delayed(scrape)
-		(exchange_code, exchange_name, '.TO' if exchange_code == 'TSX' else '')
-		for exchange_code, exchange_name in get_exchanges()
-	)
+	# Parallel(n_jobs=4)(
+	# 	delayed(scrape)
+	# 	(exchange_code, exchange_name, '.TO' if exchange_code == 'TSX' else '')
+	# 	for exchange_code, exchange_name in get_exchanges()
+	# )
+	df = index_instruments()
+	email_ticker_table(df)
 
 if __name__ == '__main__':
 
