@@ -1,7 +1,8 @@
-from const import COLUMNS, DIR, date_today
+from const import COLUMNS, DIR, date_today, logger
 from alert import email_ticker_table
 from joblib import Parallel, delayed
 from index import index_instruments
+from datetime import datetime
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
@@ -59,7 +60,7 @@ def get_exchanges():
 			continue
 
 		exchanges.append((option.get_attribute_list("value")[0], option.text))
-		print(exchanges[-1])
+		logger.info(','.join(exchanges[-1]))
 
 	return exchanges
 
@@ -124,62 +125,69 @@ def get_market_cap(ticker):
 
 def scrape(exchange_code, exchange_name, modifier=''):
 
-	stats = []
-	for letter in LETTERS:
+	with open(f'{DIR}/instrument_data/{date_today}/{exchange_code}_log.log', 'a') as file:
 
-		page = get_bs_obj(index="stocklist", exchange=exchange_code, symbol=letter)
-		rows = page.find("table", {"class" : "quotes"}).find_all("tr")[1:]
+		stats = []
+		for letter in LETTERS:
 
-		if rows[0].find('td').text[0] != letter.upper():
-			continue
+			page = get_bs_obj(index="stocklist", exchange=exchange_code, symbol=letter)
+			rows = page.find("table", {"class" : "quotes"}).find_all("tr")[1:]
 
-		for row in rows:
+			if rows[0].find('td').text[0] != letter.upper():
+				continue
 
-			try:
+			for row in rows:
 
-				ticker = row.find('td').text
-				name = row.find("td", text=ticker).next_sibling.text
+				try:
 
-				ticker = ticker.replace('.', '-')
-				ticker += modifier
+					error = None
+
+					ticker = row.find('td').text
+					name = row.find("td", text=ticker).next_sibling.text
+
+					ticker = ticker.replace('.', '-')
+					ticker += modifier
+					
+					market_cap = get_market_cap(ticker)
+					sector, industry, instrument_type = get_sector_and_industry(ticker)
 				
-				market_cap = get_market_cap(ticker)
-				sector, industry, instrument_type = get_sector_and_industry(ticker)
+				except Exception as e:
 
-				flag = 1
+					market_cap = 0
+					sector, industry, instrument_type = None, None, None
+					error = e
 
-			except Exception as e:
+				stats.append([
+					ticker,
+					name,
+					exchange_code,
+					exchange_name,
+					sector,
+					industry,
+					instrument_type,
+					np.round(market_cap, 3),
+				])
 
-				market_cap, flag = 0, 0
-				sector, industry, instrument_type = None, None, None
-				print(ticker, e)
+				log_entry = list(map(str, stats[-1]))
+				log_entry = ','.join(log_entry)
+				log_entry += ',' if not error else ',' + str(error)
+				file.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')} - {log_entry}\n")
 
-			stats.append([
-				ticker,
-				name,
-				exchange_code,
-				exchange_name,
-				sector,
-				industry,
-				instrument_type,
-				np.round(market_cap, 3),
-			])
+				time.sleep(SLEEP)
 
-			print(stats[-1]) 
-			time.sleep(SLEEP)
-
-	df = pd.DataFrame(stats, columns = COLUMNS)
-	df.to_csv(f'{DIR}/instrument_data/{date_today}/{exchange_code}_tickers.csv', index=False)
+		df = pd.DataFrame(stats, columns = COLUMNS)
+		df.to_csv(f'{DIR}/instrument_data/{date_today}/{exchange_code}_tickers.csv', index=False)
 
 def main():
 
-	# os.mkdir(f"{DIR}/instrument_data/{date_today}")
+	os.mkdir(f"{DIR}/instrument_data/{date_today}")
 
-	# Parallel(n_jobs=4)(
-	# 	delayed(scrape)
-	# 	(exchange_code, exchange_name, '.TO' if exchange_code == 'TSX' else '')
-	# 	for exchange_code, exchange_name in get_exchanges()
-	# )
+	Parallel(n_jobs=2)(
+		delayed(scrape)
+		(exchange_code, exchange_name, '.TO' if exchange_code == 'TSX' else '')
+		for exchange_code, exchange_name in get_exchanges()
+	)
+
 	df = index_instruments()
 	email_ticker_table(df)
 

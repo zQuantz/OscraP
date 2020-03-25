@@ -8,7 +8,9 @@ def index_instruments():
 	dfs = []
 	dir_ = f'{DIR}/instrument_data/{date_today}/'
 	for file in os.listdir(dir_):
+		if '.log' in file: continue
 		dfs.append(pd.read_csv(dir_+file))
+
 	df = pd.concat(dfs).dropna()
 	df = df.sort_values('market_cap', ascending=False)
 	df = df[df.market_cap >= 1_000]
