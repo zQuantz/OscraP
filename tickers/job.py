@@ -1,4 +1,4 @@
-from const import COLUMNS, DIR, date_today, logger
+from const import COLUMNS, DIR, date_today
 from alert import email_ticker_table
 from joblib import Parallel, delayed
 from index import index_instruments
@@ -42,6 +42,9 @@ N_JOBS = 2
 
 ###################################################################################################
 
+def parallel_log(msg):
+	print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')} - {msg}")
+
 def get_bs_obj(index, exchange, symbol):
 
 	url = URL.format(INDEX=index, EXCHANGE=exchange, SYMBOL=symbol)
@@ -60,7 +63,7 @@ def get_exchanges():
 			continue
 
 		exchanges.append((option.get_attribute_list("value")[0], option.text))
-		logger.info(','.join(exchanges[-1]))
+		parallel_log(','.join(exchanges[-1]))
 
 	return exchanges
 
@@ -180,16 +183,25 @@ def scrape(exchange_code, exchange_name, modifier=''):
 
 def main():
 
+	parallel_log("Job Initiated.")
+
+	parallel_log("Creating Directory.")
 	os.mkdir(f"{DIR}/instrument_data/{date_today}")
 
+	parallel_log("Parallel Jobs.")
 	Parallel(n_jobs=2)(
 		delayed(scrape)
 		(exchange_code, exchange_name, '.TO' if exchange_code == 'TSX' else '')
 		for exchange_code, exchange_name in get_exchanges()
 	)
 
+	parallel_log("Indexing.")
 	df = index_instruments()
+
+	parallel_log("Emailing.")
 	email_ticker_table(df)
+	
+	parallel_log("Job Terminated.")
 
 if __name__ == '__main__':
 
