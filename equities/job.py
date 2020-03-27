@@ -1,6 +1,7 @@
-from send import send_scraping_report, send_to_database
 from unit_tests import check_number_of_options
 from const import DIR, date_today, logger
+from alert import send_scraping_report
+from index import send_to_database
 from datetime import datetime
 
 from ticker import Ticker
@@ -14,14 +15,6 @@ with open(f'{DIR}/static/tickers.pickle', 'rb') as file:
 	ticker_dict = pickle.load(file)
 
 def collect_data():
-
-	# ticker_dict = {
-	# 	"TSLA" : "None",
-	# 	"DOL.TO" : "None",
-	# 	"BA" : "None",
-	# 	"SPLK" : "None",
-	# 	"SQ" : "None"
-	# }
 
 	for ticker in ticker_dict:
 		
@@ -40,8 +33,8 @@ def collect_data_again(unhealthy_tickers):
 		
 		try:
 
-			ticker = Ticker(ticker, logger) ; time.sleep(5)
-			unhealthy_tickers[ticker]['new_options'] = len(ticker.options)
+			ticker_obj = Ticker(ticker, logger) ; time.sleep(5)
+			unhealthy_tickers[ticker]['new_options'] = len(ticker_obj.options)
 			logger.info(f"{ticker},Re-Ticker,Success,")
 
 		except Exception as e:
@@ -59,7 +52,6 @@ def database_and_alerts():
 	while indexing_faults < max_tries:
 		
 		try:
-
 			db_stats = send_to_database()
 			db_flag = 1
 			break
@@ -67,7 +59,7 @@ def database_and_alerts():
 		except Exception as e:
 
 			logger.warning(e)
-			db_stats = (0, 0, pd.DataFrame({"None" : [True]}))
+			db_stats = [(0,0), (0,0), (0,0), (0,0)]
 			db_flag = 0
 
 		indexing_faults += 1

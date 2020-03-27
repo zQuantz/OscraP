@@ -8,10 +8,10 @@ import requests
 import sys, os
 
 headers_mobile = { 'User-Agent' : 'Mozilla/5.0 (iPhone; CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B137 Safari/601.1'}
-OHLC = "https://finance.yahoo.com/quote/{ticker}/history?period1={yesterday}&period2={today}&interval=1d&filter=history&frequency=1d"
 ANALYSIS = "https://ca.finance.yahoo.com/quote/{ticker}/analysis?p={ticker}"
 STATS = "https://finance.yahoo.com/quote/{ticker}/key-statistics?p={ticker}"
 START = "https://finance.yahoo.com/quote/{ticker}/options?p={ticker}"
+OHLC = "https://finance.yahoo.com/quote/{ticker}/history"
 SUMMARY = "https://finance.yahoo.com/quote/{ticker}/"
 PARSER = "lxml"
 
@@ -54,36 +54,7 @@ class Ticker():
 			self.get_options()
 			self.logger.info(f"{ticker},Options,Success,")			
 		except Exception as e:
-			self.logger.warning(f"{ticker},Options,Failure,{e}")	
-
-	def option_fmt(self, str_number, metric=''):
-	
-		if str_number == '':
-			self.logger.info(f"{self.ticker},Value,'',{metric}")
-			return 0
-
-		if str_number == 'N/A':
-			self.logger.info(f'{self.ticker},Value,N/A,{metric}')
-			return 0
-
-		for token in ',$%':
-			str_number = str_number.replace(token, '')
-
-		return float(str_number.replace('-', '0'))
-
-	def feature_conversion(self, str_):
-
-		str_ = str_.split()
-		if str_[-1] in NUMBERS:
-			str_ = str_[:-1]
-		str_ = ' '.join(str_)
-		
-		if '(' in str_:
-			modifier = str_[str_.find('(')+1:str_.rfind(')')]
-			feature_name = str_.split('(')[0]
-			return (feature_name.strip(), modifier)
-		else:
-			return (str_, '')
+			self.logger.warning(f"{ticker},Options,Failure,{e}")
 
 	def fmt(self, str_, metric=''):
 
@@ -114,6 +85,35 @@ class Ticker():
 		if modifier in ['M', 'B', 'T']:
 			return np.round(float(str_[:-1]) * CONVERTER[modifier], 5)
 
+	def option_fmt(self, str_number, metric=''):
+	
+		if str_number == '':
+			self.logger.info(f"{self.ticker},Value,'',{metric}")
+			return 0
+
+		if str_number == 'N/A':
+			self.logger.info(f'{self.ticker},Value,N/A,{metric}')
+			return 0
+
+		for token in ',$%':
+			str_number = str_number.replace(token, '')
+
+		return float(str_number.replace('-', '0'))
+
+	def feature_conversion(self, str_):
+
+		str_ = str_.split()
+		if str_[-1] in NUMBERS:
+			str_ = str_[:-1]
+		str_ = ' '.join(str_)
+		
+		if '(' in str_:
+			modifier = str_[str_.find('(')+1:str_.rfind(')')]
+			feature_name = str_.split('(')[0]
+			return (feature_name.strip(), modifier)
+		else:
+			return (str_, '')
+
 	def get_dividends(self):
 
 		response = requests.get(SUMMARY.format(ticker = self.ticker), headers = headers_mobile)
@@ -132,13 +132,7 @@ class Ticker():
 
 	def get_ohlc(self):
 
-		today = datetime.now()
-		yesterday = today - timedelta(days=1)
-
-		today = int(today.timestamp())
-		yesterday = int(yesterday.timestamp())
-
-		ohlc = OHLC.format(ticker = self.ticker, yesterday = yesterday, today = today)
+		ohlc = OHLC.format(ticker = self.ticker)
 		bs = BeautifulSoup(requests.get(ohlc, headers = headers_mobile).content, PARSER)
 
 		prices = bs.find("table", {"data-test" : "historical-prices"})
@@ -146,7 +140,9 @@ class Ticker():
 		prices = [price.text for price in prices]
 
 		ohlc_date = datetime.strptime(prices[0], "%b %d, %Y").strftime("%Y-%m-%d")
-		if ohlc_date != date_today:
+		date_yesterday = datetime.today().strftime("%Y-%m-%d")
+
+		if ohlc_date != date_today and ohlc_date != date_yesterday:
 			raise Exception("Fatal")
 
 		cols = ['open', 'high', 'low', 'close', 'adj_close', 'stock_volume']
@@ -180,9 +176,10 @@ class Ticker():
 
 		start = START.format(ticker = self.ticker)
 		bs = BeautifulSoup(requests.get(start, headers = headers_mobile).text, PARSER)
-		self.expirations = [(option.get("value"), option.text) for option in bs.find_all("option")]
 
-		for expiry, expiry_date in self.expirations:
+		for option in bs.find_all("option"):
+
+			expiry, expiry_date = option.get("value"), option.text
 
 			dt = datetime.fromtimestamp(int(expiry))
 			expiry_date_fmt = datetime.strptime(expiry_date, named_date_fmt)
@@ -272,5 +269,4 @@ class Ticker():
 		for table in tables:
 			dfs.append(parse_table(table))
 		df = pd.concat(dfs)
-
 		df.to_csv(f"{DIR}/financial_data/{date_today}/analysis/{self.ticker}_{date_today}.csv", index=False)

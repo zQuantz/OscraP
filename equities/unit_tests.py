@@ -45,12 +45,13 @@ def check_number_of_options():
 					'options' : len(df),
 					'new_options' : 0
 				}
-			logger.warning(f"{ticker},Unit Test - Number of Options,Failure,{e}")
+
+		except FileNotFoundError as file_not_found:
+
+			logger.warning(f"{ticker},Unit Test - Number of Options,Failure,File Not Found")
 
 		except Exception as e:
 			
-			pass
-			# logger.warning(f"{ticker},Unit Test - Number of Options,Failure,{e}")
-
+			logger.warning(f"{ticker},Unit Test - Number of Options,Failure,{e}")
 
 	return unhealthy_tickers
