@@ -33,9 +33,17 @@ def collect_data_again(unhealthy_tickers):
 		
 		try:
 
-			ticker_obj = Ticker(ticker, logger) ; time.sleep(5)
-			unhealthy_tickers[ticker]['new_options'] = len(ticker_obj.options)
-			logger.info(f"{ticker},Re-Ticker,Success,")
+			ticker_obj = Ticker(ticker, logger, isRetry = True) ; time.sleep(5)
+
+			old = pd.read_csv(f'{DIR}/financial_data/{date_today}/options/{ticker}_{date_today}.csv')
+			df = pd.concat([old, ticker_obj.options]).reset_index(drop=True)
+			df = df.drop_duplicates(subset=['expiration_date', 'strike_price', 'option_type'])
+			df = df.sort_values(['expiration_date', 'option_type', 'strike_price'])
+			df.to_csv(f"{DIR}/financial_data/{date_today}/options/{ticker}_{date_today}.csv", index=False)
+
+			unhealthy_tickers[ticker]['new_options'] = len(df)
+			delta = unhealthy_tickers[ticker]['new_options'] - unhealthy_tickers[ticker]['options']
+			logger.info(f"{ticker},Re-Ticker,Success,{delta}")
 
 		except Exception as e:
 

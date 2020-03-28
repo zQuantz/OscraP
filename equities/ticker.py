@@ -6,23 +6,25 @@ import numpy as np
 import itertools
 import requests
 import sys, os
+import time
 
 headers_mobile = { 'User-Agent' : 'Mozilla/5.0 (iPhone; CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B137 Safari/601.1'}
 ANALYSIS = "https://ca.finance.yahoo.com/quote/{ticker}/analysis?p={ticker}"
 STATS = "https://finance.yahoo.com/quote/{ticker}/key-statistics?p={ticker}"
-START = "https://finance.yahoo.com/quote/{ticker}/options?p={ticker}"
+OPTIONS = "https://finance.yahoo.com/quote/{ticker}/options?p={ticker}"
 OHLC = "https://finance.yahoo.com/quote/{ticker}/history"
 SUMMARY = "https://finance.yahoo.com/quote/{ticker}/"
 PARSER = "lxml"
 
 class Ticker():
 
-	def __init__(self, ticker, logger):
+	def __init__(self, ticker, logger, isRetry=False):
 
 		self.logger = logger
 		self.ticker = ticker
 		
 		self.options = []
+		self.isRetry = isRetry
 
 		try:
 			self.div = self.get_dividends()
@@ -140,8 +142,9 @@ class Ticker():
 		prices = [price.text for price in prices]
 
 		ohlc_date = datetime.strptime(prices[0], "%b %d, %Y").strftime("%Y-%m-%d")
-		date_yesterday = datetime.today().strftime("%Y-%m-%d")
+		date_yesterday = (datetime.today() - timedelta(days=1)).strftime("%Y-%m-%d")
 
+		print(ohlc_date, date_yesterday, date_today)
 		if ohlc_date != date_today and ohlc_date != date_yesterday:
 			raise Exception("Fatal")
 
@@ -174,18 +177,19 @@ class Ticker():
 						self.option_fmt(es[-3].text, 'Open Interest')
 					])
 
-		start = START.format(ticker = self.ticker)
-		bs = BeautifulSoup(requests.get(start, headers = headers_mobile).text, PARSER)
+		url = OPTIONS.format(ticker = self.ticker)
+		bs = BeautifulSoup(requests.get(url, headers = headers_mobile).text, PARSER)
 
 		for option in bs.find_all("option"):
 
 			expiry, expiry_date = option.get("value"), option.text
+			self.logger.info(f"{self.ticker},Option Expiry,{expiry},{expiry_date.replace(',', '.')}")
 
 			dt = datetime.fromtimestamp(int(expiry))
 			expiry_date_fmt = datetime.strptime(expiry_date, named_date_fmt)
 			expiration_days = np.busday_count(datetime.now().strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%d"))
 
-			page = start+f"&date={str(expiry)}"
+			page = url+f"&date={str(expiry)}"
 			response = requests.get(page, headers = headers_mobile)
 			bs = BeautifulSoup(response.text, PARSER)
 
@@ -198,10 +202,11 @@ class Ticker():
 			if puts:
 				append_options(puts, expiry_date_fmt, expiration_days, 'P')
 
-		df = pd.DataFrame(self.options, columns = ['date_current', 'expiration_date', 'time_to_expiry', 'option_type',
-												   'strike_price', 'bid', 'ask', 'volume', 'option_price', 'implied_volatility',
-												   'open_interest'])
-		df.to_csv(f"{DIR}/financial_data/{date_today}/options/{self.ticker}_{date_today}.csv", index=False)
+		self.options = pd.DataFrame(self.options, columns = ['date_current', 'expiration_date', 'time_to_expiry',
+															 'option_type', 'strike_price', 'bid', 'ask', 'volume',
+															 'option_price', 'implied_volatility', 'open_interest'])
+		if not self.isRetry:
+			self.options.to_csv(f"{DIR}/financial_data/{date_today}/options/{self.ticker}_{date_today}.csv", index=False)
 
 	def get_key_stats(self):
 
