@@ -6,6 +6,7 @@ from datetime import datetime
 
 from ticker import Ticker
 import pandas as pd
+import numpy as np
 import sys, os
 import pickle
 import shutil
@@ -16,7 +17,7 @@ with open(f'{DIR}/static/tickers.pickle', 'rb') as file:
 
 def collect_data():
 
-	for ticker in ticker_dict:
+	for i, ticker in enumerate(ticker_dict):
 		
 		try:
 
@@ -27,9 +28,11 @@ def collect_data():
 
 			logger.warning(f"{ticker},Ticker,Failure,{e}")
 
+		logger.info(f"SCRAPER,PROGRESS,{np.round( 100 * ((i + 1) / len(ticker_dict)), 4)}%,")
+
 def collect_data_again(unhealthy_tickers):
 
-	for ticker in unhealthy_tickers:
+	for i, ticker in enumerate(unhealthy_tickers):
 		
 		try:
 
@@ -49,6 +52,8 @@ def collect_data_again(unhealthy_tickers):
 
 			unhealthy_tickers[ticker]['new_options'] = -1
 			logger.warning(f"{ticker},Re-Ticker,Failure,{e}")
+
+		logger.info(f"SCRAPER,RE-PROGRESS,{np.round( 100 * ((i + 1) / len(unhealthy_tickers)), 4)}%,")
 
 	return unhealthy_tickers
 

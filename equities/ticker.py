@@ -31,6 +31,7 @@ class Ticker():
 			self.logger.info(f"{ticker},Dividend,Success,")
 		except Exception as e:
 			self.logger.warning(f"{ticker},Dividend,Failure,{e}")
+		self.sleep()
 
 		try:
 			self.get_ohlc()
@@ -39,24 +40,30 @@ class Ticker():
 			self.logger.warning(f"{ticker},OHLC,Failure,{e}")
 			if e.args[0] == "Fatal":
 				raise Exception("Stale ticker. Data not up-to-date.")
+		self.sleep()
 
 		try:
 			self.get_key_stats()
 			self.logger.info(f"{ticker},Key Stats,Success,")
 		except Exception as e:
 			self.logger.warning(f"{ticker},Key Stats,Failure,{e}")
+		self.sleep()
 
 		try:
 			self.get_analysis()
 			self.logger.info(f"{ticker},Analysis,Success,")
 		except Exception as e:
 			self.logger.warning(f"{ticker},Analysis,Failure,{e}")
+		self.sleep()
 
 		try:
 			self.get_options()
 			self.logger.info(f"{ticker},Options,Success,")			
 		except Exception as e:
 			self.logger.warning(f"{ticker},Options,Failure,{e}")
+		self.sleep()
+
+	def sleep(self): time.sleep(0.3)
 
 	def fmt(self, str_, metric=''):
 
@@ -71,7 +78,7 @@ class Ticker():
 		if ':' in str_:
 			return str_
 		
-		if str_ == '' or str_ == 'N/A':
+		if str_ in ['', 'N/A', '∞']:
 			self.logger.info(f'{self.ticker},Value,{str_},{metric}')
 			return None
 		
@@ -142,10 +149,7 @@ class Ticker():
 		prices = [price.text for price in prices]
 
 		ohlc_date = datetime.strptime(prices[0], "%b %d, %Y").strftime("%Y-%m-%d")
-		date_yesterday = (datetime.today() - timedelta(days=1)).strftime("%Y-%m-%d")
-
-		print(ohlc_date, date_yesterday, date_today)
-		if ohlc_date != date_today and ohlc_date != date_yesterday:
+		if ohlc_date != date_today:
 			raise Exception("Fatal")
 
 		cols = ['open', 'high', 'low', 'close', 'adj_close', 'stock_volume']
@@ -177,10 +181,28 @@ class Ticker():
 						self.option_fmt(es[-3].text, 'Open Interest')
 					])
 
-		url = OPTIONS.format(ticker = self.ticker)
-		bs = BeautifulSoup(requests.get(url, headers = headers_mobile).text, PARSER)
+		def get_page(url):
 
-		for option in bs.find_all("option"):
+			ctr, max_ctr = 0, 3
+			while (ctr < max_ctr):
+				
+				bs = BeautifulSoup(requests.get(url, headers = headers_mobile).text, PARSER)
+				options = bs.find_all("option")
+
+				if len(options) != 0:
+					break
+
+				ctr += 1
+				self.sleep()
+
+			return bs, options
+
+		url = OPTIONS.format(ticker = self.ticker)
+		bs, options = get_page(url)
+
+		for option in options:
+
+			self.sleep()
 
 			expiry, expiry_date = option.get("value"), option.text
 			self.logger.info(f"{self.ticker},Option Expiry,{expiry},{expiry_date.replace(',', '.')}")
@@ -190,8 +212,7 @@ class Ticker():
 			expiration_days = np.busday_count(datetime.now().strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%d"))
 
 			page = url+f"&date={str(expiry)}"
-			response = requests.get(page, headers = headers_mobile)
-			bs = BeautifulSoup(response.text, PARSER)
+			bs, _ = get_page(page)
 
 			calls = bs.find("table", {"class" : "calls"})
 			puts = bs.find("table", {"class" : "puts"})
