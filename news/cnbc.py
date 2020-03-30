@@ -19,8 +19,8 @@ def get_news(ticker):
 	articles = []
 	notes = page.find_all("span", {"class" : "note"})
 	for note in notes:
+
 	    parent = note.parent
-	    
 	    a = parent.find("a")
 	    
 	    href = a.get_attribute_list("href")[0]
@@ -43,4 +43,3 @@ if __name__ == '__main__':
 
 	for ticker in TICKERS:
 		get_news(ticker)
-
