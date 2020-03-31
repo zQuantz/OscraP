@@ -148,7 +148,6 @@ def main():
 
 if __name__ == '__main__':
 
-
 	logger.info(f"SCRAPER,JOB,INITIATED,{date_today}")
 
 	init_folders()
