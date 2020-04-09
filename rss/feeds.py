@@ -54,10 +54,8 @@ class Feeds(Thread):
 		self.coords.rotate()
 		self.source, self.feed = self.coords[0]
 		
-		print(f"Parsing,{self.source},{self.feed},")
-		self.logger.info(f"Parsing,{self.source},{self.feed},")
 		response = feedparser.parse(self.feed)
-		
+
 		status = response.get('status', None)
 		if not status:
 			self.logger.warning(f"Status,{self.source},{self.feed},None")
@@ -66,13 +64,11 @@ class Feeds(Thread):
 		if status != 200:
 			self.logger.warning(f"Status,{self.source},{self.feed},{status}")
 			return
-		self.logger.info(f"Status,{self.source},{self.feed},200")
 		
 		entries = response.get('entries', None)
 		if not entries:
 			self.logger.warning(f"Entries,{self.source},{self.feed},None")
 			return
-		self.logger.info(f"Status,{self.source},{self.feed},{len(entries)}")
 
 		for entry in entries:
 			
