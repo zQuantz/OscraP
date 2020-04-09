@@ -1,7 +1,7 @@
 from apscheduler.schedulers.background import BlockingScheduler
 from threading import Thread
 
-from const import DIR, logger, date_today
+from const import DIR, date_today
 from collections import deque
 from datetime import datetime
 from hashlib import md5
@@ -9,14 +9,18 @@ import pandas as pd
 import numpy as np
 import feedparser
 import sys, os
+import joblib
 import json
 import uuid
 
 class Feeds(Thread):
     
-    def __init__(self, sources, feeds):
+    def __init__(self, sources, feeds, sleep, logger):
 
         Thread.__init__(self)
+
+        self.sleep = sleep
+        self.logger = logger
         
         self.coords = deque([
             (source.strip(), feed.strip())
@@ -33,10 +37,10 @@ class Feeds(Thread):
 
         job_defaults = {
             'coalesce': True,
-            'max_instances': 1
+            'max_instances': 2
         }
         self.blocker = BlockingScheduler(job_defaults = job_defaults)
-        self.blocker.add_job(self.parse_feed, 'cron', second='*/3', id='parse_feed')
+        self.blocker.add_job(self.parse_feed, 'cron', second=f'*/{self.sleep}', id='parse_feed')
         
         self.blocker.start()
 
@@ -50,25 +54,25 @@ class Feeds(Thread):
         self.coords.rotate()
         self.source, self.feed = self.coords[0]
         
-        print("Parsing", self.source, self.feed)
-        self.logger(f"Parsing,{self.source},{self.feed},")
+        print(f"Parsing,{self.source},{self.feed},")
+        self.logger.info(f"Parsing,{self.source},{self.feed},")
         response = feedparser.parse(self.feed)
         
         status = response.get('status', None)
         if not status:
-            self.logger(f"Status,{self.source},{self.feed},None")
+            self.logger.warning(f"Status,{self.source},{self.feed},None")
             return
 
         if status != 200:
-            self.logger(f"Status,{self.source},{self.feed},{status}")
+            self.logger.warning(f"Status,{self.source},{self.feed},{status}")
             return
-        self.logger(f"Status,{self.source},{self.feed},200")
+        self.logger.info(f"Status,{self.source},{self.feed},200")
         
         entries = response.get('entries', None)
         if not entries:
-            self.logger(f"Entries,{self.source},{self.feed},None")
+            self.logger.warning(f"Entries,{self.source},{self.feed},None")
             return
-        self.logger(f"Status,{self.source},{self.feed},{len(entries)}")
+        self.logger.info(f"Status,{self.source},{self.feed},{len(entries)}")
 
         for entry in entries:
             
