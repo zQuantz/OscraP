@@ -6,29 +6,32 @@ import numpy as np
 import itertools
 import requests
 import sys, os
+import time
 
 headers_mobile = { 'User-Agent' : 'Mozilla/5.0 (iPhone; CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B137 Safari/601.1'}
-OHLC = "https://finance.yahoo.com/quote/{ticker}/history?period1={yesterday}&period2={today}&interval=1d&filter=history&frequency=1d"
 ANALYSIS = "https://ca.finance.yahoo.com/quote/{ticker}/analysis?p={ticker}"
 STATS = "https://finance.yahoo.com/quote/{ticker}/key-statistics?p={ticker}"
-START = "https://finance.yahoo.com/quote/{ticker}/options?p={ticker}"
+OPTIONS = "https://finance.yahoo.com/quote/{ticker}/options?p={ticker}"
+OHLC = "https://finance.yahoo.com/quote/{ticker}/history"
 SUMMARY = "https://finance.yahoo.com/quote/{ticker}/"
 PARSER = "lxml"
 
 class Ticker():
 
-	def __init__(self, ticker, logger):
+	def __init__(self, ticker, logger, isRetry=False):
 
 		self.logger = logger
 		self.ticker = ticker
 		
 		self.options = []
+		self.isRetry = isRetry
 
 		try:
 			self.div = self.get_dividends()
 			self.logger.info(f"{ticker},Dividend,Success,")
 		except Exception as e:
 			self.logger.warning(f"{ticker},Dividend,Failure,{e}")
+		self.sleep()
 
 		try:
 			self.get_ohlc()
@@ -37,24 +40,59 @@ class Ticker():
 			self.logger.warning(f"{ticker},OHLC,Failure,{e}")
 			if e.args[0] == "Fatal":
 				raise Exception("Stale ticker. Data not up-to-date.")
+		self.sleep()
 
 		try:
 			self.get_key_stats()
 			self.logger.info(f"{ticker},Key Stats,Success,")
 		except Exception as e:
 			self.logger.warning(f"{ticker},Key Stats,Failure,{e}")
+		self.sleep()
 
 		try:
 			self.get_analysis()
 			self.logger.info(f"{ticker},Analysis,Success,")
 		except Exception as e:
 			self.logger.warning(f"{ticker},Analysis,Failure,{e}")
+		self.sleep()
 
 		try:
 			self.get_options()
 			self.logger.info(f"{ticker},Options,Success,")			
 		except Exception as e:
-			self.logger.warning(f"{ticker},Options,Failure,{e}")	
+			self.logger.warning(f"{ticker},Options,Failure,{e}")
+		self.sleep()
+
+	def sleep(self): time.sleep(0.3)
+
+	def fmt(self, str_, metric=''):
+
+		try:
+			date = datetime.strptime(str_, "%b %d, %Y")
+			return date.strftime("%Y-%m-%d")
+		except Exception as e:
+			pass
+
+		default_value = '' if 'Date' in metric else '' if 'Factor' in metric else 0
+
+		if ':' in str_:
+			return str_
+		
+		if str_ in ['', 'N/A', '∞']:
+			self.logger.info(f'{self.ticker},Value,{str_},{metric}')
+			return None
+		
+		str_ = str_.replace(',', '').replace('$', '')
+
+		modifier = str_[-1]
+		if modifier in NUMBERS:
+			return np.round(float(str_), 5)
+		
+		if modifier == '%':
+			return np.round(float(str_[:-1]) / 100, 5)
+		
+		if modifier in ['M', 'B', 'T']:
+			return np.round(float(str_[:-1]) * CONVERTER[modifier], 5)
 
 	def option_fmt(self, str_number, metric=''):
 	
@@ -85,35 +123,6 @@ class Ticker():
 		else:
 			return (str_, '')
 
-	def fmt(self, str_, metric=''):
-
-		try:
-			date = datetime.strptime(str_, "%b %d, %Y")
-			return date.strftime("%Y-%m-%d")
-		except Exception as e:
-			pass
-
-		default_value = '' if 'Date' in metric else '' if 'Factor' in metric else 0
-
-		if ':' in str_:
-			return str_
-		
-		if str_ == '' or str_ == 'N/A':
-			self.logger.info(f'{self.ticker},Value,{str_},{metric}')
-			return None
-		
-		str_ = str_.replace(',', '').replace('$', '')
-
-		modifier = str_[-1]
-		if modifier in NUMBERS:
-			return np.round(float(str_), 5)
-		
-		if modifier == '%':
-			return np.round(float(str_[:-1]) / 100, 5)
-		
-		if modifier in ['M', 'B', 'T']:
-			return np.round(float(str_[:-1]) * CONVERTER[modifier], 5)
-
 	def get_dividends(self):
 
 		response = requests.get(SUMMARY.format(ticker = self.ticker), headers = headers_mobile)
@@ -132,13 +141,7 @@ class Ticker():
 
 	def get_ohlc(self):
 
-		today = datetime.now()
-		yesterday = today - timedelta(days=1)
-
-		today = int(today.timestamp())
-		yesterday = int(yesterday.timestamp())
-
-		ohlc = OHLC.format(ticker = self.ticker, yesterday = yesterday, today = today)
+		ohlc = OHLC.format(ticker = self.ticker)
 		bs = BeautifulSoup(requests.get(ohlc, headers = headers_mobile).content, PARSER)
 
 		prices = bs.find("table", {"data-test" : "historical-prices"})
@@ -178,19 +181,38 @@ class Ticker():
 						self.option_fmt(es[-3].text, 'Open Interest')
 					])
 
-		start = START.format(ticker = self.ticker)
-		bs = BeautifulSoup(requests.get(start, headers = headers_mobile).text, PARSER)
-		self.expirations = [(option.get("value"), option.text) for option in bs.find_all("option")]
+		def get_page(url):
 
-		for expiry, expiry_date in self.expirations:
+			ctr, max_ctr = 0, 3
+			while (ctr < max_ctr):
+				
+				bs = BeautifulSoup(requests.get(url, headers = headers_mobile).text, PARSER)
+				options = bs.find_all("option")
+
+				if len(options) != 0:
+					break
+
+				ctr += 1
+				self.sleep()
+
+			return bs, options
+
+		url = OPTIONS.format(ticker = self.ticker)
+		bs, options = get_page(url)
+
+		for option in options:
+
+			self.sleep()
+
+			expiry, expiry_date = option.get("value"), option.text
+			self.logger.info(f"{self.ticker},Option Expiry,{expiry},{expiry_date.replace(',', '.')}")
 
 			dt = datetime.fromtimestamp(int(expiry))
 			expiry_date_fmt = datetime.strptime(expiry_date, named_date_fmt)
 			expiration_days = np.busday_count(datetime.now().strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%d"))
 
-			page = start+f"&date={str(expiry)}"
-			response = requests.get(page, headers = headers_mobile)
-			bs = BeautifulSoup(response.text, PARSER)
+			page = url+f"&date={str(expiry)}"
+			bs, _ = get_page(page)
 
 			calls = bs.find("table", {"class" : "calls"})
 			puts = bs.find("table", {"class" : "puts"})
@@ -201,10 +223,11 @@ class Ticker():
 			if puts:
 				append_options(puts, expiry_date_fmt, expiration_days, 'P')
 
-		df = pd.DataFrame(self.options, columns = ['date_current', 'expiration_date', 'time_to_expiry', 'option_type',
-												   'strike_price', 'bid', 'ask', 'volume', 'option_price', 'implied_volatility',
-												   'open_interest'])
-		df.to_csv(f"{DIR}/financial_data/{date_today}/options/{self.ticker}_{date_today}.csv", index=False)
+		self.options = pd.DataFrame(self.options, columns = ['date_current', 'expiration_date', 'time_to_expiry',
+															 'option_type', 'strike_price', 'bid', 'ask', 'volume',
+															 'option_price', 'implied_volatility', 'open_interest'])
+		if not self.isRetry:
+			self.options.to_csv(f"{DIR}/financial_data/{date_today}/options/{self.ticker}_{date_today}.csv", index=False)
 
 	def get_key_stats(self):
 
@@ -272,5 +295,4 @@ class Ticker():
 		for table in tables:
 			dfs.append(parse_table(table))
 		df = pd.concat(dfs)
-
 		df.to_csv(f"{DIR}/financial_data/{date_today}/analysis/{self.ticker}_{date_today}.csv", index=False)

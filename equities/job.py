@@ -1,29 +1,23 @@
-from send import send_scraping_report, send_to_database
 from unit_tests import check_number_of_options
 from const import DIR, date_today, logger
+from alert import send_scraping_report
+from index import send_to_database
 from datetime import datetime
 
 from ticker import Ticker
 import pandas as pd
+import numpy as np
 import sys, os
 import pickle
 import shutil
 import time
 
-with open(f'{DIR}/data/tickers.pickle', 'rb') as file:
+with open(f'{DIR}/static/tickers.pickle', 'rb') as file:
 	ticker_dict = pickle.load(file)
 
 def collect_data():
 
-	# ticker_dict = {
-	# 	"TSLA" : "None",
-	# 	"DOL.TO" : "None",
-	# 	"BA" : "None",
-	# 	"SPLK" : "None",
-	# 	"SQ" : "None"
-	# }
-
-	for ticker in ticker_dict:
+	for i, ticker in enumerate(ticker_dict):
 		
 		try:
 
@@ -34,20 +28,32 @@ def collect_data():
 
 			logger.warning(f"{ticker},Ticker,Failure,{e}")
 
+		logger.info(f"SCRAPER,PROGRESS,{np.round( 100 * ((i + 1) / len(ticker_dict)), 4)}%,")
+
 def collect_data_again(unhealthy_tickers):
 
-	for ticker in unhealthy_tickers:
+	for i, ticker in enumerate(unhealthy_tickers):
 		
 		try:
 
-			ticker = Ticker(ticker, logger) ; time.sleep(5)
-			unhealthy_tickers[ticker]['new_options'] = len(ticker.options)
-			logger.info(f"{ticker},Re-Ticker,Success,")
+			ticker_obj = Ticker(ticker, logger, isRetry = True) ; time.sleep(5)
+
+			old = pd.read_csv(f'{DIR}/financial_data/{date_today}/options/{ticker}_{date_today}.csv')
+			df = pd.concat([old, ticker_obj.options]).reset_index(drop=True)
+			df = df.drop_duplicates(subset=['expiration_date', 'strike_price', 'option_type'])
+			df = df.sort_values(['expiration_date', 'option_type', 'strike_price'])
+			df.to_csv(f"{DIR}/financial_data/{date_today}/options/{ticker}_{date_today}.csv", index=False)
+
+			unhealthy_tickers[ticker]['new_options'] = len(df)
+			delta = unhealthy_tickers[ticker]['new_options'] - unhealthy_tickers[ticker]['options']
+			logger.info(f"{ticker},Re-Ticker,Success,{delta}")
 
 		except Exception as e:
 
 			unhealthy_tickers[ticker]['new_options'] = -1
 			logger.warning(f"{ticker},Re-Ticker,Failure,{e}")
+
+		logger.info(f"SCRAPER,RE-PROGRESS,{np.round( 100 * ((i + 1) / len(unhealthy_tickers)), 4)}%,")
 
 	return unhealthy_tickers
 
@@ -59,7 +65,6 @@ def database_and_alerts():
 	while indexing_faults < max_tries:
 		
 		try:
-
 			db_stats = send_to_database()
 			db_flag = 1
 			break
@@ -67,7 +72,7 @@ def database_and_alerts():
 		except Exception as e:
 
 			logger.warning(e)
-			db_stats = (0, 0, pd.DataFrame({"None" : [True]}))
+			db_stats = [(0,0), (0,0), (0,0), (0,0)]
 			db_flag = 0
 
 		indexing_faults += 1
@@ -142,7 +147,6 @@ def main():
 	send_scraping_report(success, failure, unhealthy_tickers, db_flag, db_stats, indexing_faults)
 
 if __name__ == '__main__':
-
 
 	logger.info(f"SCRAPER,JOB,INITIATED,{date_today}")
 
