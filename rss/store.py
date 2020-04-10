@@ -18,11 +18,7 @@ def move_files():
 	for file in files:
 		os.rename(f'{DIR}/news_data/{file}', f"{folder_name}/{file}")
 
-<<<<<<< HEAD
-	shutil.make_archive(folder_name, "zip", f"{folder_name}")
-=======
 	shutil.make_archive(folder_name, "zip", folder_name)
->>>>>>> 855166b2f3ea8fb6b7d52524ab9c7ad6f2dbda0b
 	return folder_name + '.zip'
 
 def send_to_bucket(zip_folder):

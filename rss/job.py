@@ -21,7 +21,6 @@ def on_close():
 
 if __name__ == '__main__':
 	
-	print("Starting")
 	for group in groups:
 		group, sleep = group, groups[group]
 		group_coords = feeds[feeds.source.isin(group)]
