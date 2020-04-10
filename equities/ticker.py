@@ -63,7 +63,7 @@ class Ticker():
 			self.logger.warning(f"{ticker},Options,Failure,{e}")
 		self.sleep()
 
-	def sleep(self): time.sleep(0.3)
+	def sleep(self): time.sleep(0.5)
 
 	def fmt(self, str_, metric=''):
 
@@ -193,6 +193,7 @@ class Ticker():
 					break
 
 				ctr += 1
+				self.logger.info(f"{self.ticker},Option Download,{ctr}")
 				self.sleep()
 
 			return bs, options
