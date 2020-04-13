@@ -150,7 +150,7 @@ class Ticker():
 
 		ohlc_date = datetime.strptime(prices[0], "%b %d, %Y").strftime("%Y-%m-%d")
 		if ohlc_date != date_today:
-			raise Exception("Fatal")
+			raise Exception(f'Fatal - {bs.find("table", {"data-test" : "historical-prices"})}')
 
 		cols = ['open', 'high', 'low', 'close', 'adj_close', 'stock_volume']
 		prices = list(map(self.option_fmt, prices[1:], cols))
