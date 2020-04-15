@@ -97,5 +97,5 @@ def send_scraping_report(successful, failures, unhealthy_tickers, db_flag, db_st
 	with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
 		server.login(sender_email, password)
 		server.sendmail(
-			sender_email, receiver_email_list[:2], message.as_string()
+			sender_email, receiver_email_list, message.as_string()
 	)
