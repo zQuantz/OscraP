@@ -80,11 +80,11 @@ def send_scraping_report(successful, failures, unhealthy_tickers, db_flag, db_st
 
 	filename = f'{DIR}/financial_data/{date_today}.zip'
 	with open(filename, 'rb') as file:
-		msg = MIMEBase('application', 'zip')
-		msg.set_payload(file.read())
-	encoders.encode_base64(msg)
-	msg.add_header('Content-Disposition', 'attachment', filename=filename)           
-	message.attach(msg)
+		attachment = MIMEBase('application', 'zip')
+		attachment.set_payload(file.read())
+	encoders.encode_base64(attachment)
+	attachment.add_header('Content-Disposition', 'attachment', filename=filename)           
+	message.attach(attachment)
 
 	os.system(f"bash {DIR}/utils/truncate_log_file.sh")
 	filename = f'{DIR}/log.log'

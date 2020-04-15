@@ -1,33 +1,33 @@
 from const import DIR, logger, date_today
 from joblib import delayed, Parallel
-from source import Source
-from feed import Feed
+from feeds import Feeds
 import pandas as pd
 import sys, os
+import joblib
 
-df = pd.read_csv(f'{DIR}/data/rss.csv')
-df.columns = ['source', 'feed']
+feeds = pd.read_csv(f"{DIR}/data/rss.csv").iloc[:, :2]
+feeds.columns = ['source', 'feed']
 
-sources = df.groupby('source').apply(lambda x: 
-				x.feed.values.tolist()
-			).to_dict()
-source_objs = {}
+feed_threads = {}
 
-def init_folders():
-
-	os.mkdir(f"{DIR}/news_data/{date_today}")
-
-def on_start(source, k):
-	print(f"Job #{k}")
-	source_objs[source] = Source(source, sources[source])
+with open(f'{DIR}/data/groups.pkl', 'rb') as file:
+	groups = joblib.load(file)
 
 def on_close():
 
-	for source in sources:
-		print("Closing", source)
-		source_objs[source].on_close()
+	for group in groups:
+		print("Closing Group:", group)
+		feed_threads[group].on_close()
 
 if __name__ == '__main__':
-
-	# init_folders()
-	Parallel(n_jobs=3)(delayed(on_start)(source, i) for i, source in enumerate(sources))
+	
+	for group in groups:
+		group, sleep = group, groups[group]
+		group_coords = feeds[feeds.source.isin(group)]
+		feed_threads[group] = Feeds(
+			sources = group_coords.source.values,
+			feeds = group_coords.feed.values,
+			sleep = sleep,
+			logger = logger
+		)
+		feed_threads[group].start()
