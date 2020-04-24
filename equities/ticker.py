@@ -1,9 +1,8 @@
-from const import date_today, named_date_fmt, DIR, CONVERTER, NUMBERS
+from const import named_date_fmt, DIR, CONVERTER, NUMBERS
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
-import itertools
 import requests
 import sys, os
 import time
@@ -18,11 +17,12 @@ PARSER = "lxml"
 
 class Ticker():
 
-	def __init__(self, ticker, logger, isRetry=False):
+	def __init__(self, ticker, logger, date_today, isRetry=False):
 
-		self.logger = logger
 		self.ticker = ticker
-		
+		self.logger = logger
+		self.date_today = date_today
+
 		self.options = []
 		self.isRetry = isRetry
 
@@ -63,7 +63,8 @@ class Ticker():
 			self.logger.warning(f"{ticker},Options,Failure,{e}")
 		self.sleep()
 
-	def sleep(self): time.sleep(0.5)
+	def sleep(self):
+		time.sleep(0.5)
 
 	def fmt(self, str_, metric=''):
 
@@ -149,17 +150,17 @@ class Ticker():
 		prices = [price.text for price in prices]
 
 		ohlc_date = datetime.strptime(prices[0], "%b %d, %Y").strftime("%Y-%m-%d")
-		if ohlc_date != date_today:
+		if ohlc_date != self.date_today:
 			raise Exception(f'Fatal - {bs.find("table", {"data-test" : "historical-prices"})}')
 
 		cols = ['open', 'high', 'low', 'close', 'adj_close', 'stock_volume']
 		prices = list(map(self.option_fmt, prices[1:], cols))
 
-		prices += [self.div, date_today]
+		prices += [self.div, self.date_today]
 		cols += ["dividend_yield", 'date_current']
 
 		df = pd.DataFrame([prices], columns = cols)
-		df.to_csv(f"{DIR}/financial_data/{date_today}/equities/{self.ticker}_{date_today}.csv", index=False)
+		df.to_csv(f"{DIR}/financial_data/{self.date_today}/equities/{self.ticker}_{self.date_today}.csv", index=False)
 
 	def get_options(self):
 
@@ -228,7 +229,7 @@ class Ticker():
 															 'option_type', 'strike_price', 'bid', 'ask', 'volume',
 															 'option_price', 'implied_volatility', 'open_interest'])
 		if not self.isRetry:
-			self.options.to_csv(f"{DIR}/financial_data/{date_today}/options/{self.ticker}_{date_today}.csv", index=False)
+			self.options.to_csv(f"{DIR}/financial_data/{self.date_today}/options/{self.ticker}_{self.date_today}.csv", index=False)
 
 	def get_key_stats(self):
 
@@ -255,7 +256,7 @@ class Ticker():
 			])
 
 		df = pd.DataFrame(key_stats, columns = ["feature", "modifier", "value"])
-		df.to_csv(f"{DIR}/financial_data/{date_today}/key_stats/{self.ticker}_{date_today}.csv", index=False)
+		df.to_csv(f"{DIR}/financial_data/{self.date_today}/key_stats/{self.ticker}_{self.date_today}.csv", index=False)
 
 	def get_analysis(self):
 
@@ -296,4 +297,4 @@ class Ticker():
 		for table in tables:
 			dfs.append(parse_table(table))
 		df = pd.concat(dfs)
-		df.to_csv(f"{DIR}/financial_data/{date_today}/analysis/{self.ticker}_{date_today}.csv", index=False)
+		df.to_csv(f"{DIR}/financial_data/{self.date_today}/analysis/{self.ticker}_{self.date_today}.csv", index=False)

@@ -1,19 +1,43 @@
-from unit_tests import check_number_of_options
+from unit_tests import check_number_of_options, check_null_percentage
 from const import DIR, date_today, logger
 from alert import send_scraping_report
 from index import send_to_database
 from datetime import datetime
 
 from ticker import Ticker
+import sqlalchemy as sql
 import pandas as pd
 import numpy as np
 import sys, os
-import pickle
 import shutil
 import time
 
-with open(f'{DIR}/static/tickers.pickle', 'rb') as file:
-	ticker_dict = pickle.load(file)
+###################################################################################################
+
+engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
+query = f"""
+    SELECT
+        *
+    FROM
+        instruments
+    WHERE
+        market_cap >= {1_000_000}
+    ORDER BY market_cap DESC
+"""
+
+conn = engine.connect()
+df = pd.read_sql(query, conn)
+conn.close()
+
+usd = df[~df.exchange_code.isin(["TSX"])].iloc[:900, :]
+cad = df[df.exchange_code.isin(["TSX"])].iloc[:100, :]
+tickers = (usd.ticker.values.tolist() + cad.ticker.values.tolist())
+
+df = df[df.ticker.isin(tickers)]
+df = df[['ticker', 'name']]
+ticker_dict = df.set_index("ticker").to_dict()['name']
+
+###################################################################################################
 
 def collect_data():
 
@@ -21,7 +45,7 @@ def collect_data():
 		
 		try:
 
-			Ticker(ticker, logger) ; time.sleep(5)
+			Ticker(ticker, logger, date_today) ; time.sleep(5)
 			logger.info(f"{ticker},Ticker,Success,")
 
 		except Exception as e:
@@ -36,7 +60,7 @@ def collect_data_again(unhealthy_tickers):
 		
 		try:
 
-			ticker_obj = Ticker(ticker, logger, isRetry = True) ; time.sleep(5)
+			ticker_obj = Ticker(ticker, logger, date_today, isRetry = True) ; time.sleep(5)
 
 			old = pd.read_csv(f'{DIR}/financial_data/{date_today}/options/{ticker}_{date_today}.csv')
 			df = pd.concat([old, ticker_obj.options]).reset_index(drop=True)
@@ -134,13 +158,35 @@ def init_folders():
 	os.mkdir(f'{DIR}/financial_data/{date_today}/key_stats')
 	os.mkdir(f'{DIR}/financial_data/{date_today}/analysis')
 
+def get_unhealthies():
+
+	def add_to_unhealthies(key, obj, unhealthies):
+	    for ticker in obj:
+	        try:
+	            unhealthies[ticker][key] = obj[ticker]
+	        except Exception as e:
+	            unhealthies[ticker] = {
+	                key : obj[ticker]
+	            }
+	    return unhealthies
+
+	unhealthy_analysis = check_null_percentage("analysis")
+	unhealthy_key_stats = check_null_percentage("key_stats")
+	unhealthy_options = check_number_of_options()
+
+	unhealthies = add_to_unhealthies("analysis", unhealthy_options, {})
+	unhealthies = add_to_unhealthies("key_stats", unhealthy_key_stats, unhealthies)
+	unhealthies = add_to_unhealthies("options", unhealthy_analysis, unhealthies)
+
+	return unhealthies
+
 def main():
 
 	collect_data()
 
-	unhealthy_tickers = check_number_of_options()
-	if len(unhealthy_tickers) > 0:
-		unhealthy_tickers = collect_data_again(unhealthy_tickers)
+	unhealthies = get_unhealthies()
+	if len(unhealthies) > 0:
+		unhealthies = collect_data_again(unhealthies)
 
 	success, failure = log_scraper_health()
 	db_flag, db_stats, indexing_faults = database_and_alerts()

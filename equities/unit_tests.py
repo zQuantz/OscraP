@@ -5,9 +5,11 @@ import pandas as pd
 import numpy as np
 import sys, os
 
+engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
+
 def check_number_of_options():
 
-	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
+	date_today = "2020-04-09"
 
 	dt = datetime.now() - timedelta(days=60)
 	query = sql.text(f"""
@@ -33,14 +35,14 @@ def check_number_of_options():
 	quantiles = df.groupby('ticker').apply(lambda x: np.quantile(x['count'].values, 0.25))
 	quantiles = quantiles.astype(int).to_dict()
 
-	unhealthy_tickers = {}
+	unhealthy_options = {}
 	for ticker in quantiles:
 
 		try:
 			
 			df = pd.read_csv(f"{DIR}/financial_data/{date_today}/options/{ticker}_{date_today}.csv")
 			if len(df) <= quantiles[ticker]:
-				unhealthy_tickers[ticker] = {
+				unhealthy_options[ticker] = {
 					'quantile' : quantiles[ticker],
 					'options' : len(df),
 					'new_options' : 0
@@ -49,9 +51,74 @@ def check_number_of_options():
 		except FileNotFoundError as file_not_found:
 
 			logger.warning(f"{ticker},Unit Test - Number of Options,Failure,File Not Found")
+			unhealthy_options[ticker] = {
+					'quantile' : quantiles[ticker],
+					'options' : 0,
+					'new_options' : 0
+				}
 
 		except Exception as e:
 			
 			logger.warning(f"{ticker},Unit Test - Number of Options,Failure,{e}")
+
+	return unhealthy_options
+
+def check_null_percentage(data):
+
+	label = data.replace('_', ' ').split()
+	label = ' '.join(map(str.capitalize, label))
+	
+	date_today = "2020-04-09"
+
+	dt = datetime.now() - timedelta(days=60)
+	query = sql.text(f"""
+		SELECT
+			ticker,
+			SUM(ISNULL(value)) / COUNT(*) as null_percentage
+		FROM
+			{data}
+		WHERE
+			date_current >= {dt.strftime("%Y-%m-%d")}
+		GROUP BY
+			ticker, date_current
+		"""
+	)
+	query = query.bindparams()
+
+	conn = engine.connect()
+	df = pd.read_sql(query, conn)
+	conn.close()
+
+	quantiles = df.groupby('ticker').apply(lambda x: x.null_percentage.quantile(0.25).round(4))
+	quantiles = quantiles.to_dict()
+
+	unhealthy_tickers = {}
+	for ticker in quantiles:
+
+		try:
+
+			df = pd.read_csv(f"{DIR}/financial_data/{date_today}/{data}/{ticker}_{date_today}.csv")
+			null_percentage = df.value.isnull().sum() / len(df)
+			null_percentage = np.round(null_percentage, 4)
+
+			if null_percentage > quantiles[ticker]:
+				unhealthy_tickers[ticker] = {
+					'quantile' : quantiles[ticker],
+					'null_percentage' : null_percentage,
+					'new_null_percentage' : 0
+				}
+
+		except FileNotFoundError as file_not_found:
+
+			logger.warning(f"{ticker},Unit Test - {label} Null Percentage,Failure,File Not Found")
+			unhealthy_tickers[ticker] = {
+					'quantile' : quantiles[ticker],
+					'options' : 0,
+					'new_options' : 0
+				}
+
+		except Exception as e:
+
+			logger.warning(f"{ticker},Unit Test - {label} Null Percentage,Failure,{e}")
 
 	return unhealthy_tickers
