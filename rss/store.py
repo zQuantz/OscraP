@@ -28,8 +28,8 @@ def compress_files():
 	hashes = []
 	for item in data:
 		hashes.append(md5(json.dumps(item).encode()).hexdigest())
-	
 	hashes = list(set(hashes))
+	
 	data = [data[hashes.index(hash_)] for hash_ in hashes]
 	logger.info(f"RSS,Storage,Unique Data,{len(data)}")
 

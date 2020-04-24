@@ -1,5 +1,5 @@
+from const import DIR, logger, date_today
 from joblib import delayed, Parallel
-from const import DIR, logger
 from feeds import Feeds
 import pandas as pd
 import sys, os
@@ -8,22 +8,22 @@ import joblib
 feeds = pd.read_csv(f"{DIR}/data/rss.csv").iloc[:, :2]
 feeds.columns = ['source', 'feed']
 
-feed_threads = {}
-
 with open(f'{DIR}/data/groups.pkl', 'rb') as file:
 	groups = joblib.load(file)
 
-def on_close():
+def parallel_job(job_id, parallel_group):
 
-	for group in groups:
-		print("Closing Group:", group)
-		feed_threads[group].on_close()
+	logger.info(f"RSS,Parallel Job,Initiating,{job_id}")
+	feed_threads = {}
 
-if __name__ == '__main__':
-	
+	def on_close():
+		for group in parallel_group:
+			logger.info(f"RSS,Thread,Closing,{job_id} - {group}")
+			feed_threads[group].on_close()
+
 	try:
 		
-		for i, group in enumerate(groups):
+		for i, group in enumerate(parallel_group):
 			
 			group, sleep = group, groups[group]
 			group_coords = feeds[feeds.source.isin(group)]
@@ -37,7 +37,29 @@ if __name__ == '__main__':
 
 			feed_threads[group].start()
 
+			logger.info(f"RSS,Thread,Initiating,{job_id} - {group}")
+
 	except Exception as e:
 
-		logger.warning(f"RSS,Job,Failure,{e}")
+		logger.warning(f"RSS,Thread,Error,{job_id} - {e}")
 		on_close()
+		
+		raise Exception(f"RSS,Job,Terminated,{job_id} - {e}")
+
+if __name__ == '__main__':
+
+	logger.info(f"RSS,Job,Initated,{date_today}")
+
+	group_keys = list(groups.keys())
+	parallel_groups = [group_keys[0::2], group_keys[1::2]]
+
+	try:
+
+		Parallel(n_jobs=2)(
+			delayed(parallel_job)(job_id, parallel_group)
+			for job_id, parallel_group in enumerate(parallel_groups)
+		)
+
+	except Exception as e:
+		
+		logger.warning(e)
