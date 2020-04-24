@@ -11,7 +11,6 @@ def compress_files():
 	back_file_name = datetime.now() - timedelta(days = 1)
 	back_file_name = back_file_name.strftime('%Y-%m-%d')
 	tar_file_name = back_file_name + ".tar.xz"
-	tar_file_name = "test.tar.xz"
 
 	back_file_name = f'{DIR}/news_data_backup/{back_file_name}.txt'
 	tar_file_name = f'{DIR}/news_data_backup/{tar_file_name}'
@@ -45,14 +44,14 @@ def send_to_bucket(tar_file_name):
 	bucket = storage_client.bucket("oscrap_storage")
 
 	destination_name = os.path.basename(tar_file_name)
-	blob = bucket.blob(destination_name)
+	blob = bucket.blob(f"rss/{destination_name}")
 	blob.upload_from_filename(tar_file_name)
 
 if __name__ == '__main__':
 
 	try:
 		tar_file_name = compress_files()
-		# send_to_bucket(tar_file_name)
+		send_to_bucket(tar_file_name)
 		logger.warning(f"RSS,Storage,Success,")
 	except Exception as e:
 		logger.warning(f"RSS,Storage,Failure,{e}")
