@@ -13,16 +13,15 @@ with open(f'{DIR}/data/groups.pkl', 'rb') as file:
 
 def parallel_job(job_id, parallel_group):
 
-	logger.info(f"RSS,Parallel Job,Initiating,{job_id}")
-	feed_threads = {}
 
 	def on_close():
 		for group in parallel_group:
-			logger.info(f"RSS,Thread,Closing,{job_id} - {group}")
 			feed_threads[group].on_close()
+			logger.info(f"RSS,Thread,Closed,{job_id} - {group}")
 
 	try:
 		
+		feed_threads = {}
 		for i, group in enumerate(parallel_group):
 			
 			group, sleep = group, groups[group]
@@ -37,7 +36,7 @@ def parallel_job(job_id, parallel_group):
 
 			feed_threads[group].start()
 
-			logger.info(f"RSS,Thread,Initiating,{job_id} - {group}")
+			logger.info(f"RSS,Thread,Initiated,{job_id} - {group}")
 
 	except Exception as e:
 
@@ -61,5 +60,5 @@ if __name__ == '__main__':
 		)
 
 	except Exception as e:
-		
+
 		logger.warning(e)
