@@ -1,5 +1,5 @@
-from const import DIR, logger, date_today
 from joblib import delayed, Parallel
+from const import DIR, logger
 from feeds import Feeds
 import pandas as pd
 import sys, os
@@ -21,13 +21,23 @@ def on_close():
 
 if __name__ == '__main__':
 	
-	for group in groups:
-		group, sleep = group, groups[group]
-		group_coords = feeds[feeds.source.isin(group)]
-		feed_threads[group] = Feeds(
-			sources = group_coords.source.values,
-			feeds = group_coords.feed.values,
-			sleep = sleep,
-			logger = logger
-		)
-		feed_threads[group].start()
+	try:
+		
+		for i, group in enumerate(groups):
+			
+			group, sleep = group, groups[group]
+			group_coords = feeds[feeds.source.isin(group)]
+			
+			feed_threads[group] = Feeds(
+				sources = group_coords.source.values,
+				feeds = group_coords.feed.values,
+				sleep = sleep,
+				logger = logger
+			)
+
+			feed_threads[group].start()
+
+	except Exception as e:
+
+		logger.warning(f"RSS,Job,Failure,{e}")
+		on_close()

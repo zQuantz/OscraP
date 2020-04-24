@@ -11,6 +11,7 @@ def compress_files():
 	back_file_name = datetime.now() - timedelta(days = 1)
 	back_file_name = back_file_name.strftime('%Y-%m-%d')
 	tar_file_name = back_file_name + ".tar.xz"
+	tar_file_name = "test.tar.xz"
 
 	back_file_name = f'{DIR}/news_data_backup/{back_file_name}.txt'
 	tar_file_name = f'{DIR}/news_data_backup/{tar_file_name}'

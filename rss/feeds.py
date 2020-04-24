@@ -12,6 +12,8 @@ import uuid
 
 class Feeds(Thread):
 	
+	WINDOW = 500
+
 	def __init__(self, sources, feeds, sleep, logger):
 
 		Thread.__init__(self)
@@ -76,7 +78,7 @@ class Feeds(Thread):
 				break
 
 			self.last_45[self.feed].append(entry_hash)
-			self.last_45[self.feed] = self.last_45[self.feed][-45:]
+			self.last_45[self.feed] = self.last_45[self.feed][-self.WINDOW:]
 
 			utc_now = datetime.now(tz=timezone.utc).strftime("%Y-%d-%m %H:%M:%S.%f")
 			entry['oscrap_acquisition_datetime'] = utc_now
