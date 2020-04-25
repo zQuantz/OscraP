@@ -1,4 +1,4 @@
-from unit_tests import check_number_of_options, check_null_percentage
+from unit_tests import check_number_of_options, check_null_percentage, check_ohlc
 from const import DIR, date_today, logger
 from alert import send_scraping_report
 from index import send_to_database
@@ -52,41 +52,43 @@ def collect_data():
 
 			logger.warning(f"{ticker},Ticker,Failure,{e}")
 
-		logger.info(f"SCRAPER,PROGRESS,{np.round( 100 * ((i + 1) / len(ticker_dict)), 4)}%,")
+		pct = (i + 1) / len(ticker_dict)
+		pct = np.round(100 * pct, 4) 
+		logger.info(f"SCRAPER,PROGRESS,{pct}%,")
 
-def collect_data_again(unhealthy_tickers):
+def collect_data_again(faults):
 
-	for i, ticker in enumerate(unhealthy_tickers):
+	for i, ticker in enumerate(faults):
 		
 		try:
 
-			ticker_obj = Ticker(ticker, logger, date_today, isRetry = True) ; time.sleep(5)
+			retries = {
+				key : key in faults[ticker]
+				for key in ['analysis', 'key_stats', 'ohlc', 'options']
+			}
 
-			old = pd.read_csv(f'{DIR}/financial_data/{date_today}/options/{ticker}_{date_today}.csv')
-			df = pd.concat([old, ticker_obj.options]).reset_index(drop=True)
-			df = df.drop_duplicates(subset=['expiration_date', 'strike_price', 'option_type'])
-			df = df.sort_values(['expiration_date', 'option_type', 'strike_price'])
-			df.to_csv(f"{DIR}/financial_data/{date_today}/options/{ticker}_{date_today}.csv", index=False)
+			ticker_obj = Ticker(ticker, logger, date_today, retries, faults[ticker])
+			faults[ticker] = ticker_obj.fault_dict
+			time.sleep(5)
 
-			unhealthy_tickers[ticker]['new_options'] = len(df)
-			delta = unhealthy_tickers[ticker]['new_options'] - unhealthy_tickers[ticker]['options']
-			logger.info(f"{ticker},Re-Ticker,Success,{delta}")
+			logger.info(f"{ticker},Re-Ticker,Success,")
 
 		except Exception as e:
 
-			unhealthy_tickers[ticker]['new_options'] = -1
 			logger.warning(f"{ticker},Re-Ticker,Failure,{e}")
 
-		logger.info(f"SCRAPER,RE-PROGRESS,{np.round( 100 * ((i + 1) / len(unhealthy_tickers)), 4)}%,")
+		pct = (i + 1) / len(faults)
+		pct = np.round(100 * pct, 4) 
+		logger.info(f"SCRAPER,RE-PROGRESS,{pct}%,")
 
-	return unhealthy_tickers
+	return faults
 
 def database_and_alerts():
 
 	max_tries = 5
-	indexing_faults = 0
+	indexing_attempts = 0
 
-	while indexing_faults < max_tries:
+	while indexing_attempts < max_tries:
 		
 		try:
 			db_stats = send_to_database()
@@ -99,27 +101,27 @@ def database_and_alerts():
 			db_stats = [(0,0), (0,0), (0,0), (0,0)]
 			db_flag = 0
 
-		indexing_faults += 1
+		indexing_attempts += 1
 
-	return db_flag, db_stats, indexing_faults
+	return db_flag, db_stats, indexing_attempts
 
 def log_scraper_health():
 
 	collected_options = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date_today}/options')]
-	collected_equities = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date_today}/equities')]
+	collected_ohlc = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date_today}/ohlc')]
 	collected_analysis = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date_today}/analysis')]
 	collected_key_stats = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date_today}/key_stats')]
 
 	success = {
 		"options" : 0,
-		"equities" : 0,
+		"ohlc" : 0,
 		"key_stats" : 0,
 		"analysis" : 0
 	}
 
 	failure = {
 		"options" : 0,
-		"equities" : 0,
+		"ohlc" : 0,
 		"key_stats" : 0,
 		"analysis" : 0
 	}
@@ -131,10 +133,10 @@ def log_scraper_health():
 		else:
 			failure['options'] += 1
 
-		if ticker in collected_equities:
-			success['equities'] += 1
+		if ticker in collected_ohlc:
+			success['ohlc'] += 1
 		else:
-			failure['equities'] += 1
+			failure['ohlc'] += 1
 
 		if ticker in collected_analysis:
 			success['analysis'] += 1
@@ -154,43 +156,52 @@ def init_folders():
 
 	os.mkdir(f'{DIR}/financial_data/{date_today}')
 	os.mkdir(f'{DIR}/financial_data/{date_today}/options')
-	os.mkdir(f'{DIR}/financial_data/{date_today}/equities')
+	os.mkdir(f'{DIR}/financial_data/{date_today}/ohlc')
 	os.mkdir(f'{DIR}/financial_data/{date_today}/key_stats')
 	os.mkdir(f'{DIR}/financial_data/{date_today}/analysis')
 
-def get_unhealthies():
+def fix_faults():
 
-	def add_to_unhealthies(key, obj, unhealthies):
+	def add_to_faults(key, obj, faults):
 	    for ticker in obj:
 	        try:
-	            unhealthies[ticker][key] = obj[ticker]
+	            faults[ticker][key] = obj[ticker]
 	        except Exception as e:
-	            unhealthies[ticker] = {
+	            faults[ticker] = {
 	                key : obj[ticker]
 	            }
-	    return unhealthies
+	    return faults
 
-	unhealthy_analysis = check_null_percentage("analysis")
-	unhealthy_key_stats = check_null_percentage("key_stats")
-	unhealthy_options = check_number_of_options()
+	analysis_faults = check_null_percentage("analysis")
+	key_stats_faults = check_null_percentage("key_stats")
+	options_faults = check_number_of_options()
+	ohlc_faults = check_ohlc()
 
-	unhealthies = add_to_unhealthies("analysis", unhealthy_options, {})
-	unhealthies = add_to_unhealthies("key_stats", unhealthy_key_stats, unhealthies)
-	unhealthies = add_to_unhealthies("options", unhealthy_analysis, unhealthies)
+	faults = add_to_faults("analysis", analysis_faults, {})
+	faults = add_to_faults("key_stats", key_stats_faults, faults)
+	faults = add_to_faults("options", options_faults, faults)
+	faults = add_to_faults("ohlc", ohlc_faults, faults)
 
-	return unhealthies
+	faults = collect_data_again(faults)
+
+	faults_summary = {
+	    key : {}
+	    for key in ["analysis", "key_stats", "ohlc", "options"]
+	}
+	for ticker in faults:
+	    for key in faults[ticker]:
+	        faults_summary[key][ticker] = faults[ticker][key]
+
+	return faults_summary
 
 def main():
 
 	collect_data()
-
-	unhealthies = get_unhealthies()
-	if len(unhealthies) > 0:
-		unhealthies = collect_data_again(unhealthies)
+	faults_summary = fix_faults()
 
 	success, failure = log_scraper_health()
-	db_flag, db_stats, indexing_faults = database_and_alerts()
-	send_scraping_report(success, failure, unhealthy_tickers, db_flag, db_stats, indexing_faults)
+	db_flag, db_stats, indexing_attempts = database_and_alerts()
+	send_scraping_report(success, failure, faults_summary, db_flag, db_stats, indexing_attempts)
 
 if __name__ == '__main__':
 

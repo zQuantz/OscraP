@@ -9,7 +9,7 @@ import smtplib, ssl
 import numpy as np
 import os
 
-def send_scraping_report(successful, failures, unhealthy_tickers, db_flag, db_stats, indexing_faults):
+def send_scraping_report(successful, failures, faults_summary, db_flag, db_stats, indexing_faults):
 
 	sender_email = "zqretrace@gmail.com"
 	receiver_email = "zqretrace@gmail.com, zach.barillaro@gmail.com, mp0941745@gmail.com, josephfalvo@outlook.com, lucasmduarte17@gmail.com"
@@ -21,15 +21,38 @@ def send_scraping_report(successful, failures, unhealthy_tickers, db_flag, db_st
 	message["From"] = sender_email
 	message["To"] = receiver_email
 
-	unhealthy_tickers_str = ""
-	if len(unhealthy_tickers) > 0:
-
-		df = pd.DataFrame(unhealthy_tickers).T
+	option_faults_str = ""
+	if len(faults_summary['options']) > 0:
+		df = pd.DataFrame(faults_summary['options']).T
 		df['delta'] = df.new_options - df.options
 		df.columns = ['Quantile (25%)', 'First Count', 'Second Count', 'Delta']
-		unhealthy_tickers_str = df.to_html()
+		option_faults_str = df.to_html()
 
-	options_counts, equities_counts, analysis_counts, key_stats_counts = db_stats
+	analysis_faults_str = ""
+	if len(faults_summary['analysis']) > 0:
+
+		df = pd.DataFrame(faults_summary['analysis']).T
+		df['delta'] = df.new_null_percentage - df.null_percentage
+		df.columns = ['Quantile (25%)', 'First Null %', 'Second Null %', 'Delta']
+		analysis_faults_str = df.to_html()
+
+	key_stats_faults_str = ""
+	if len(faults_summary['key_stats']) > 0:
+		
+		df = pd.DataFrame(faults_summary['key_stats']).T
+		df['delta'] = df.new_null_percentage - df.null_percentage
+		print(df)
+		df.columns = ['Quantile (25%)', 'First Null %', 'Second Null %', 'Delta']
+		key_stats_str = df.to_html()
+
+	ohlc_faults_str = ""
+	if len(faults_summary['ohlc']) > 0:
+
+		df = pd.DataFrame(faults_summary['ohlc']).T
+		df.columns = ['Status', 'New Status']
+		ohlc_faults_str = df.to_html()
+
+	options_counts, ohlc_counts, analysis_counts, key_stats_counts = db_stats
 	total = successful['options'] + failures['options']
 
 	text = f"""
@@ -46,24 +69,32 @@ def send_scraping_report(successful, failures, unhealthy_tickers, db_flag, db_st
 		New Rows Added: {options_counts[1] - options_counts[0]}<br>
 		<br>
 
-		Unhealthy Summary<br>
-		{unhealthy_tickers_str}<br>
+		Options Fault Summary<br>
+		{option_faults_str}<br>
 		<br>
 
-		Equities Summary<br>
-		Successful Tickers: {successful['equities']}, {np.round(successful['equities'] / total * 100, 2)}%<br>
-		Failed Tickers: {failures['equities']}, {np.round(failures['equities'] / total * 100, 2)}%<br>
-		Starting Row Count: {equities_counts[0]}<br>
-		Ending Row Count: {equities_counts[1]}<br>
-		New Rows Added: {equities_counts[1] - equities_counts[0]}<br>
+		OHLC Summary<br>
+		Successful Tickers: {successful['ohlc']}, {np.round(successful['ohlc'] / total * 100, 2)}%<br>
+		Failed Tickers: {failures['ohlc']}, {np.round(failures['ohlc'] / total * 100, 2)}%<br>
+		Starting Row Count: {ohlc_counts[0]}<br>
+		Ending Row Count: {ohlc_counts[1]}<br>
+		New Rows Added: {ohlc_counts[1] - ohlc_counts[0]}<br>
 		<br>
 
-		Equities Summary<br>
+		OHLC Fault Summary<br>
+		{ohlc_faults_str}<br>
+		<br>
+
+		Analysis Summary<br>
 		Successful Tickers: {successful['analysis']}, {np.round(successful['analysis'] / total * 100, 2)}%<br>
 		Failed Tickers: {failures['analysis']}, {np.round(failures['analysis'] / total * 100, 2)}%<br>
 		Starting Row Count: {analysis_counts[0]}<br>
 		Ending Row Count: {analysis_counts[1]}<br>
 		New Rows Added: {analysis_counts[1] - analysis_counts[0]}<br>
+		<br>
+
+		Analysis Summary<br>
+		{analysis_faults_str}<br>
 		<br>
 
 		Key Statistics Summary<br>
@@ -74,7 +105,11 @@ def send_scraping_report(successful, failures, unhealthy_tickers, db_flag, db_st
 		New Rows Added: {key_stats_counts[1] - key_stats_counts[0]}<br>
 		<br>
 
-		See attached for a breakdown of the tickers and file sizes.<br>
+		Key Statistics Summary<br>
+		{key_stats_str}<br>
+		<br>
+
+		See attached for the log file and the collected data.<br>
 	"""
 	message.attach(MIMEText(text, "html"))
 

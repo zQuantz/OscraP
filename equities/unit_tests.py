@@ -9,8 +9,6 @@ engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/com
 
 def check_number_of_options():
 
-	date_today = "2020-04-09"
-
 	dt = datetime.now() - timedelta(days=60)
 	query = sql.text(f"""
 		SELECT
@@ -68,8 +66,6 @@ def check_null_percentage(data):
 	label = data.replace('_', ' ').split()
 	label = ' '.join(map(str.capitalize, label))
 	
-	date_today = "2020-04-09"
-
 	dt = datetime.now() - timedelta(days=60)
 	query = sql.text(f"""
 		SELECT
@@ -113,8 +109,8 @@ def check_null_percentage(data):
 			logger.warning(f"{ticker},Unit Test - {label} Null Percentage,Failure,File Not Found")
 			unhealthy_tickers[ticker] = {
 					'quantile' : quantiles[ticker],
-					'options' : 0,
-					'new_options' : 0
+					'null_percentage' : 0,
+					'new_null_percentage' : 0
 				}
 
 		except Exception as e:
@@ -122,3 +118,33 @@ def check_null_percentage(data):
 			logger.warning(f"{ticker},Unit Test - {label} Null Percentage,Failure,{e}")
 
 	return unhealthy_tickers
+
+def check_ohlc():
+
+	dt = datetime.now() - timedelta(days=60)
+	query = sql.text(f"""
+		SELECT
+			DISTINCT(ticker) as tickers
+		FROM
+			equities
+		WHERE
+			date_current >= {dt.strftime("%Y-%m-%d")}
+	""")
+	query = query.bindparams()
+
+	conn = engine.connect()
+	tickers = pd.read_sql(query, conn).tickers
+	conn.close()
+
+	collected_tickers = os.listdir(f"{DIR}/financial_data/{date_today}/ohlc")
+	collected_tickers = [ticker.split("_")[0] for ticker in collected_tickers]
+
+	unhealthy_ohlc = {}
+	for ticker in tickers:
+		if ticker not in collected_tickers:
+			unhealthy_ohlc[ticker] = {
+				"status" : 0,
+				"new_status" : 0
+			}
+
+	return unhealthy_ohlc

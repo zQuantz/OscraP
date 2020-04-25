@@ -17,51 +17,56 @@ PARSER = "lxml"
 
 class Ticker():
 
-	def __init__(self, ticker, logger, date_today, isRetry=False):
+	def __init__(self, ticker, logger, date_today, retries=None, fault_dict=None):
 
 		self.ticker = ticker
 		self.logger = logger
 		self.date_today = date_today
 
 		self.options = []
-		self.isRetry = isRetry
+		self.retries = retries
+		self.fault_dict = fault_dict
 
-		try:
-			self.div = self.get_dividends()
-			self.logger.info(f"{ticker},Dividend,Success,")
-		except Exception as e:
-			self.logger.warning(f"{ticker},Dividend,Failure,{e}")
-		self.sleep()
+		if not retries or retries["ohlc"]:
+			try:
+				self.div = self.get_dividends()
+				self.logger.info(f"{ticker},Dividend,Success,")
+			except Exception as e:
+				self.logger.warning(f"{ticker},Dividend,Failure,{e}")
+			self.sleep()
 
-		try:
-			self.get_ohlc()
-			self.logger.info(f"{ticker},OHLC,Success,")
-		except Exception as e:
-			self.logger.warning(f"{ticker},OHLC,Failure,{e}")
-			if e.args[0] == "Fatal":
-				raise Exception("Stale ticker. Data not up-to-date.")
-		self.sleep()
+			try:
+				self.get_ohlc()
+				self.logger.info(f"{ticker},OHLC,Success,")
+			except Exception as e:
+				self.logger.warning(f"{ticker},OHLC,Failure,{e}")
+				if e.args[0] == "Fatal":
+					raise Exception("Stale ticker. Data not up-to-date.")
+			self.sleep()
 
-		try:
-			self.get_key_stats()
-			self.logger.info(f"{ticker},Key Stats,Success,")
-		except Exception as e:
-			self.logger.warning(f"{ticker},Key Stats,Failure,{e}")
-		self.sleep()
+		if not retries or retries['key_stats']:
+			try:
+				self.get_key_stats()
+				self.logger.info(f"{ticker},Key Stats,Success,")
+			except Exception as e:
+				self.logger.warning(f"{ticker},Key Stats,Failure,{e}")
+			self.sleep()
 
-		try:
-			self.get_analysis()
-			self.logger.info(f"{ticker},Analysis,Success,")
-		except Exception as e:
-			self.logger.warning(f"{ticker},Analysis,Failure,{e}")
-		self.sleep()
+		if not retries or retries['analysis']:
+			try:
+				self.get_analysis()
+				self.logger.info(f"{ticker},Analysis,Success,")
+			except Exception as e:
+				self.logger.warning(f"{ticker},Analysis,Failure,{e}")
+			self.sleep()
 
-		try:
-			self.get_options()
-			self.logger.info(f"{ticker},Options,Success,")			
-		except Exception as e:
-			self.logger.warning(f"{ticker},Options,Failure,{e}")
-		self.sleep()
+		if not retries or retries['options']:
+			try:
+				self.get_options()
+				self.logger.info(f"{ticker},Options,Success,")	
+			except Exception as e:
+				self.logger.warning(f"{ticker},Options,Failure,{e}")
+			self.sleep()
 
 	def sleep(self):
 		time.sleep(0.5)
@@ -160,7 +165,10 @@ class Ticker():
 		cols += ["dividend_yield", 'date_current']
 
 		df = pd.DataFrame([prices], columns = cols)
-		df.to_csv(f"{DIR}/financial_data/{self.date_today}/equities/{self.ticker}_{self.date_today}.csv", index=False)
+		df.to_csv(f"{DIR}/financial_data/{self.date_today}/ohlc/{self.ticker}_{self.date_today}.csv", index=False)
+		self.fault_dict['ohlc']['new_status'] = 1
+		self.logger.info(f"{self.ticker},Re-OHLC,Success,{delta}")
+
 
 	def get_options(self):
 
@@ -228,8 +236,21 @@ class Ticker():
 		self.options = pd.DataFrame(self.options, columns = ['date_current', 'expiration_date', 'time_to_expiry',
 															 'option_type', 'strike_price', 'bid', 'ask', 'volume',
 															 'option_price', 'implied_volatility', 'open_interest'])
-		if not self.isRetry:
+		if not retries:
+		
 			self.options.to_csv(f"{DIR}/financial_data/{self.date_today}/options/{self.ticker}_{self.date_today}.csv", index=False)
+		
+		else:
+
+			old = pd.read_csv(f"{DIR}/financial_data/{self.date_today}/options/{self.ticker}_{self.date_today}.csv")
+			df = pd.concat([old, self.options]).reset_index(drop=True)
+			df = df.drop_duplicates(subset=['expiration_date', 'strike_price', 'option_type'])
+			df = df.sort_values(['expiration_date', 'option_type', 'strike_price'])
+			df.to_csv(f"{DIR}/financial_data/{self.date_today}/options/{self.ticker}_{self.date_today}.csv", index=False)
+
+			self.fault_dict['options']['new_options'] = len(df)
+			delta = self.fault_dict['options']['new_options'] - self.fault_dict['options']['options']
+			self.logger.info(f"{self.ticker},Re-Options,Success,{delta}")
 
 	def get_key_stats(self):
 
@@ -256,7 +277,21 @@ class Ticker():
 			])
 
 		df = pd.DataFrame(key_stats, columns = ["feature", "modifier", "value"])
-		df.to_csv(f"{DIR}/financial_data/{self.date_today}/key_stats/{self.ticker}_{self.date_today}.csv", index=False)
+
+		if not retries:
+			
+			df.to_csv(f"{DIR}/financial_data/{self.date_today}/key_stats/{self.ticker}_{self.date_today}.csv", index=False)
+
+		else:
+
+			old = pd.read_csv(f"{DIR}/financial_data/{self.date_today}/key_stats/{self.ticker}_{self.date_today}.csv")
+			df = pd.concat([old, df]).reset_index(drop=True)
+			df = df.drop_duplicates()
+			df.to_csv(f"{DIR}/financial_data/{self.date_today}/key_stats/{self.ticker}_{self.date_today}.csv", index=False)
+
+			self.fault_dict['key_stats']['new_null_percentage'] = df.value.isnull().sum() / len(df)
+			delta = self.fault_dict['key_stats']['new_null_percentage'] - self.fault_dict['key_stats']['null_percentage']
+			self.logger.info(f"{self.ticker},Re-Key Stats,Success,{delta}")
 
 	def get_analysis(self):
 
@@ -297,4 +332,18 @@ class Ticker():
 		for table in tables:
 			dfs.append(parse_table(table))
 		df = pd.concat(dfs)
-		df.to_csv(f"{DIR}/financial_data/{self.date_today}/analysis/{self.ticker}_{self.date_today}.csv", index=False)
+
+		if not retries:
+			
+			df.to_csv(f"{DIR}/financial_data/{self.date_today}/analysis/{self.ticker}_{self.date_today}.csv", index=False)
+
+		else:
+
+			old = pd.read_csv(f"{DIR}/financial_data/{self.date_today}/analysis/{self.ticker}_{self.date_today}.csv")
+			df = pd.concat([old, df]).reset_index(drop=True)
+			df = df.drop_duplicates()
+			df.to_csv(f"{DIR}/financial_data/{self.date_today}/analysis/{self.ticker}_{self.date_today}.csv", index=False)
+
+			self.fault_dict['analysis']['new_null_percentage'] = df.value.isnull().sum() / len(df)
+			delta = self.fault_dict['analysis']['new_null_percentage'] - self.fault_dict['analysis']['null_percentage']
+			self.logger.info(f"{self.ticker},Re-Analysis,Success,{delta}")
