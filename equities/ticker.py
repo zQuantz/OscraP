@@ -1,4 +1,5 @@
-from const import DIR, CONVERTER, NUMBERS
+from const import DIR, CONVERTER, NUMBERS, CONFIG
+
 from datetime import datetime
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -18,10 +19,8 @@ OHLC = "https://finance.yahoo.com/quote/{ticker}/history"
 SUMMARY = "https://finance.yahoo.com/quote/{ticker}/"
 PARSER = "lxml"
 
-with open(f"{DIR}/static/date.txt", "r") as file:
-	DATE = file.read()
-
 NAMED_DATE_FMT = "%B %d, %Y"
+DATE = CONFIG['date']
 
 ###################################################################################################
 

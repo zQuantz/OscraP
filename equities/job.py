@@ -1,31 +1,30 @@
+from const import DIR, logger, CONFIG
+
 from batch import main as batch_main
 from store import main as store
 from datetime import datetime
-from const import DIR, logger
 from ticker import Ticker
 from report import report
+from uuid import getnode
 import sqlalchemy as sql
 import pandas as pd
 import sys, os
 
 ###################################################################################################
 
-BATCH_SIZE = 50
-N_USD = 900
-N_CAD = 100
-
-date = datetime.today().strftime("%Y-%m-%d")
-with open(f"{DIR}/static/date.txt", "w") as file:
-	file.write(date)
+DATE = CONFIG['date']
+BATCH_SIZE = 2
+N_USD = 2
+N_CAD = 2
 
 ###################################################################################################
 
 def get_job_success_rates(tickers):
 
-	collected_options = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date}/options')]
-	collected_ohlc = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date}/ohlc')]
-	collected_analysis = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date}/analysis')]
-	collected_key_stats = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{date}/key_stats')]
+	collected_options = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{DATE}/options')]
+	collected_ohlc = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{DATE}/ohlc')]
+	collected_analysis = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{DATE}/analysis')]
+	collected_key_stats = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{DATE}/key_stats')]
 
 	success = {
 		"options" : 0,
@@ -67,7 +66,7 @@ def get_job_success_rates(tickers):
 
 def fetch_tickers():
 
-	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
+	engine = sql.create_engine(CONFIG['db_address'])
 	query = f"""
 	    SELECT
 	        *
@@ -93,15 +92,15 @@ def fetch_tickers():
 
 def init_folders():
 
-	os.mkdir(f'{DIR}/financial_data/{date}')
-	os.mkdir(f'{DIR}/financial_data/{date}/options')
-	os.mkdir(f'{DIR}/financial_data/{date}/ohlc')
-	os.mkdir(f'{DIR}/financial_data/{date}/key_stats')
-	os.mkdir(f'{DIR}/financial_data/{date}/analysis')
+	os.mkdir(f'{DIR}/financial_data/{DATE}')
+	os.mkdir(f'{DIR}/financial_data/{DATE}/options')
+	os.mkdir(f'{DIR}/financial_data/{DATE}/ohlc')
+	os.mkdir(f'{DIR}/financial_data/{DATE}/key_stats')
+	os.mkdir(f'{DIR}/financial_data/{DATE}/analysis')
 
 def main():
 
-	logger.info(f"SCRAPER,JOB,INITIATED,{date},")
+	logger.info(f"SCRAPER,JOB,INITIATED,{DATE},")
 
 	init_folders()
 	tickers = fetch_tickers()
@@ -147,7 +146,7 @@ def main():
 
 	store()
 
-	logger.info(f"SCRAPER,JOB,TERMINATED,{date},")
+	logger.info(f"SCRAPER,JOB,TERMINATED,{DATE},")
 
 if __name__ == '__main__':
 

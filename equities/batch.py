@@ -1,13 +1,17 @@
+from const import CONFIG, DIR, logger
+
 from unit_tests import check_number_of_options, check_null_percentage, check_ohlc
-from const import DIR, logger
 from ticker import Ticker
 from index import index
 import numpy as np
 import sys, os
 import time
 
-with open(f"{DIR}/static/date.txt", "r") as file:
-	DATE = file.read()
+###################################################################################################
+
+DATE = CONFIG['date']
+
+###################################################################################################
 
 def collect_data(batch_id, tickers):
 

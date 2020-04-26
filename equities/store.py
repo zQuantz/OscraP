@@ -1,13 +1,18 @@
+from const import DIR, CONFIG, logger
+
 from google.cloud import storage
-from const import DIR, logger
 from hashlib import sha256
 import tarfile as tar
 import pandas as pd
 import sys, os
 import shutil
 
-with open(f"{DIR}/static/date.txt", "r") as file:
-	DATE = file.read()
+###################################################################################################
+
+BUCKET_NAME = CONFIG['gcp_bucket_name']
+DATE = CONFIG['date']
+
+###################################################################################################
 
 def aggregate():
 
@@ -62,7 +67,7 @@ def send_and_verify():
 		try:
 
 			storage_client = storage.Client()
-			bucket = storage_client.bucket("oscrap_storage")
+			bucket = storage_client.bucket(BUCKET_NAME)
 
 			destination_name = f"{DATE}.tar.xz"
 			blob = bucket.blob(destination_name)

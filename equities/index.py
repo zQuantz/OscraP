@@ -1,14 +1,19 @@
+from const import DIR, CONFIG
+
 import sqlalchemy as sql
-from const import DIR
 import pandas as pd
 import os
 
-with open(f"{DIR}/static/date.txt", "r") as file:
-	DATE = file.read()
+###################################################################################################
+
+DB_ADDRESS = CONFIG['db_address']
+DATE = CONFIG['date']
+
+###################################################################################################
 
 def index(tickers):
 
-	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_test")
+	engine = sql.create_engine(DB_ADDRESS)
 
 	with engine.connect() as conn:
 

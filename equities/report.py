@@ -1,15 +1,19 @@
+from const import DIR, CONFIG
+
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-from const import DIR
 import pandas as pd
 import smtplib, ssl
 import shutil
 import os
 
-with open(f"{DIR}/static/date.txt", "r") as file:
-	DATE = file.read()
+###################################################################################################
+
+DATE = CONFIG['date']
+
+###################################################################################################
 
 def report(title_modifier, successful, failures, faults_summary, db_flags, db_stats, indexing_faults):
 

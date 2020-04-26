@@ -1,5 +1,6 @@
+from const import DIR, CONFIG, logger
+
 from datetime import datetime, timedelta
-from const import DIR, logger 
 import sqlalchemy as sql
 import pandas as pd
 import numpy as np
@@ -7,11 +8,8 @@ import sys, os
 
 ###################################################################################################
 
-engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
-
-with open(f"{DIR}/static/date.txt", "r") as file:
-	DATE = file.read()
-print(DATE)
+DATE = CONFIG['date']
+engine = sql.create_engine(CONFIG['db_address'])
 
 ###################################################################################################
 
