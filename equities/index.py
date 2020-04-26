@@ -1,14 +1,12 @@
-from const import DIR, date_today
 import sqlalchemy as sql
+from const import DIR
 import pandas as pd
-import numpy as np
 import os
 
-def index():
+with open(f"{DIR}/static/date.txt", "w") as file:
+	DATE = file.read()
 
-	def binarize(x):
-	    q = np.quantile(x, 0.25)
-	    return not (x.values[-1] >= q)[0]
+def index():
 
 	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_test")
 
@@ -24,37 +22,37 @@ def index():
 		analysis = []
 		key_stats = []
 
-		for file in os.listdir(f'{DIR}/financial_data/{date_today}/options'):
+		for file in os.listdir(f'{DIR}/financial_data/{DATE}/options'):
 
 			ticker = file.split('_')[0]
-			df = pd.read_csv(f'{DIR}/financial_data/{date_today}/options/{file}')
+			df = pd.read_csv(f'{DIR}/financial_data/{DATE}/options/{file}')
 			df['ticker'] = ticker
 			df['option_id'] = (df.ticker + ' ' + df.expiration_date + ' ' + df.option_type
-							  + np.round(df.strike_price, 2).astype(str))
+							  + df.strike_price.round(2).astype(str))
 			options.append(df)
 
-		for file in os.listdir(f'{DIR}/financial_data/{date_today}/ohlc'):
+		for file in os.listdir(f'{DIR}/financial_data/{DATE}/ohlc'):
 
 			ticker = file.split('_')[0]
-			df = pd.read_csv(f'{DIR}/financial_data/{date_today}/ohlc/{file}')
+			df = pd.read_csv(f'{DIR}/financial_data/{DATE}/ohlc/{file}')
 			df['ticker'] = ticker
 
 			ohlc.append(df.iloc[:1, :])
 
-		for file in os.listdir(f'{DIR}/financial_data/{date_today}/analysis'):
+		for file in os.listdir(f'{DIR}/financial_data/{DATE}/analysis'):
 
 			ticker = file.split('_')[0]
-			df = pd.read_csv(f'{DIR}/financial_data/{date_today}/analysis/{file}')
+			df = pd.read_csv(f'{DIR}/financial_data/{DATE}/analysis/{file}')
 			df['ticker'] = ticker
-			df['date_current'] = date_today
+			df['date_current'] = DATE
 			analysis.append(df)
 
-		for file in os.listdir(f'{DIR}/financial_data/{date_today}/key_stats'):
+		for file in os.listdir(f'{DIR}/financial_data/{DATE}/key_stats'):
 
 			ticker = file.split('_')[0]
-			df = pd.read_csv(f'{DIR}/financial_data/{date_today}/key_stats/{file}')
+			df = pd.read_csv(f'{DIR}/financial_data/{DATE}/key_stats/{file}')
 			df['ticker'] = ticker
-			df['date_current'] = date_today
+			df['date_current'] = DATE
 			key_stats.append(df)
 
 		options = pd.concat(options)

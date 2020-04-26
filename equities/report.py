@@ -1,14 +1,15 @@
 from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
-from const import DIR, date_today
 from email import encoders
+from const import DIR
 import pandas as pd
 import smtplib, ssl
-import numpy as np
 import shutil
 import os
+
+with open(f"{DIR}/static/date.txt", "w") as file:
+	DATE = file.read()
 
 def report(title_modifier, successful, failures, faults_summary, db_flags, db_stats, indexing_faults):
 
@@ -89,8 +90,8 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		<br>
 
 		Options Summary<br>
-		Successful Tickers: {successful['options']}, {np.round(successful['options'] / total * 100, 2)}%<br>
-		Failed Tickers: {failures['options']}, {np.round(failures['options'] / total * 100, 2)}%<br>
+		Successful Tickers: {successful['options']}, {(successful['options'] / total * 100).round(2)}%<br>
+		Failed Tickers: {failures['options']}, {(failures['options'] / total * 100).round(2)}%<br>
 		Starting Row Count: {options_counts[0]}<br>
 		Ending Row Count: {options_counts[1]}<br>
 		New Rows Added: {options_counts[1] - options_counts[0]}<br>
@@ -101,8 +102,8 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		<br>
 
 		OHLC Summary<br>
-		Successful Tickers: {successful['ohlc']}, {np.round(successful['ohlc'] / total * 100, 2)}%<br>
-		Failed Tickers: {failures['ohlc']}, {np.round(failures['ohlc'] / total * 100, 2)}%<br>
+		Successful Tickers: {successful['ohlc']}, {(successful['ohlc'] / total * 100).round(2)}%<br>
+		Failed Tickers: {failures['ohlc']}, {(failures['ohlc'] / total * 100).round(2)}%<br>
 		Starting Row Count: {ohlc_counts[0]}<br>
 		Ending Row Count: {ohlc_counts[1]}<br>
 		New Rows Added: {ohlc_counts[1] - ohlc_counts[0]}<br>
@@ -113,8 +114,8 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		<br>
 
 		Analysis Summary<br>
-		Successful Tickers: {successful['analysis']}, {np.round(successful['analysis'] / total * 100, 2)}%<br>
-		Failed Tickers: {failures['analysis']}, {np.round(failures['analysis'] / total * 100, 2)}%<br>
+		Successful Tickers: {successful['analysis']}, {(successful['analysis'] / total * 100).round(2)}%<br>
+		Failed Tickers: {failures['analysis']}, {(failures['analysis'] / total * 100).round(2)}%<br>
 		Starting Row Count: {analysis_counts[0]}<br>
 		Ending Row Count: {analysis_counts[1]}<br>
 		New Rows Added: {analysis_counts[1] - analysis_counts[0]}<br>
@@ -125,8 +126,8 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		<br>
 
 		Key Statistics Summary<br>
-		Successful Tickers: {successful['key_stats']}, {np.round(successful['key_stats'] / total * 100, 2)}%<br>
-		Failed Tickers: {failures['key_stats']}, {np.round(failures['key_stats'] / total * 100, 2)}%<br>
+		Successful Tickers: {successful['key_stats']}, {(successful['key_stats'] / total * 100).round(2)}%<br>
+		Failed Tickers: {failures['key_stats']}, {(failures['key_stats'] / total * 100).round(2)}%<br>
 		Starting Row Count: {key_stats_counts[0]}<br>
 		Ending Row Count: {key_stats_counts[1]}<br>
 		New Rows Added: {key_stats_counts[1] - key_stats_counts[0]}<br>
@@ -142,8 +143,8 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 
 	###############################################################################################
 
-	shutil.make_archive(f"{DIR}/financial_data/{date_today}", "zip", f"{DIR}/financial_data/{date_today}")
-	filename = f'{DIR}/financial_data/{date_today}.zip'
+	shutil.make_archive(f"{DIR}/financial_data/{DATE}", "zip", f"{DIR}/financial_data/{DATE}")
+	filename = f'{DIR}/financial_data/{DATE}.zip'
 	with open(filename, 'rb') as file:
 		attachment = MIMEBase('application', 'zip')
 		attachment.set_payload(file.read())

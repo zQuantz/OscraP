@@ -1,28 +1,30 @@
-from const import date_today, DIR, logger
 from google.cloud import storage
+from const import DIR, logger
 from hashlib import sha256
 import tarfile as tar
 import pandas as pd
-import numpy as np
 import sys, os
 import shutil
+
+with open(f"{DIR}/static/date.txt", "w") as file:
+	DATE = file.read()
 
 def aggregate():
 
 	data = {}
-	for folder in os.listdir(f"{DIR}/financial_data/{date_today}"):
+	for folder in os.listdir(f"{DIR}/financial_data/{DATE}"):
 
 		data[folder] = []
 
-		for file in os.listdir(f"{DIR}/financial_data/{date_today}/{folder}"):
+		for file in os.listdir(f"{DIR}/financial_data/{DATE}/{folder}"):
 
-			df = pd.read_csv(f"{DIR}/financial_data/{date_today}/{folder}/{file}")
-			df['date_current'] = date_today
+			df = pd.read_csv(f"{DIR}/financial_data/{DATE}/{folder}/{file}")
+			df['date_current'] = DATE
 			df['ticker'] = file.split('_')[0]
 
 			if folder == "options":
 				df['option_id'] = (df.ticker + ' ' + df.expiration_date + ' ' + df.option_type
-							  	   + np.round(df.strike_price, 2).astype(str))
+							  	   + df.strike_price.round(2).astype(str))
 
 			data[folder].append(df)
 
@@ -36,18 +38,18 @@ def aggregate():
 		df = df[first_cols + next_cols]
 		data[folder] = df
 
-		data[folder].to_csv(f"{DIR}/financial_data/{date_today}/{folder}.csv", index=False)
+		data[folder].to_csv(f"{DIR}/financial_data/{DATE}/{folder}.csv", index=False)
 
 def compress():
 
-	with tar.open(f"{DIR}/financial_data/{date_today}.tar.xz", "x:xz") as tar_file:
+	with tar.open(f"{DIR}/financial_data/{DATE}.tar.xz", "x:xz") as tar_file:
 
-		for file in os.listdir(f"{DIR}/financial_data/{date_today}"):
+		for file in os.listdir(f"{DIR}/financial_data/{DATE}"):
 
 			if '.csv' not in file:
 				continue
 
-			filename = f"{DIR}/financial_data/{date_today}/{file}"
+			filename = f"{DIR}/financial_data/{DATE}/{file}"
 			tar_file.add(filename, os.path.basename(filename))
 
 def send_and_verify():
@@ -62,7 +64,7 @@ def send_and_verify():
 			storage_client = storage.Client()
 			bucket = storage_client.bucket("oscrap_storage")
 
-			destination_name = f"equities/{date_today}.tar.xz"
+			destination_name = f"{DATE}.tar.xz"
 			blob = bucket.blob(destination_name)
 			blob.upload_from_filename(f"{DIR}/financial_data/{destination_name}")
 			
@@ -85,12 +87,12 @@ def send_and_verify():
 
 def remove():
 
-	for folder in os.listdir(f"{DIR}/financial_data/{date_today}"):
-		folder = f"{DIR}/financial_data/{date_today}/{folder}"
+	for folder in os.listdir(f"{DIR}/financial_data/{DATE}"):
+		folder = f"{DIR}/financial_data/{DATE}/{folder}"
 		if os.path.isdir(folder):
 			shutil.rmtree(folder)
 
-	os.remove(f"{DIR}/financial_data/{date_today}.zip")
+	os.remove(f"{DIR}/financial_data/{DATE}.zip")
 
 def main():
 

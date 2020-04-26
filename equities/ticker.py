@@ -1,5 +1,5 @@
-from const import named_date_fmt, DIR, CONVERTER, NUMBERS
-from datetime import datetime, timedelta
+from const import DIR, CONVERTER, NUMBERS
+from datetime import datetime
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
@@ -7,6 +7,8 @@ import itertools
 import requests
 import sys, os
 import time
+
+###################################################################################################
 
 headers_mobile = { 'User-Agent' : 'Mozilla/5.0 (iPhone; CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B137 Safari/601.1'}
 ANALYSIS = "https://ca.finance.yahoo.com/quote/{ticker}/analysis?p={ticker}"
@@ -16,13 +18,19 @@ OHLC = "https://finance.yahoo.com/quote/{ticker}/history"
 SUMMARY = "https://finance.yahoo.com/quote/{ticker}/"
 PARSER = "lxml"
 
+with open(f"{DIR}/static/date.txt", "w") as file:
+	DATE = file.read()
+
+NAMED_DATE_FMT = "%B %d, %Y"
+
+###################################################################################################
+
 class Ticker():
 
-	def __init__(self, ticker, logger, date_today, batch_id, retries=None, fault_dict=None):
+	def __init__(self, ticker, logger, batch_id, retries=None, fault_dict=None):
 
 		self.ticker = ticker
 		self.logger = logger
-		self.date_today = date_today
 		self.batch_id = batch_id
 
 		self.retries = retries
@@ -157,17 +165,17 @@ class Ticker():
 		prices = [price.text for price in prices]
 
 		ohlc_date = datetime.strptime(prices[0], "%b %d, %Y").strftime("%Y-%m-%d")
-		if ohlc_date != self.date_today:
+		if ohlc_date != DATE:
 			raise Exception(f'Fatal')
 
 		cols = ['open', 'high', 'low', 'close', 'adj_close', 'stock_volume']
 		prices = list(map(self.option_fmt, prices[1:], cols))
 
-		prices += [self.div, self.date_today]
+		prices += [self.div, DATE]
 		cols += ["dividend_yield", 'date_current']
 
 		df = pd.DataFrame([prices], columns = cols)
-		df.to_csv(f"{DIR}/financial_data/{self.date_today}/ohlc/{self.ticker}_{self.date_today}.csv", index=False)
+		df.to_csv(f"{DIR}/financial_data/{DATE}/ohlc/{self.ticker}_{DATE}.csv", index=False)
 
 		if self.retries:
 
@@ -181,7 +189,7 @@ class Ticker():
 			for row in table.find_all("tr")[1:]:
 				es = [e for e in row.find_all("td")[2:]]
 				self.options.append([
-						self.date_today,
+						DATE,
 						expiry_date_fmt,
 						np.round(max(expiration_days / 252, 0), 6),
 						symbol,
@@ -222,7 +230,7 @@ class Ticker():
 			self.logger.info(f"{self.ticker},{self.batch_id},Option Expiry,{expiry},{expiry_date.replace(',', '.')}")
 
 			dt = datetime.fromtimestamp(int(expiry))
-			expiry_date_fmt = datetime.strptime(expiry_date, named_date_fmt)
+			expiry_date_fmt = datetime.strptime(expiry_date, NAMED_DATE_FMT)
 			expiration_days = np.busday_count(datetime.now().strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%d"))
 
 			page = url+f"&date={str(expiry)}"
@@ -242,19 +250,19 @@ class Ticker():
 															 'option_price', 'implied_volatility', 'open_interest'])
 		if not self.retries:
 		
-			self.options.to_csv(f"{DIR}/financial_data/{self.date_today}/options/{self.ticker}_{self.date_today}.csv", index=False)
+			self.options.to_csv(f"{DIR}/financial_data/{DATE}/options/{self.ticker}_{DATE}.csv", index=False)
 		
 		else:
 			
 			try:
-				old = pd.read_csv(f"{DIR}/financial_data/{self.date_today}/options/{self.ticker}_{self.date_today}.csv")
+				old = pd.read_csv(f"{DIR}/financial_data/{DATE}/options/{self.ticker}_{DATE}.csv")
 			except Exception as e:
 				old = pd.DataFrame()
 
 			df = pd.concat([old, self.options]).reset_index(drop=True)
 			df = df.drop_duplicates(subset=['expiration_date', 'strike_price', 'option_type'])
 			df = df.sort_values(['expiration_date', 'option_type', 'strike_price'])
-			df.to_csv(f"{DIR}/financial_data/{self.date_today}/options/{self.ticker}_{self.date_today}.csv", index=False)
+			df.to_csv(f"{DIR}/financial_data/{DATE}/options/{self.ticker}_{DATE}.csv", index=False)
 
 			self.fault_dict['options']['new_options'] = len(df)
 			delta = self.fault_dict['options']['new_options'] - self.fault_dict['options']['options']
@@ -289,18 +297,18 @@ class Ticker():
 
 		if not self.retries:
 			
-			df.to_csv(f"{DIR}/financial_data/{self.date_today}/key_stats/{self.ticker}_{self.date_today}.csv", index=False)
+			df.to_csv(f"{DIR}/financial_data/{DATE}/key_stats/{self.ticker}_{DATE}.csv", index=False)
 
 		else:
 			
 			try:
-				old = pd.read_csv(f"{DIR}/financial_data/{self.date_today}/key_stats/{self.ticker}_{self.date_today}.csv")
+				old = pd.read_csv(f"{DIR}/financial_data/{DATE}/key_stats/{self.ticker}_{DATE}.csv")
 			except Exception as e:
 				old = pd.DataFrame()
 
 			df = pd.concat([old, df]).reset_index(drop=True)
 			df = df.drop_duplicates()
-			df.to_csv(f"{DIR}/financial_data/{self.date_today}/key_stats/{self.ticker}_{self.date_today}.csv", index=False)
+			df.to_csv(f"{DIR}/financial_data/{DATE}/key_stats/{self.ticker}_{DATE}.csv", index=False)
 
 			self.fault_dict['key_stats']['new_null_percentage'] = df.value.isnull().sum() / len(df)
 			delta = self.fault_dict['key_stats']['new_null_percentage'] - self.fault_dict['key_stats']['null_percentage']
@@ -349,18 +357,18 @@ class Ticker():
 
 		if not self.retries:
 			
-			df.to_csv(f"{DIR}/financial_data/{self.date_today}/analysis/{self.ticker}_{self.date_today}.csv", index=False)
+			df.to_csv(f"{DIR}/financial_data/{DATE}/analysis/{self.ticker}_{DATE}.csv", index=False)
 
 		else:
 
 			try:
-				old = pd.read_csv(f"{DIR}/financial_data/{self.date_today}/analysis/{self.ticker}_{self.date_today}.csv")
+				old = pd.read_csv(f"{DIR}/financial_data/{DATE}/analysis/{self.ticker}_{DATE}.csv")
 			except Exception as e:
 				old = pd.DataFrame()
 
 			df = pd.concat([old, df]).reset_index(drop=True)
 			df = df.drop_duplicates()
-			df.to_csv(f"{DIR}/financial_data/{self.date_today}/analysis/{self.ticker}_{self.date_today}.csv", index=False)
+			df.to_csv(f"{DIR}/financial_data/{DATE}/analysis/{self.ticker}_{DATE}.csv", index=False)
 
 			self.fault_dict['analysis']['new_null_percentage'] = df.value.isnull().sum() / len(df)
 			delta = self.fault_dict['analysis']['new_null_percentage'] - self.fault_dict['analysis']['null_percentage']

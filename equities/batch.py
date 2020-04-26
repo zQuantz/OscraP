@@ -1,15 +1,13 @@
 from unit_tests import check_number_of_options, check_null_percentage, check_ohlc
-from const import DIR, date_today, logger
-from datetime import datetime
+from const import DIR, logger
 from ticker import Ticker
 from index import index
-
-import sqlalchemy as sql
-import pandas as pd
 import numpy as np
 import sys, os
-import shutil
 import time
+
+with open(f"{DIR}/static/date.txt", "w") as file:
+	DATE = file.read()
 
 def collect_data(batch_id, tickers):
 
@@ -17,7 +15,7 @@ def collect_data(batch_id, tickers):
 		
 		try:
 
-			Ticker(ticker, logger, date_today, batch_id) ; time.sleep(5)
+			Ticker(ticker, logger, DATE, batch_id) ; time.sleep(5)
 			logger.info(f"{ticker},{batch_id},Ticker,Success,")
 
 		except Exception as e:
@@ -39,7 +37,7 @@ def collect_data_again(batch_id, faults):
 				for key in ['analysis', 'key_stats', 'ohlc', 'options']
 			}
 
-			ticker_obj = Ticker(ticker, logger, date_today, batch_id, retries, faults[ticker])
+			ticker_obj = Ticker(ticker, logger, DATE, batch_id, retries, faults[ticker])
 			faults[ticker] = ticker_obj.fault_dict
 			time.sleep(5)
 

@@ -1,5 +1,5 @@
-from const import DIR, date_today, logger 
 from datetime import datetime, timedelta
+from const import DIR, logger 
 import sqlalchemy as sql
 import pandas as pd
 import numpy as np
@@ -45,7 +45,7 @@ def check_number_of_options(tickers):
 
 		try:
 			
-			df = pd.read_csv(f"{DIR}/financial_data/{date_today}/options/{ticker}_{date_today}.csv")
+			df = pd.read_csv(f"{DIR}/financial_data/{DATE}/options/{ticker}_{DATE}.csv")
 			if len(df) <= quantiles[ticker]:
 				unhealthy_options[ticker] = {
 					'quantile' : quantiles[ticker],
@@ -107,7 +107,7 @@ def check_null_percentage(tickers, data):
 
 		try:
 
-			df = pd.read_csv(f"{DIR}/financial_data/{date_today}/{data}/{ticker}_{date_today}.csv")
+			df = pd.read_csv(f"{DIR}/financial_data/{DATE}/{data}/{ticker}_{DATE}.csv")
 			null_percentage = df.value.isnull().sum() / len(df)
 			null_percentage = np.round(null_percentage, 4)
 
@@ -153,7 +153,7 @@ def check_ohlc(tickers):
 	tickers = tuple(set(tickers))
 	conn.close()
 
-	collected_tickers = os.listdir(f"{DIR}/financial_data/{date_today}/ohlc")
+	collected_tickers = os.listdir(f"{DIR}/financial_data/{DATE}/ohlc")
 	collected_tickers = [ticker.split("_")[0] for ticker in collected_tickers]
 
 	unhealthy_ohlc = {}
