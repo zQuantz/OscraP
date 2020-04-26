@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 
-def send_to_database():
+def index():
 
 	def binarize(x):
 	    q = np.quantile(x, 0.25)

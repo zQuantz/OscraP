@@ -1,16 +1,13 @@
-from const import date_today, DIR
+from const import date_today, DIR, logger
 from google.cloud import storage
+from hashlib import sha256
 import tarfile as tar
 import pandas as pd
 import numpy as np
 import sys, os
 import shutil
 
-storage_client = storage.Client()
-bucket = storage_client.bucket("oscrap_storage")
-date_today = "2020-04-25"
-
-def aggregate_files():
+def aggregate():
 
 	data = {}
 	for folder in os.listdir(f"{DIR}/financial_data/{date_today}"):
@@ -41,7 +38,7 @@ def aggregate_files():
 
 		data[folder].to_csv(f"{DIR}/financial_data/{date_today}/{folder}.csv", index=False)
 
-def compress_files():
+def compress():
 
 	with tar.open(f"{DIR}/financial_data/{date_today}.tar.xz", "x:xz") as tar_file:
 
@@ -53,15 +50,65 @@ def compress_files():
 			filename = f"{DIR}/financial_data/{date_today}/{file}"
 			tar_file.add(filename, os.path.basename(filename))
 
-def remove_folders():
+def send_and_verify():
+
+	max_tries = 5
+	storage_attempts = 0
+
+	while storage_attempts < max_tries:
+
+		try:
+
+			storage_client = storage.Client()
+			bucket = storage_client.bucket("oscrap_storage")
+
+			destination_name = f"equities/{date_today}.tar.xz"
+			blob = bucket.blob(destination_name)
+			blob.upload_from_filename(f"{DIR}/financial_data/{destination_name}")
+			
+			with open(f"{DIR}/financial_data/{destination_name}", "rb") as file:
+				local_hash = sha256(file.read()).hexdigest()
+
+			cloud_hash = sha256(blob.download_as_string()).hexdigest()
+
+			if local_hash != cloud_hash:
+				raise Exception("Hashes do not match. Corrupted File.")
+
+			logger.info(f"Store,Upload,Success,{storage_attempts},,")
+
+			break
+
+		except Exception as e:
+
+			logger.warning(f"Store,Upload,Failure,{storage_attempts},{e},")
+			storage_attempts += 1
+
+def remove():
 
 	for folder in os.listdir(f"{DIR}/financial_data/{date_today}"):
 		folder = f"{DIR}/financial_data/{date_today}/{folder}"
 		if os.path.isdir(folder):
 			shutil.rmtree(folder)
 
+	os.remove(f"{DIR}/financial_data/{date_today}.zip")
+
+def main():
+
+	logger.info(f"SCRAPER,STORE,INITIATED,,")
+	
+	try:
+	
+		aggregate() ; compress()
+		send_and_verify() ; remove()
+		
+		logger.info(f"SCRAPER,STORE,SUCCESS,,")
+
+	except Exception as e:
+
+		logger.warning(f"SCRAPER,STORE,FAILURE,{e},")
+
+	logger.info(f"SCRAPER,STORE,TERMINATED,,")
+
 if __name__ == '__main__':
 
-	aggregate_files()
-	compress_files()
-	remove_folders()
+	main()

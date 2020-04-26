@@ -18,11 +18,12 @@ PARSER = "lxml"
 
 class Ticker():
 
-	def __init__(self, ticker, logger, date_today, retries=None, fault_dict=None):
+	def __init__(self, ticker, logger, date_today, batch_id, retries=None, fault_dict=None):
 
 		self.ticker = ticker
 		self.logger = logger
 		self.date_today = date_today
+		self.batch_id = batch_id
 
 		self.retries = retries
 		self.fault_dict = fault_dict
@@ -30,16 +31,16 @@ class Ticker():
 		if not retries or retries["ohlc"]:
 			try:
 				self.div = self.get_dividends()
-				self.logger.info(f"{ticker},Dividend,Success,")
+				self.logger.info(f"{ticker},{batch_id},Dividend,Success,")
 			except Exception as e:
-				self.logger.warning(f"{ticker},Dividend,Failure,{e}")
+				self.logger.warning(f"{ticker},{batch_id},Dividend,Failure,{e}")
 			self.sleep()
 
 			try:
 				self.get_ohlc()
-				self.logger.info(f"{ticker},OHLC,Success,")
+				self.logger.info(f"{ticker},{batch_id},OHLC,Success,")
 			except Exception as e:
-				self.logger.warning(f"{ticker},OHLC,Failure,{e}")
+				self.logger.warning(f"{ticker},{batch_id},OHLC,Failure,{e}")
 				if e.args[0] == "Fatal":
 					raise Exception("Stale ticker. Data not up-to-date.")
 			self.sleep()
@@ -47,26 +48,26 @@ class Ticker():
 		if not retries or retries['key_stats']:
 			try:
 				self.get_key_stats()
-				self.logger.info(f"{ticker},Key Stats,Success,")
+				self.logger.info(f"{ticker},{batch_id},Key Stats,Success,")
 			except Exception as e:
-				self.logger.warning(f"{ticker},Key Stats,Failure,{e}")
+				self.logger.warning(f"{ticker},{batch_id},Key Stats,Failure,{e}")
 			self.sleep()
 
 		if not retries or retries['analysis']:
 			try:
 				self.get_analysis()
-				self.logger.info(f"{ticker},Analysis,Success,")
+				self.logger.info(f"{ticker},{batch_id},Analysis,Success,")
 			except Exception as e:
-				self.logger.warning(f"{ticker},Analysis,Failure,{e}")
+				self.logger.warning(f"{ticker},{batch_id},Analysis,Failure,{e}")
 			self.sleep()
 
-		if not retries or retries['options']:
+		if ('.TO' not in ticker) and (not retries or retries['options']):
 			try:
 				self.options = []
 				self.get_options()
-				self.logger.info(f"{ticker},Options,Success,")	
+				self.logger.info(f"{ticker},{batch_id},Options,Success,")	
 			except Exception as e:
-				self.logger.warning(f"{ticker},Options,Failure,{e}")
+				self.logger.warning(f"{ticker},{batch_id},Options,Failure,{e}")
 			self.sleep()
 
 	def sleep(self):
@@ -86,7 +87,7 @@ class Ticker():
 			return str_
 		
 		if str_ in ['', 'N/A', '∞']:
-			self.logger.info(f'{self.ticker},Value,{str_},{metric}')
+			self.logger.info(f'{self.ticker},{self.batch_id},Value,{str_},{metric}')
 			return None
 		
 		str_ = str_.replace(',', '').replace('$', '')
@@ -104,11 +105,11 @@ class Ticker():
 	def option_fmt(self, str_number, metric=''):
 	
 		if str_number == '':
-			self.logger.info(f"{self.ticker},Value,'',{metric}")
+			self.logger.info(f"{self.ticker},{self.batch_id},Value,'',{metric}")
 			return 0
 
 		if str_number == 'N/A':
-			self.logger.info(f'{self.ticker},Value,N/A,{metric}')
+			self.logger.info(f'{self.ticker},{self.batch_id},Value,N/A,{metric}')
 			return 0
 
 		for token in ',$%':
@@ -171,7 +172,7 @@ class Ticker():
 		if self.retries:
 
 			self.fault_dict['ohlc']['new_status'] = 1
-			self.logger.info(f"{self.ticker},Re-OHLC,Success,1")
+			self.logger.info(f"{self.ticker},{self.batch_id},Re-OHLC,Success,1")
 
 	def get_options(self):
 
@@ -205,7 +206,7 @@ class Ticker():
 					break
 
 				ctr += 1
-				self.logger.info(f"{self.ticker},Option Download,{ctr}")
+				self.logger.info(f"{self.ticker},{self.batch_id},Option Download,{ctr}")
 				self.sleep()
 
 			return bs, options
@@ -218,7 +219,7 @@ class Ticker():
 			self.sleep()
 
 			expiry, expiry_date = option.get("value"), option.text
-			self.logger.info(f"{self.ticker},Option Expiry,{expiry},{expiry_date.replace(',', '.')}")
+			self.logger.info(f"{self.ticker},{self.batch_id},Option Expiry,{expiry},{expiry_date.replace(',', '.')}")
 
 			dt = datetime.fromtimestamp(int(expiry))
 			expiry_date_fmt = datetime.strptime(expiry_date, named_date_fmt)
@@ -257,7 +258,8 @@ class Ticker():
 
 			self.fault_dict['options']['new_options'] = len(df)
 			delta = self.fault_dict['options']['new_options'] - self.fault_dict['options']['options']
-			self.logger.info(f"{self.ticker},Re-Options,Success,{delta}")
+
+			self.logger.info(f"{self.ticker},{self.batch_id},Re-Options,Success,{delta}")
 
 	def get_key_stats(self):
 
@@ -302,7 +304,8 @@ class Ticker():
 
 			self.fault_dict['key_stats']['new_null_percentage'] = df.value.isnull().sum() / len(df)
 			delta = self.fault_dict['key_stats']['new_null_percentage'] - self.fault_dict['key_stats']['null_percentage']
-			self.logger.info(f"{self.ticker},Re-Key Stats,Success,{delta}")
+			
+			self.logger.info(f"{self.ticker},{self.batch_id},Re-Key Stats,Success,{delta}")
 
 	def get_analysis(self):
 
@@ -361,4 +364,5 @@ class Ticker():
 
 			self.fault_dict['analysis']['new_null_percentage'] = df.value.isnull().sum() / len(df)
 			delta = self.fault_dict['analysis']['new_null_percentage'] - self.fault_dict['analysis']['null_percentage']
-			self.logger.info(f"{self.ticker},Re-Analysis,Success,{delta}")
+			
+			self.logger.info(f"{self.ticker},{self.batch_id},Re-Analysis,Success,{delta}")

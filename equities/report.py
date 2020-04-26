@@ -7,9 +7,10 @@ from email import encoders
 import pandas as pd
 import smtplib, ssl
 import numpy as np
+import shutil
 import os
 
-def send_scraping_report(successful, failures, faults_summary, db_flag, db_stats, indexing_faults):
+def report(title_modifier, successful, failures, faults_summary, db_flags, db_stats, indexing_faults):
 
 	sender_email = "zqretrace@gmail.com"
 	receiver_email = "zqretrace@gmail.com, zach.barillaro@gmail.com, mp0941745@gmail.com, josephfalvo@outlook.com, lucasmduarte17@gmail.com"
@@ -17,9 +18,11 @@ def send_scraping_report(successful, failures, faults_summary, db_flag, db_stats
 	password = "Street1011"
 
 	message = MIMEMultipart("alternative")
-	message["Subject"] = "Web Scraping Summary"
+	message["Subject"] = f"{title_modifier} Web Scraping Summary"
 	message["From"] = sender_email
 	message["To"] = receiver_email
+
+	###############################################################################################
 
 	option_faults_str = ""
 	if len(faults_summary['options']) > 0:
@@ -42,7 +45,7 @@ def send_scraping_report(successful, failures, faults_summary, db_flag, db_stats
 		df = pd.DataFrame(faults_summary['key_stats']).T
 		df['delta'] = df.new_null_percentage - df.null_percentage
 		df.columns = ['Quantile (25%)', 'First Null %', 'Second Null %', 'Delta']
-		key_stats_str = df.to_html()
+		key_stats_faults_str = df.to_html()
 
 	ohlc_faults_str = ""
 	if len(faults_summary['ohlc']) > 0:
@@ -51,13 +54,38 @@ def send_scraping_report(successful, failures, faults_summary, db_flag, db_stats
 		df.columns = ['Status', 'New Status']
 		ohlc_faults_str = df.to_html()
 
-	options_counts, ohlc_counts, analysis_counts, key_stats_counts = db_stats
+	###############################################################################################
+
 	total = successful['options'] + failures['options']
+
+	db_flag_names = ["Failure", "Successful"]
+	db_flags = [db_flag_names[flag] for flag in db_flags]
+
+	starts = [start[0] for start in db_stats[0]]
+	ends = [end[1] for end in db_stats[-1]]
+
+	counts = list(zip(starts, ends))
+	options_counts, ohlc_counts, analysis_counts, key_stats_counts = counts
+
+	adds = [
+		[item[1] - item[0] for item in batch]
+		for batch in db_stats
+	]
+
+	df = pd.DataFrame(adds)
+	df.columns = ['Option Adds', 'OHLC Adds', 'Analysis Adds', 'Key Stats Adds']
+	df = df.set_index([[f"Batch #{i+1}" for i in range(len(df))]])
+
+	df['Indexing Flags'] = db_flags
+	df['Indexing Faults'] = indexing_faults
+	
+	ingestion_str = df.to_html()
+
+	###############################################################################################
 
 	text = f"""
 		Ingestion Summary<br>
-		Database Ingestion: {["Failure", "Success"][db_flag]}<br>
-		Total Indexing Attempts: {indexing_faults + 1}<br>
+		{ingestion_str}<br>
 		<br>
 
 		Options Summary<br>
@@ -92,7 +120,7 @@ def send_scraping_report(successful, failures, faults_summary, db_flag, db_stats
 		New Rows Added: {analysis_counts[1] - analysis_counts[0]}<br>
 		<br>
 
-		Analysis Summary<br>
+		Analysis Fault Summary<br>
 		{analysis_faults_str}<br>
 		<br>
 
@@ -104,14 +132,17 @@ def send_scraping_report(successful, failures, faults_summary, db_flag, db_stats
 		New Rows Added: {key_stats_counts[1] - key_stats_counts[0]}<br>
 		<br>
 
-		Key Statistics Summary<br>
-		{key_stats_str}<br>
+		Key Statistics Fault Summary<br>
+		{key_stats_faults_str}<br>
 		<br>
 
 		See attached for the log file and the collected data.<br>
 	"""
 	message.attach(MIMEText(text, "html"))
 
+	###############################################################################################
+
+	shutil.make_archive(f"{DIR}/financial_data/{date_today}", "zip", f"{DIR}/financial_data/{date_today}")
 	filename = f'{DIR}/financial_data/{date_today}.zip'
 	with open(filename, 'rb') as file:
 		attachment = MIMEBase('application', 'zip')
@@ -131,5 +162,5 @@ def send_scraping_report(successful, failures, faults_summary, db_flag, db_stats
 	with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
 		server.login(sender_email, password)
 		server.sendmail(
-			sender_email, receiver_email_list, message.as_string()
+			sender_email, receiver_email_list[:2], message.as_string()
 	)

@@ -21,5 +21,4 @@ logger.addHandler(fh)
 
 ## Today's Date
 date_today = datetime.today().strftime("%Y-%m-%d")
-date_today = "2020-04-24"
 named_date_fmt = "%B %d, %Y"
