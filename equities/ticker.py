@@ -18,7 +18,7 @@ OHLC = "https://finance.yahoo.com/quote/{ticker}/history"
 SUMMARY = "https://finance.yahoo.com/quote/{ticker}/"
 PARSER = "lxml"
 
-with open(f"{DIR}/static/date.txt", "w") as file:
+with open(f"{DIR}/static/date.txt", "r") as file:
 	DATE = file.read()
 
 NAMED_DATE_FMT = "%B %d, %Y"

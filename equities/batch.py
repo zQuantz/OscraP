@@ -6,7 +6,7 @@ import numpy as np
 import sys, os
 import time
 
-with open(f"{DIR}/static/date.txt", "w") as file:
+with open(f"{DIR}/static/date.txt", "r") as file:
 	DATE = file.read()
 
 def collect_data(batch_id, tickers):
@@ -15,7 +15,7 @@ def collect_data(batch_id, tickers):
 		
 		try:
 
-			Ticker(ticker, logger, DATE, batch_id) ; time.sleep(5)
+			Ticker(ticker, logger, batch_id) ; time.sleep(5)
 			logger.info(f"{ticker},{batch_id},Ticker,Success,")
 
 		except Exception as e:
@@ -37,7 +37,7 @@ def collect_data_again(batch_id, faults):
 				for key in ['analysis', 'key_stats', 'ohlc', 'options']
 			}
 
-			ticker_obj = Ticker(ticker, logger, DATE, batch_id, retries, faults[ticker])
+			ticker_obj = Ticker(ticker, logger, batch_id, retries, faults[ticker])
 			faults[ticker] = ticker_obj.fault_dict
 			time.sleep(5)
 
@@ -53,7 +53,7 @@ def collect_data_again(batch_id, faults):
 
 	return faults
 
-def index_data(batch_id):
+def index_data(batch_id, tickers):
 
 	max_tries = 5
 	indexing_attempts = 0
@@ -62,7 +62,7 @@ def index_data(batch_id):
 		
 		try:
 			
-			db_stats = index()
+			db_stats = index(tickers)
 			db_flag = 1
 			
 			logger.info(f"SCRAPER,{batch_id},INDEXING,SUCCESS,{indexing_attempts}")
@@ -138,7 +138,7 @@ def main(batch_id, tickers):
 	collect_data(batch_id, tickers)
 	faults_summary = fix_faults(batch_id, tickers)
 
-	db_flag, db_stats, indexing_attempts = index_data(batch_id)
+	db_flag, db_stats, indexing_attempts = index_data(batch_id, tickers)
 
 	logger.info(f"SCRAPER,{batch_id},TERMINATED,,")
 

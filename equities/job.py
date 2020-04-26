@@ -137,7 +137,7 @@ def main():
 		indexing_attempts.append(b_indexing_attempt)
 
 		if batch_id == midpoint:
-			success, failure = get_job_success_rate(tickers)
+			success, failure = get_job_success_rates(tickers)
 			report("Partial", success, failure, faults_summary, db_flags, db_stats, indexing_attempts)
 
 	###############################################################################################

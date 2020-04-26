@@ -6,7 +6,7 @@ import pandas as pd
 import sys, os
 import shutil
 
-with open(f"{DIR}/static/date.txt", "w") as file:
+with open(f"{DIR}/static/date.txt", "r") as file:
 	DATE = file.read()
 
 def aggregate():

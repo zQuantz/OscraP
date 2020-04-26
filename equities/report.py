@@ -8,7 +8,7 @@ import smtplib, ssl
 import shutil
 import os
 
-with open(f"{DIR}/static/date.txt", "w") as file:
+with open(f"{DIR}/static/date.txt", "r") as file:
 	DATE = file.read()
 
 def report(title_modifier, successful, failures, faults_summary, db_flags, db_stats, indexing_faults):
@@ -72,7 +72,7 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		[item[1] - item[0] for item in batch]
 		for batch in db_stats
 	]
-
+	
 	df = pd.DataFrame(adds)
 	df.columns = ['Option Adds', 'OHLC Adds', 'Analysis Adds', 'Key Stats Adds']
 	df = df.set_index([[f"Batch #{i+1}" for i in range(len(df))]])
@@ -90,8 +90,8 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		<br>
 
 		Options Summary<br>
-		Successful Tickers: {successful['options']}, {(successful['options'] / total * 100).round(2)}%<br>
-		Failed Tickers: {failures['options']}, {(failures['options'] / total * 100).round(2)}%<br>
+		Successful Tickers: {successful['options']}, {round(successful['options'] / total * 100, 2)}%<br>
+		Failed Tickers: {failures['options']}, {round(failures['options'] / total * 100, 2)}%<br>
 		Starting Row Count: {options_counts[0]}<br>
 		Ending Row Count: {options_counts[1]}<br>
 		New Rows Added: {options_counts[1] - options_counts[0]}<br>
@@ -102,8 +102,8 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		<br>
 
 		OHLC Summary<br>
-		Successful Tickers: {successful['ohlc']}, {(successful['ohlc'] / total * 100).round(2)}%<br>
-		Failed Tickers: {failures['ohlc']}, {(failures['ohlc'] / total * 100).round(2)}%<br>
+		Successful Tickers: {successful['ohlc']}, {round(successful['ohlc'] / total * 100, 2)}%<br>
+		Failed Tickers: {failures['ohlc']}, {round(failures['ohlc'] / total * 100, 2)}%<br>
 		Starting Row Count: {ohlc_counts[0]}<br>
 		Ending Row Count: {ohlc_counts[1]}<br>
 		New Rows Added: {ohlc_counts[1] - ohlc_counts[0]}<br>
@@ -114,8 +114,8 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		<br>
 
 		Analysis Summary<br>
-		Successful Tickers: {successful['analysis']}, {(successful['analysis'] / total * 100).round(2)}%<br>
-		Failed Tickers: {failures['analysis']}, {(failures['analysis'] / total * 100).round(2)}%<br>
+		Successful Tickers: {successful['analysis']}, {round(successful['analysis'] / total * 100, 2)}%<br>
+		Failed Tickers: {failures['analysis']}, {round(failures['analysis'] / total * 100, 2)}%<br>
 		Starting Row Count: {analysis_counts[0]}<br>
 		Ending Row Count: {analysis_counts[1]}<br>
 		New Rows Added: {analysis_counts[1] - analysis_counts[0]}<br>
@@ -126,8 +126,8 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		<br>
 
 		Key Statistics Summary<br>
-		Successful Tickers: {successful['key_stats']}, {(successful['key_stats'] / total * 100).round(2)}%<br>
-		Failed Tickers: {failures['key_stats']}, {(failures['key_stats'] / total * 100).round(2)}%<br>
+		Successful Tickers: {successful['key_stats']}, {round(successful['key_stats'] / total * 100, 2)}%<br>
+		Failed Tickers: {failures['key_stats']}, {round(failures['key_stats'] / total * 100, 2)}%<br>
 		Starting Row Count: {key_stats_counts[0]}<br>
 		Ending Row Count: {key_stats_counts[1]}<br>
 		New Rows Added: {key_stats_counts[1] - key_stats_counts[0]}<br>
