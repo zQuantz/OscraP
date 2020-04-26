@@ -59,7 +59,7 @@ def collect_data():
 def collect_data_again(faults):
 
 	for i, ticker in enumerate(faults):
-		
+
 		try:
 
 			retries = {

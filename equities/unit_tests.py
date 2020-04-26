@@ -126,7 +126,7 @@ def check_ohlc():
 		SELECT
 			DISTINCT(ticker) as tickers
 		FROM
-			equities
+			ohlc
 		WHERE
 			date_current >= {dt.strftime("%Y-%m-%d")}
 	""")

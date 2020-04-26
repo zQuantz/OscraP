@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
+import itertools
 import requests
 import sys, os
 import time
@@ -23,7 +24,6 @@ class Ticker():
 		self.logger = logger
 		self.date_today = date_today
 
-		self.options = []
 		self.retries = retries
 		self.fault_dict = fault_dict
 
@@ -62,6 +62,7 @@ class Ticker():
 
 		if not retries or retries['options']:
 			try:
+				self.options = []
 				self.get_options()
 				self.logger.info(f"{ticker},Options,Success,")	
 			except Exception as e:
@@ -156,7 +157,7 @@ class Ticker():
 
 		ohlc_date = datetime.strptime(prices[0], "%b %d, %Y").strftime("%Y-%m-%d")
 		if ohlc_date != self.date_today:
-			raise Exception(f'Fatal - {bs.find("table", {"data-test" : "historical-prices"})}')
+			raise Exception(f'Fatal')
 
 		cols = ['open', 'high', 'low', 'close', 'adj_close', 'stock_volume']
 		prices = list(map(self.option_fmt, prices[1:], cols))
@@ -166,9 +167,11 @@ class Ticker():
 
 		df = pd.DataFrame([prices], columns = cols)
 		df.to_csv(f"{DIR}/financial_data/{self.date_today}/ohlc/{self.ticker}_{self.date_today}.csv", index=False)
-		self.fault_dict['ohlc']['new_status'] = 1
-		self.logger.info(f"{self.ticker},Re-OHLC,Success,{delta}")
 
+		if self.retries:
+
+			self.fault_dict['ohlc']['new_status'] = 1
+			self.logger.info(f"{self.ticker},Re-OHLC,Success,1")
 
 	def get_options(self):
 
@@ -177,7 +180,7 @@ class Ticker():
 			for row in table.find_all("tr")[1:]:
 				es = [e for e in row.find_all("td")[2:]]
 				self.options.append([
-						date_today,
+						self.date_today,
 						expiry_date_fmt,
 						np.round(max(expiration_days / 252, 0), 6),
 						symbol,
@@ -236,13 +239,17 @@ class Ticker():
 		self.options = pd.DataFrame(self.options, columns = ['date_current', 'expiration_date', 'time_to_expiry',
 															 'option_type', 'strike_price', 'bid', 'ask', 'volume',
 															 'option_price', 'implied_volatility', 'open_interest'])
-		if not retries:
+		if not self.retries:
 		
 			self.options.to_csv(f"{DIR}/financial_data/{self.date_today}/options/{self.ticker}_{self.date_today}.csv", index=False)
 		
 		else:
+			
+			try:
+				old = pd.read_csv(f"{DIR}/financial_data/{self.date_today}/options/{self.ticker}_{self.date_today}.csv")
+			except Exception as e:
+				old = pd.DataFrame()
 
-			old = pd.read_csv(f"{DIR}/financial_data/{self.date_today}/options/{self.ticker}_{self.date_today}.csv")
 			df = pd.concat([old, self.options]).reset_index(drop=True)
 			df = df.drop_duplicates(subset=['expiration_date', 'strike_price', 'option_type'])
 			df = df.sort_values(['expiration_date', 'option_type', 'strike_price'])
@@ -278,13 +285,17 @@ class Ticker():
 
 		df = pd.DataFrame(key_stats, columns = ["feature", "modifier", "value"])
 
-		if not retries:
+		if not self.retries:
 			
 			df.to_csv(f"{DIR}/financial_data/{self.date_today}/key_stats/{self.ticker}_{self.date_today}.csv", index=False)
 
 		else:
+			
+			try:
+				old = pd.read_csv(f"{DIR}/financial_data/{self.date_today}/key_stats/{self.ticker}_{self.date_today}.csv")
+			except Exception as e:
+				old = pd.DataFrame()
 
-			old = pd.read_csv(f"{DIR}/financial_data/{self.date_today}/key_stats/{self.ticker}_{self.date_today}.csv")
 			df = pd.concat([old, df]).reset_index(drop=True)
 			df = df.drop_duplicates()
 			df.to_csv(f"{DIR}/financial_data/{self.date_today}/key_stats/{self.ticker}_{self.date_today}.csv", index=False)
@@ -333,13 +344,17 @@ class Ticker():
 			dfs.append(parse_table(table))
 		df = pd.concat(dfs)
 
-		if not retries:
+		if not self.retries:
 			
 			df.to_csv(f"{DIR}/financial_data/{self.date_today}/analysis/{self.ticker}_{self.date_today}.csv", index=False)
 
 		else:
 
-			old = pd.read_csv(f"{DIR}/financial_data/{self.date_today}/analysis/{self.ticker}_{self.date_today}.csv")
+			try:
+				old = pd.read_csv(f"{DIR}/financial_data/{self.date_today}/analysis/{self.ticker}_{self.date_today}.csv")
+			except Exception as e:
+				old = pd.DataFrame()
+
 			df = pd.concat([old, df]).reset_index(drop=True)
 			df = df.drop_duplicates()
 			df.to_csv(f"{DIR}/financial_data/{self.date_today}/analysis/{self.ticker}_{self.date_today}.csv", index=False)

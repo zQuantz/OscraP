@@ -10,7 +10,7 @@ def send_to_database():
 	    q = np.quantile(x, 0.25)
 	    return not (x.values[-1] >= q)[0]
 
-	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
+	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_test")
 
 	with engine.connect() as conn:
 

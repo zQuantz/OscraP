@@ -41,7 +41,6 @@ def send_scraping_report(successful, failures, faults_summary, db_flag, db_stats
 		
 		df = pd.DataFrame(faults_summary['key_stats']).T
 		df['delta'] = df.new_null_percentage - df.null_percentage
-		print(df)
 		df.columns = ['Quantile (25%)', 'First Null %', 'Second Null %', 'Delta']
 		key_stats_str = df.to_html()
 
