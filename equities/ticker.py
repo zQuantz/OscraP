@@ -228,9 +228,11 @@ class Ticker():
 			expiry, expiry_date = option.get("value"), option.text
 			self.logger.info(f"{self.ticker},{self.batch_id},Option Expiry,{expiry},{expiry_date.replace(',', '.')}")
 
-			dt = datetime.fromtimestamp(int(expiry))
-			expiry_date_fmt = datetime.strptime(expiry_date, NAMED_DATE_FMT)
-			expiration_days = np.busday_count(datetime.now().strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%d"))
+			expiry_date_fmt = datetime.strptime(expiry_date, NAMED_DATE_FMT).strftime("%Y-%m-%d")
+			
+			dt = datetime.fromtimestamp(int(expiry)).strftime("%Y-%m-%d")
+			dt_now = datetime.now().strftime("%Y-%m-%d")
+			expiration_days = np.busday_count(dt_now, dt)
 
 			page = url+f"&date={str(expiry)}"
 			bs, _ = get_page(page)
@@ -247,8 +249,8 @@ class Ticker():
 		self.options = pd.DataFrame(self.options, columns = ['date_current', 'expiration_date', 'time_to_expiry',
 															 'option_type', 'strike_price', 'bid', 'ask', 'volume',
 															 'option_price', 'implied_volatility', 'open_interest'])
-		if not self.retries:
-		
+		if not self.retries and len(self.options) > 0:
+			
 			self.options.to_csv(f"{DIR}/financial_data/{DATE}/options/{self.ticker}_{DATE}.csv", index=False)
 		
 		else:
@@ -259,7 +261,7 @@ class Ticker():
 				old = pd.DataFrame()
 
 			df = pd.concat([old, self.options]).reset_index(drop=True)
-			df = df.drop_duplicates(subset=['expiration_date', 'strike_price', 'option_type'])
+			df = df.drop_duplicates(subset=['expiration_date', 'strike_price', 'option_type'], keep="last")
 			df = df.sort_values(['expiration_date', 'option_type', 'strike_price'])
 			df.to_csv(f"{DIR}/financial_data/{DATE}/options/{self.ticker}_{DATE}.csv", index=False)
 
@@ -367,6 +369,7 @@ class Ticker():
 
 			df = pd.concat([old, df]).reset_index(drop=True)
 			df = df.drop_duplicates()
+
 			df.to_csv(f"{DIR}/financial_data/{DATE}/analysis/{self.ticker}_{DATE}.csv", index=False)
 
 			self.fault_dict['analysis']['new_null_percentage'] = df.value.isnull().sum() / len(df)
