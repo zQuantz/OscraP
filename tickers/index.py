@@ -1,12 +1,15 @@
-from const import date_today, DIR
+from const import CONFIG, DIR
+
 import sqlalchemy as sql
 import pandas as pd
 import os
 
+DATE = CONFIG['date']
+
 def index_instruments():
 
 	dfs = []
-	dir_ = f'{DIR}/instrument_data/{date_today}/'
+	dir_ = f'{DIR}/instrument_data/{DATE}/'
 	for file in os.listdir(dir_):
 		if '.log' in file: continue
 		dfs.append(pd.read_csv(dir_+file))
@@ -15,7 +18,7 @@ def index_instruments():
 	df = df.sort_values('market_cap', ascending=False)
 	df = df[df.market_cap >= 1_000]
 
-	engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
+	engine = sql.create_engine(CONFIG['db_address'])
 	with engine.connect() as conn:
 
 		ticker_codes = df.ticker + ' ' + df.exchange_code
@@ -31,7 +34,7 @@ def index_instruments():
 		query = query.bindparams(ticker_codes=ticker_codes)
 		conn.execute(query)
 
-		df['last_updated'] = date_today
+		df['last_updated'] = DATE
 		df.to_sql("instruments", conn, if_exists="append", index=False)
 
 		query = "SELECT * FROM instruments"

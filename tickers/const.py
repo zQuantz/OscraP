@@ -1,5 +1,8 @@
 from datetime import datetime
+from uuid import getnode
 import logging
+import json
+import sys
 import os
 
 ###################################################################################################
@@ -32,7 +35,26 @@ SQL_TABLE = """
 
 DIR = os.path.realpath(os.path.dirname(__file__))
 
-date_today = datetime.today().strftime("%Y-%m-%d")
-named_date_fmt = "%B %d, %Y"
+###################################################################################################
+
+with open(f"{DIR}/../config.json", "r") as file:
+	CONFIG = json.loads(file.read())
+
+date = datetime.today().strftime("%Y-%m-%d")
+with open(f"{DIR}/../config.json", "w") as file:
+	
+	CONFIG['date'] = date
+
+	if getnode() == 48252843880008:
+		CONFIG['db'] = "compour9_finance"
+	else:
+		CONFIG['db'] = "compour9_test"
+
+	db_address = "mysql://{user}:{password}@{ip}:{port}/{db}"
+	db_address = db_address.format(user=CONFIG['db_user'], password=CONFIG['db_password'],
+								   ip=CONFIG['db_ip'], port=CONFIG['db_port'], db=CONFIG['db'])
+	CONFIG['db_address'] = db_address
+
+	file.write(json.dumps(CONFIG))
 
 ###################################################################################################

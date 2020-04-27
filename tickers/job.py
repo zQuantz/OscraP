@@ -1,4 +1,5 @@
-from const import COLUMNS, DIR, date_today
+from const import COLUMNS, DIR, CONFIG
+
 from alert import email_ticker_table
 from joblib import Parallel, delayed
 from index import index_instruments
@@ -22,6 +23,8 @@ CONVERTER["B"] = CONVERTER["M"] * 1_000
 CONVERTER["T"] = CONVERTER["B"] * 1_000
 for key in CONVERTER.copy():
 	CONVERTER[key.lower()] = CONVERTER[key]
+
+DATE = CONFIG['date']
 
 EXCHANGES = [
 	"American Stock Exchange",
@@ -128,7 +131,7 @@ def get_market_cap(ticker):
 
 def scrape(exchange_code, exchange_name, modifier=''):
 
-	with open(f'{DIR}/instrument_data/{date_today}/{exchange_code}_log.log', 'a') as file:
+	with open(f'{DIR}/instrument_data/{DATE}/{exchange_code}_log.log', 'a') as file:
 
 		stats = []
 		for letter in LETTERS:
@@ -179,14 +182,14 @@ def scrape(exchange_code, exchange_name, modifier=''):
 				time.sleep(SLEEP)
 
 		df = pd.DataFrame(stats, columns = COLUMNS)
-		df.to_csv(f'{DIR}/instrument_data/{date_today}/{exchange_code}_tickers.csv', index=False)
+		df.to_csv(f'{DIR}/instrument_data/{DATE}/{exchange_code}_tickers.csv', index=False)
 
 def main():
 
 	parallel_log("Job Initiated.")
 
 	parallel_log("Creating Directory.")
-	os.mkdir(f"{DIR}/instrument_data/{date_today}")
+	os.mkdir(f"{DIR}/instrument_data/{DATE}")
 
 	parallel_log("Parallel Jobs.")
 	Parallel(n_jobs=2)(
