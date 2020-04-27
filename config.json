@@ -1,0 +1,1 @@
+{"db_user": "compour9_admin", "db_password": "cg123", "db_ip": "74.220.219.153", "db_port": 3306, "gcp_bucket_name": "oscrap_storage", "date": "2020-04-27", "db": "compour9_test", "db_address": "mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_test"}
