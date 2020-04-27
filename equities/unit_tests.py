@@ -1,13 +1,19 @@
-from const import DIR, date_today, logger 
+from const import DIR, CONFIG, logger
+
 from datetime import datetime, timedelta
 import sqlalchemy as sql
 import pandas as pd
 import numpy as np
 import sys, os
 
-engine = sql.create_engine("mysql://compour9_admin:cg123@74.220.219.153:3306/compour9_finance")
+###################################################################################################
 
-def check_number_of_options():
+DATE = CONFIG['date']
+engine = sql.create_engine(CONFIG['db_address'])
+
+###################################################################################################
+
+def check_number_of_options(tickers):
 
 	dt = datetime.now() - timedelta(days=60)
 	query = sql.text(f"""
@@ -18,6 +24,8 @@ def check_number_of_options():
 			options
 		WHERE
 			date_current >= {dt.strftime("%Y-%m-%d")}
+		AND
+			ticker in {tickers}
 		GROUP BY
 			ticker, date_current
 		ORDER BY
@@ -33,12 +41,17 @@ def check_number_of_options():
 	quantiles = df.groupby('ticker').apply(lambda x: np.quantile(x['count'].values, 0.25))
 	quantiles = quantiles.astype(int).to_dict()
 
+	for ticker in quantiles:
+		if ticker in quantiles:
+			continue
+		quantiles[ticker] = 0
+
 	unhealthy_options = {}
 	for ticker in quantiles:
 
 		try:
 			
-			df = pd.read_csv(f"{DIR}/financial_data/{date_today}/options/{ticker}_{date_today}.csv")
+			df = pd.read_csv(f"{DIR}/financial_data/{DATE}/options/{ticker}_{DATE}.csv")
 			if len(df) <= quantiles[ticker]:
 				unhealthy_options[ticker] = {
 					'quantile' : quantiles[ticker],
@@ -61,7 +74,7 @@ def check_number_of_options():
 
 	return unhealthy_options
 
-def check_null_percentage(data):
+def check_null_percentage(tickers, data):
 
 	label = data.replace('_', ' ').split()
 	label = ' '.join(map(str.capitalize, label))
@@ -75,6 +88,8 @@ def check_null_percentage(data):
 			{data}
 		WHERE
 			date_current >= {dt.strftime("%Y-%m-%d")}
+		AND
+			ticker in {tickers}
 		GROUP BY
 			ticker, date_current
 		"""
@@ -88,12 +103,17 @@ def check_null_percentage(data):
 	quantiles = df.groupby('ticker').apply(lambda x: x.null_percentage.quantile(0.25).round(4))
 	quantiles = quantiles.to_dict()
 
+	for ticker in tickers:
+		if ticker in quantiles:
+			continue
+		quantiles[ticker] = 0
+
 	unhealthy_tickers = {}
 	for ticker in quantiles:
 
 		try:
 
-			df = pd.read_csv(f"{DIR}/financial_data/{date_today}/{data}/{ticker}_{date_today}.csv")
+			df = pd.read_csv(f"{DIR}/financial_data/{DATE}/{data}/{ticker}_{DATE}.csv")
 			null_percentage = df.value.isnull().sum() / len(df)
 			null_percentage = np.round(null_percentage, 4)
 
@@ -119,24 +139,27 @@ def check_null_percentage(data):
 
 	return unhealthy_tickers
 
-def check_ohlc():
+def check_ohlc(tickers):
 
 	dt = datetime.now() - timedelta(days=60)
 	query = sql.text(f"""
 		SELECT
 			DISTINCT(ticker) as tickers
 		FROM
-			equities
+			ohlc
 		WHERE
 			date_current >= {dt.strftime("%Y-%m-%d")}
+		AND
+			ticker in {tickers}
 	""")
 	query = query.bindparams()
 
 	conn = engine.connect()
-	tickers = pd.read_sql(query, conn).tickers
+	tickers = pd.read_sql(query, conn).tickers.tolist() + list(tickers)
+	tickers = tuple(set(tickers))
 	conn.close()
 
-	collected_tickers = os.listdir(f"{DIR}/financial_data/{date_today}/ohlc")
+	collected_tickers = os.listdir(f"{DIR}/financial_data/{DATE}/ohlc")
 	collected_tickers = [ticker.split("_")[0] for ticker in collected_tickers]
 
 	unhealthy_ohlc = {}

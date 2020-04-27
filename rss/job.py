@@ -13,7 +13,6 @@ with open(f'{DIR}/data/groups.pkl', 'rb') as file:
 
 def parallel_job(job_id, parallel_group):
 
-
 	def on_close():
 		for group in parallel_group:
 			feed_threads[group].on_close()
