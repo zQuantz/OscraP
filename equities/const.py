@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import getnode
 import logging
 import json
+import sys
 import os
 
 ###################################################################################################
@@ -26,13 +27,13 @@ logger.addHandler(fh)
 
 ###################################################################################################
 
-with open(f"{DIR}/static/config.json", "r") as file:
+with open(f"{DIR}/../config.json", "r") as file:
 	CONFIG = json.loads(file.read())
 
 date = datetime.today().strftime("%Y-%m-%d")
-with open(f"{DIR}/static/config.json", "w") as file:
+with open(f"{DIR}/../config.json", "w") as file:
 	
-	CONFIG['date'] = "2020-04-24"#date
+	CONFIG['date'] = date
 
 	if getnode() == 48252843880008:
 		CONFIG['db'] = "compour9_finance"
