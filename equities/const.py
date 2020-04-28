@@ -35,7 +35,7 @@ with open(f"{DIR}/../config.json", "w") as file:
 	
 	CONFIG['date'] = date
 
-	if socket.hostname() == "gpsvm":
+	if socket.gethostname() == "gpsvm":
 		CONFIG['db'] = "compour9_finance"
 		CONFIG['gcp_bucket_prefix'] = "equities"
 	else:
