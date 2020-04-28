@@ -1,17 +1,23 @@
 from const import COLUMNS, DIR, CONFIG
 
-from alert import email_ticker_table
 from joblib import Parallel, delayed
 from datetime import datetime
 from bs4 import BeautifulSoup
 from index import index
+from alert import alert
+
+import tarfile as tar
 import pandas as pd
 import numpy as np
 import requests
 import sys, os
 
 import string
+import shutil
 import time
+
+sys.path.append(f"{DIR}/../utils")
+from send_to_gcp import send_to_gcp
 
 ###################################################################################################
 
@@ -24,6 +30,8 @@ CONVERTER["T"] = CONVERTER["B"] * 1_000
 for key in CONVERTER.copy():
 	CONVERTER[key.lower()] = CONVERTER[key]
 
+BUCKET_PREFIX = CONFIG['gcp_bucket_prefix']
+BUCKET_NAME = CONFIG['gcp_bucket_name']
 DATE = CONFIG['date']
 
 EXCHANGES = [
@@ -202,8 +210,32 @@ def main():
 	df = index(parallel_log)
 
 	parallel_log("Emailing.")
-	email_ticker_table(df)
-	
+	alert(df)
+
+	###############################################################################################
+
+	parallel_log("Storing.")
+	try:
+
+		df.to_csv(f"{DIR}/instrument_data/{DATE}/{DATE}.csv", index=False)
+
+		with tar.open(f"{DIR}/instrument_data/{DATE}.tar.xz", "x:xz") as tar_file:
+			for file in os.listdir(f"{DIR}/instrument_data/{DATE}"):
+				tar_file.add(f"{DIR}/instrument_data/{DATE}/{file}", arcname=file)
+			tar_file.add(f"{DIR}/err.log", arcname="err.log")
+		
+		send_to_gcp(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz", f"{DIR}/instrument_data/")
+
+		for folder in os.listdir(f"{DIR}/instrument_data"):
+			if os.path.isdir(f"{DIR}/instrument_data/{folder}"):
+				shutil.rmtree(f"{DIR}/instrument_data/{folder}")
+
+	except Exception as e:
+
+		parallel_log(f"Storage Error - {e}")
+
+	###############################################################################################
+
 	parallel_log("Job Terminated.")
 
 if __name__ == '__main__':

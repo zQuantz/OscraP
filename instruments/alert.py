@@ -11,7 +11,7 @@ import os
 
 DATE = CONFIG['date']
 
-def email_ticker_table(df):
+def alert(df):
 
 	sender_email = "zqretrace@gmail.com"
 	receiver_email = "zqretrace@gmail.com, zach.barillaro@gmail.com, mp0941745@gmail.com, josephfalvo@outlook.com, lucasmduarte17@gmail.com"
@@ -25,7 +25,7 @@ def email_ticker_table(df):
 
 	with open(f"{DIR}/instrument_data/{DATE}/log.log", "w") as log_file:
 		for filename in os.listdir(f"{DIR}/instrument_data/{DATE}"):
-			if '.csv' in filename:continue
+			if '.csv' in filename: continue
 			if filename == 'log.log': continue
 			with open(f"{DIR}/instrument_data/{DATE}/"+filename) as file:
 				log_file.write(file.read())

@@ -1,13 +1,13 @@
 from const import CONFIG, DIR
 
-from mysql import connector
+import sqlalchemy as sql
 import pandas as pd
 import os
 
 ###################################################################################################
 
 DATE = CONFIG['date']
-DATE = "2020-03-31"
+DB_ADDRESS = CONFIG['db_address']
 
 ###################################################################################################
 
@@ -23,39 +23,28 @@ def index_instruments():
 	df = df.sort_values('market_cap', ascending=False)
 	df = df[df.market_cap >= 1_000]
 
-	try:
-
-		conn = connector.connect(**CONFIG['bluehost_database'])
+	with sql.create_engine(DB_ADDRESS).connect() as conn:
 
 		ticker_codes = df.ticker + ' ' + df.exchange_code
-		ticker_codes = tuple(ticker_codes.values)
+		ticker_codes = ticker_codes.values.tolist()
 
-		query = f"""
+		query = sql.text(f"""
 			DELETE FROM
 				instruments
 			WHERE
-				CONCAT(ticker, " ", exchange_code) in {ticker_codes};
+				CONCAT(ticker, " ", exchange_code) in :ticker_codes
 			"""
-
-		cursor = conn.cursor()
-		cursor.execute(query)
+		)
+		query = query.bindparams(ticker_codes=ticker_codes)
+		conn.execute(query)
 
 		df['last_updated'] = DATE
-		df.to_sql("compour9_test.instruments", conn, if_exists="append", index=False)
-
-		print("This.")
+		df.to_sql("instruments", conn, if_exists="append", index=False)
 
 		query = "SELECT * FROM instruments"
 		df = pd.read_sql(query, conn)
 		df = df.sort_values('market_cap', ascending=False)
 		df = df.reset_index(drop=True)
-
-	except Exception as e:
-
-		conn.close()
-		raise Exception(f"MySQL Connection Error - {e}")
-
-	conn.close()
 
 	return df
 

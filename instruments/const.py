@@ -47,8 +47,10 @@ with open(f"{DIR}/../config.json", "w") as file:
 
 	if socket.gethostname() == "gpsvm":
 		CONFIG['db'] = "compour9_finance"
+		CONFIG['gcp_bucket_prefix'] = "instruments"
 	else:
 		CONFIG['db'] = "compour9_test"
+		CONFIG['gcp_bucket_prefix'] = "tmp"
 
 	file.write(json.dumps(CONFIG))
 
