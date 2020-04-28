@@ -9,6 +9,7 @@ import shutil
 
 ###################################################################################################
 
+BUCKET_PREFIX = CONFIG['gcp_bucket_prefix']
 BUCKET_NAME = CONFIG['gcp_bucket_name']
 DATE = CONFIG['date']
 
@@ -69,7 +70,7 @@ def send_and_verify():
 			storage_client = storage.Client()
 			bucket = storage_client.bucket(BUCKET_NAME)
 
-			destination_name = f"{DATE}.tar.xz"
+			destination_name = f"{BUCKET_PREFIX}/{DATE}.tar.xz"
 			blob = bucket.blob(destination_name)
 			blob.upload_from_filename(f"{DIR}/financial_data/{destination_name}")
 			
@@ -89,6 +90,9 @@ def send_and_verify():
 
 			logger.warning(f"Store,Upload,Failure,{storage_attempts},{e},")
 			storage_attempts += 1
+
+	if storage_attempts >= max_tries:
+		raise Exception("Too Many Storage Attempts.")
 
 def remove():
 

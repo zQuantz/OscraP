@@ -1,4 +1,4 @@
-from const import DIR, CONFIG
+from const import DIR, CONFIG, COUNT_QUERY
 
 import sqlalchemy as sql
 import pandas as pd
@@ -13,65 +13,61 @@ DATE = CONFIG['date']
 
 def index(tickers):
 
-	engine = sql.create_engine(DB_ADDRESS)
+	options, ohlc = [], []
+	analysis, key_stats = [], []
 
-	with engine.connect() as conn:
+	for file in os.listdir(f'{DIR}/financial_data/{DATE}/options'):
 
-		options_pre = conn.execute("SELECT COUNT(*) FROM options;").fetchone()[0]
-		ohlc_pre = conn.execute("SELECT COUNT(*) FROM ohlc;").fetchone()[0]
-		analysis_pre = conn.execute("SELECT COUNT(*) FROM analysis;").fetchone()[0]
-		key_stats_pre = conn.execute("SELECT COUNT(*) FROM key_stats;").fetchone()[0]
+		ticker = file.split('_')[0]
+		if ticker not in tickers:
+			continue
 
-		options, ohlc = [], []
-		analysis, key_stats = [], []
+		df = pd.read_csv(f'{DIR}/financial_data/{DATE}/options/{file}')
+		df['ticker'] = ticker
+		df['option_id'] = (df.ticker + ' ' + df.expiration_date + ' ' + df.option_type
+						  + df.strike_price.round(2).astype(str))
+		options.append(df)
 
-		for file in os.listdir(f'{DIR}/financial_data/{DATE}/options'):
+	for file in os.listdir(f'{DIR}/financial_data/{DATE}/ohlc'):
 
-			ticker = file.split('_')[0]
-			if ticker not in tickers:
-				continue
+		ticker = file.split('_')[0]
+		if ticker not in tickers:
+			continue
 
-			df = pd.read_csv(f'{DIR}/financial_data/{DATE}/options/{file}')
-			df['ticker'] = ticker
-			df['option_id'] = (df.ticker + ' ' + df.expiration_date + ' ' + df.option_type
-							  + df.strike_price.round(2).astype(str))
-			options.append(df)
+		ticker = file.split('_')[0]
+		df = pd.read_csv(f'{DIR}/financial_data/{DATE}/ohlc/{file}')
+		df['ticker'] = ticker
 
-		for file in os.listdir(f'{DIR}/financial_data/{DATE}/ohlc'):
+		ohlc.append(df.iloc[:1, :])
 
-			ticker = file.split('_')[0]
-			if ticker not in tickers:
-				continue
+	for file in os.listdir(f'{DIR}/financial_data/{DATE}/analysis'):
 
-			ticker = file.split('_')[0]
-			df = pd.read_csv(f'{DIR}/financial_data/{DATE}/ohlc/{file}')
-			df['ticker'] = ticker
+		ticker = file.split('_')[0]
+		if ticker not in tickers:
+			continue
 
-			ohlc.append(df.iloc[:1, :])
+		ticker = file.split('_')[0]
+		df = pd.read_csv(f'{DIR}/financial_data/{DATE}/analysis/{file}')
+		df['ticker'] = ticker
+		df['date_current'] = DATE
+		analysis.append(df)
 
-		for file in os.listdir(f'{DIR}/financial_data/{DATE}/analysis'):
+	for file in os.listdir(f'{DIR}/financial_data/{DATE}/key_stats'):
 
-			ticker = file.split('_')[0]
-			if ticker not in tickers:
-				continue
+		ticker = file.split('_')[0]
+		if ticker not in tickers:
+			continue
 
-			ticker = file.split('_')[0]
-			df = pd.read_csv(f'{DIR}/financial_data/{DATE}/analysis/{file}')
-			df['ticker'] = ticker
-			df['date_current'] = DATE
-			analysis.append(df)
+		ticker = file.split('_')[0]
+		df = pd.read_csv(f'{DIR}/financial_data/{DATE}/key_stats/{file}')
+		df['ticker'] = ticker
+		df['date_current'] = DATE
+		key_stats.append(df)
 
-		for file in os.listdir(f'{DIR}/financial_data/{DATE}/key_stats'):
+	with sql.create_engine(DB_ADDRESS).connect() as conn:
 
-			ticker = file.split('_')[0]
-			if ticker not in tickers:
-				continue
-
-			ticker = file.split('_')[0]
-			df = pd.read_csv(f'{DIR}/financial_data/{DATE}/key_stats/{file}')
-			df['ticker'] = ticker
-			df['date_current'] = DATE
-			key_stats.append(df)
+		count_df = pd.read_sql(COUNT_QUERY, conn)
+		count_df.columns = ['table', 'pre']
 
 		if len(options) > 0:
 			options = pd.concat(options)
@@ -89,9 +85,6 @@ def index(tickers):
 			key_stats = pd.concat(key_stats)
 			key_stats.to_sql(name='key_stats', con=conn, if_exists='append', index=False, chunksize=10_000)
 
-		options_post = conn.execute("SELECT COUNT(*) FROM options;").fetchone()[0]
-		ohlc_post = conn.execute("SELECT COUNT(*) FROM ohlc;").fetchone()[0]
-		analysis_post = conn.execute("SELECT COUNT(*) FROM analysis;").fetchone()[0]
-		key_stats_post = conn.execute("SELECT COUNT(*) FROM key_stats;").fetchone()[0]
+		count_df['post'] = pd.read_sql(COUNT_QUERY, conn).iloc[:, 1]
 
-	return [(options_pre, options_post), (ohlc_pre, ohlc_post), (analysis_pre, analysis_post), (key_stats_pre, key_stats_post)]
+	return list(map(tuple, count_df.iloc[:, 1:].values))
