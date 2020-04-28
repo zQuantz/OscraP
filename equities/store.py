@@ -7,6 +7,9 @@ import pandas as pd
 import sys, os
 import shutil
 
+sys.path.append(f"{DIR}/../utils")
+from send_to_gcp import send_to_gcp
+
 ###################################################################################################
 
 BUCKET_PREFIX = CONFIG['gcp_bucket_prefix']
@@ -58,43 +61,6 @@ def compress():
 			filename = f"{DIR}/financial_data/{DATE}/{file}"
 			tar_file.add(filename, os.path.basename(filename))
 
-def send_and_verify():
-
-	max_tries = 5
-	storage_attempts = 0
-
-	while storage_attempts < max_tries:
-
-		try:
-
-			storage_client = storage.Client()
-			bucket = storage_client.bucket(BUCKET_NAME)
-
-			filename = f"{DATE}.tar.xz"
-			blob = bucket.blob(f"{BUCKET_PREFIX}/{filename}")
-			blob.upload_from_filename(f"{DIR}/financial_data/{filename}")
-			
-			with open(f"{DIR}/financial_data/{filename}", "rb") as file:
-				local_hash = sha256(file.read()).hexdigest()
-
-			cloud_hash = sha256(blob.download_as_string()).hexdigest()
-
-			if local_hash != cloud_hash:
-				blob.delete()
-				raise Exception("Hashes do not match. Corrupted File.")
-
-			logger.info(f"Store,Upload,Success,{storage_attempts},,")
-
-			break
-
-		except Exception as e:
-
-			logger.warning(f"Store,Upload,Failure,{storage_attempts},{e},")
-			storage_attempts += 1
-
-	if storage_attempts >= max_tries:
-		raise Exception("Too Many Storage Attempts.")
-
 def remove():
 
 	for folder in os.listdir(f"{DIR}/financial_data/{DATE}"):
@@ -111,7 +77,11 @@ def main():
 	try:
 	
 		aggregate() ; compress()
-		send_and_verify() ; remove()
+
+		send_to_gcp(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz",
+				    f"{DIR}/financial_data/", logger=logger)
+		
+		remove()
 		
 		logger.info(f"SCRAPER,STORE,SUCCESS,,")
 
