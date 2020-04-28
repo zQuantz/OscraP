@@ -1,12 +1,15 @@
+from const import CONFIG, DIR
+
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 
-from const import date_today, DIR
 import smtplib, ssl
 import os
+
+DATE = CONFIG['date']
 
 def email_ticker_table(df):
 
@@ -20,18 +23,18 @@ def email_ticker_table(df):
 	message["From"] = sender_email
 	message["To"] = receiver_email
 
-	with open(f"{DIR}/instrument_data/{date_today}/log.log", "w") as log_file:
-		for filename in os.listdir(f"{DIR}/instrument_data/{date_today}"):
+	with open(f"{DIR}/instrument_data/{DATE}/log.log", "w") as log_file:
+		for filename in os.listdir(f"{DIR}/instrument_data/{DATE}"):
 			if '.csv' in filename:continue
 			if filename == 'log.log': continue
-			with open(f"{DIR}/instrument_data/{date_today}/"+filename) as file:
+			with open(f"{DIR}/instrument_data/{DATE}/"+filename) as file:
 				log_file.write(file.read())
-			os.unlink(f"{DIR}/instrument_data/{date_today}/"+filename)
+			os.unlink(f"{DIR}/instrument_data/{DATE}/"+filename)
 
-	filename = f"{DIR}/instrument_data/{date_today}/log.log"
+	filename = f"{DIR}/instrument_data/{DATE}/log.log"
 	with open(filename, 'r') as file:
 		attachment = MIMEText(file.read())
-	attachment.add_header('Content-Disposition', 'attachment', filename=filename)  
+	attachment.add_header('Content-Disposition', 'attachment', filename=filename)
 	message.attach(attachment)
 
 	message.attach(MIMEText(df.to_html(), "html"))

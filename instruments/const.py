@@ -1,5 +1,8 @@
 from datetime import datetime
 import logging
+import socket
+import json
+import sys
 import os
 
 ###################################################################################################
@@ -32,7 +35,21 @@ SQL_TABLE = """
 
 DIR = os.path.realpath(os.path.dirname(__file__))
 
-date_today = datetime.today().strftime("%Y-%m-%d")
-named_date_fmt = "%B %d, %Y"
+###################################################################################################
+
+with open(f"{DIR}/../config.json", "r") as file:
+	CONFIG = json.loads(file.read())
+
+date = datetime.today().strftime("%Y-%m-%d")
+with open(f"{DIR}/../config.json", "w") as file:
+	
+	CONFIG['date'] = date
+
+	if socket.gethostname() == "gpsvm":
+		CONFIG['db'] = "compour9_finance"
+	else:
+		CONFIG['db'] = "compour9_test"
+
+	file.write(json.dumps(CONFIG))
 
 ###################################################################################################

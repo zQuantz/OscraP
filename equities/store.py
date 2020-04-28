@@ -9,6 +9,7 @@ import shutil
 
 ###################################################################################################
 
+BUCKET_PREFIX = CONFIG['gcp_bucket_prefix']
 BUCKET_NAME = CONFIG['gcp_bucket_name']
 DATE = CONFIG['date']
 
@@ -69,16 +70,17 @@ def send_and_verify():
 			storage_client = storage.Client()
 			bucket = storage_client.bucket(BUCKET_NAME)
 
-			destination_name = f"{DATE}.tar.xz"
-			blob = bucket.blob(destination_name)
-			blob.upload_from_filename(f"{DIR}/financial_data/{destination_name}")
+			filename = f"{DATE}.tar.xz"
+			blob = bucket.blob(f"{BUCKET_PREFIX}/{filename}")
+			blob.upload_from_filename(f"{DIR}/financial_data/{filename}")
 			
-			with open(f"{DIR}/financial_data/{destination_name}", "rb") as file:
+			with open(f"{DIR}/financial_data/{filename}", "rb") as file:
 				local_hash = sha256(file.read()).hexdigest()
 
 			cloud_hash = sha256(blob.download_as_string()).hexdigest()
 
 			if local_hash != cloud_hash:
+				blob.delete()
 				raise Exception("Hashes do not match. Corrupted File.")
 
 			logger.info(f"Store,Upload,Success,{storage_attempts},,")
@@ -89,6 +91,9 @@ def send_and_verify():
 
 			logger.warning(f"Store,Upload,Failure,{storage_attempts},{e},")
 			storage_attempts += 1
+
+	if storage_attempts >= max_tries:
+		raise Exception("Too Many Storage Attempts.")
 
 def remove():
 

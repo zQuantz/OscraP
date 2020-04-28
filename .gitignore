@@ -7,3 +7,4 @@ scraper.log
 log.log
 rss/rss.log
 err.log
+config.json
