@@ -63,8 +63,8 @@ def compress():
 
 def remove():
 
-	for folder in os.listdir(f"{DIR}/financial_data/{DATE}"):
-		folder = f"{DIR}/financial_data/{DATE}/{folder}"
+	for folder in os.listdir(f"{DIR}/financial_data/"):
+		folder = f"{DIR}/financial_data/{folder}"
 		if os.path.isdir(folder):
 			shutil.rmtree(folder)
 
