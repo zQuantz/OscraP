@@ -7,6 +7,7 @@ equities/utils/tmp
 equities/utils/*.tar.xz
 equities/scraper.log
 equities/log.log
+equities/err.log
 
 rss/rss.log
 
