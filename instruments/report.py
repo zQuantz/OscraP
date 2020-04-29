@@ -11,7 +11,7 @@ import os
 
 DATE = CONFIG['date']
 
-def alert(df):
+def report(df):
 
 	sender_email = "zqretrace@gmail.com"
 	receiver_email = "zqretrace@gmail.com, zach.barillaro@gmail.com, mp0941745@gmail.com, josephfalvo@outlook.com, lucasmduarte17@gmail.com"

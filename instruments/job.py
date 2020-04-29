@@ -3,12 +3,11 @@ from const import COLUMNS, DIR, CONFIG
 from joblib import Parallel, delayed
 from datetime import datetime
 from bs4 import BeautifulSoup
+from report import report
 from index import index
-from alert import alert
 
 import tarfile as tar
 import pandas as pd
-import numpy as np
 import requests
 import sys, os
 
@@ -179,7 +178,7 @@ def scrape(exchange_code, exchange_name, modifier=''):
 					sector,
 					industry,
 					instrument_type,
-					np.round(market_cap, 3),
+					round(market_cap, 3),
 				])
 
 				log_entry = list(map(str, stats[-1]))
@@ -240,4 +239,7 @@ def main():
 
 if __name__ == '__main__':
 
-	main()
+	try:
+		main()
+	except Exception as e:
+		parallel_log(f"Main Job Error - {e}")
