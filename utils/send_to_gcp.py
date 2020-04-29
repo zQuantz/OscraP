@@ -4,10 +4,10 @@ from hashlib import sha256
 class DummyLogger():
 
 	def warning(self, str_):
-		pass
+		print(str_)
 
 	def info(self, str_):
-		pass
+		print(str_)
 
 def send_to_gcp(bucket_prefix, bucket_name, filename, filepath, logger=None):
 
@@ -44,7 +44,6 @@ def send_to_gcp(bucket_prefix, bucket_name, filename, filepath, logger=None):
 
 		except Exception as e:
 
-			print(e)
 			logger.warning(f"Store,Upload,Failure,{storage_attempts},{e},")
 			storage_attempts += 1
 
