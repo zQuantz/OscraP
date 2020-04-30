@@ -19,7 +19,7 @@ def index_instruments():
 		if '.log' in file: continue
 		dfs.append(pd.read_csv(dir_+file))
 
-	df = pd.concat(dfs).dropna()
+	df = pd.concat(dfs, sort=False).dropna()
 	df = df.sort_values('market_cap', ascending=False)
 	df = df[df.market_cap >= 1_000]
 

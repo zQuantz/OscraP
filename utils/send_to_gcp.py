@@ -1,13 +1,6 @@
+from dummy_logger import DummyLogger
 from google.cloud import storage
 from hashlib import sha256
-
-class DummyLogger():
-
-	def warning(self, str_):
-		print(str_)
-
-	def info(self, str_):
-		print(str_)
 
 def send_to_gcp(bucket_prefix, bucket_name, filename, filepath, logger=None):
 

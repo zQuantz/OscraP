@@ -5,7 +5,6 @@ from store import main as store
 from datetime import datetime
 from ticker import Ticker
 from report import report
-from uuid import getnode
 import sqlalchemy as sql
 import pandas as pd
 import sys, os

@@ -1,13 +1,11 @@
-from const import DIR, CONFIG
-
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
+from const import DIR, CONFIG, logger
 import pandas as pd
-import smtplib, ssl
 import shutil
+import sys
 import os
+
+sys.path.append(f"{DIR}/../utils")
+from send_email import send_email
 
 ###################################################################################################
 
@@ -16,16 +14,6 @@ DATE = CONFIG['date']
 ###################################################################################################
 
 def report(title_modifier, successful, failures, faults_summary, db_flags, db_stats, indexing_faults):
-
-	sender_email = "zqretrace@gmail.com"
-	receiver_email = "zqretrace@gmail.com, zach.barillaro@gmail.com, mp0941745@gmail.com, josephfalvo@outlook.com, lucasmduarte17@gmail.com"
-	receiver_email_list = ["zqretrace@gmail.com", "zach.barillaro@gmail.com", "mp0941745@gmail.com", "josephfalvo@outlook.com", "lucasmduarte17@gmail.com"]
-	password = CONFIG['email_password']
-
-	message = MIMEMultipart("alternative")
-	message["Subject"] = f"{title_modifier} Web Scraping Summary"
-	message["From"] = sender_email
-	message["To"] = receiver_email
 
 	###############################################################################################
 
@@ -88,7 +76,7 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 
 	###############################################################################################
 
-	text = f"""
+	body = f"""
 		Ingestion Summary<br>
 		{ingestion_str}<br>
 		<br>
@@ -143,29 +131,27 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 
 		See attached for the log file and the collected data.<br>
 	"""
-	message.attach(MIMEText(text, "html"))
 
 	###############################################################################################
 
+	attachments = []
+
 	shutil.make_archive(f"{DIR}/financial_data/{DATE}", "zip", f"{DIR}/financial_data/{DATE}")
 	filename = f'{DIR}/financial_data/{DATE}.zip'
-	with open(filename, 'rb') as file:
-		attachment = MIMEBase('application', 'zip')
-		attachment.set_payload(file.read())
-	encoders.encode_base64(attachment)
-	attachment.add_header('Content-Disposition', 'attachment', filename=filename)           
-	message.attach(attachment)
+	attachments.append({
+		"ContentType" : "application/zip",
+		"filename" : f"{DATE}.zip",
+		"filepath" : f"{DIR}/financial_data"
+	})
 
 	os.system(f"bash {DIR}/utils/truncate_log_file.sh")
 	filename = f'{DIR}/log.log'
-	with open(filename, 'r') as file:
-		attachment = MIMEText(file.read())
-	attachment.add_header('Content-Disposition', 'attachment', filename=filename)           
-	message.attach(attachment)
+	attachments.append({
+		"ContentType" : "plain/text",
+		"filename" : f"log.log",
+		"filepath" : f"{DIR}"
+	})
 
-	context = ssl.create_default_context()
-	with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
-		server.login(sender_email, password)
-		server.sendmail(
-			sender_email, receiver_email_list[:2], message.as_string()
-	)
+	###############################################################################################
+
+	send_email(CONFIG, f"{title_modifier} Web Scraping Summary", body, attachments, logger)

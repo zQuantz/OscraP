@@ -209,7 +209,7 @@ def main():
 	df = index(parallel_log)
 
 	parallel_log("Emailing.")
-	alert(df)
+	report(df)
 
 	###############################################################################################
 
