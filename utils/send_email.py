@@ -78,10 +78,12 @@ def send_email(config, subject, body, attachments, logger=None):
 
 			if status == 200:
 				break
+			else:
+				logger.warning(f"Email Status Error. {status} - {response}")
 
 		except Exception as e:
 
-			logger.warning(f"Emailing Attempt Error. {e} - {response}")
+			logger.warning(f"Emailing Attempt Error. {e}")
 
 		email_attempts += 1
 
