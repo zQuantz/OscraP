@@ -8,9 +8,9 @@ def encode_text(filename, filepath):
 	with open(f"{filepath}/{filename}", "r") as file:
 		content = file.read()
 
-	content = content.encode("ascii")
+	content = content.encode()
 	content = base64.b64encode(content)
-	content = content.decode("ascii")
+	content = content.decode()
 
 	return {
 		"ContentType" : "text/plain",
