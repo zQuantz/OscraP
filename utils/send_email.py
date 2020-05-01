@@ -58,7 +58,7 @@ def send_email(config, subject, body, attachments, logger=None):
 
 				if attachment['ContentType'] == "plain/text":
 					b64_attachments.append(encode_text(filename, filepath))
-				elif attachment['ContentType'] == "applicaion/zip":
+				elif attachment['ContentType'] == "application/zip":
 					b64_attachments.append(encode_zip(filename, filepath))
 
 			data = {
