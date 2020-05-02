@@ -20,8 +20,8 @@ def encode_text(filename, filepath):
 
 def encode_zip(filename, filepath):
 
-	with open(f"{filename}/{filepath}.b64", "wb+") as b64_file:
-		with open(f"{filename}/{filepath}", "rb") as zip_file:
+	with open(f"{filepath}/{filename}.b64", "wb+") as b64_file:
+		with open(f"{filepath}/{filename}", "rb") as zip_file:
 			base64.encode(zip_file, b64_file)
 		b64_file.seek(0)
 		content = b64_file.read()
