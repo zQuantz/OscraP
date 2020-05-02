@@ -8,7 +8,6 @@ from index import index
 
 import tarfile as tar
 import pandas as pd
-import requests
 import sys, os
 
 import string
@@ -17,6 +16,7 @@ import time
 
 sys.path.append(f"{DIR}/../utils")
 from send_to_gcp import send_to_gcp
+from request import request
 
 ###################################################################################################
 
@@ -41,7 +41,6 @@ EXCHANGES = [
 ]
 
 LETTERS = sorted(set(string.ascii_letters.lower()))
-HEADERS = { 'User-Agent' : 'Mozilla/5.0 (iPhone; CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B137 Safari/601.1'}
 YAHOO_PROFILE = "https://ca.finance.yahoo.com/quote/{TICKER}/profile?p={TICKER}"
 YAHOO_QUOTE = "https://ca.finance.yahoo.com/quote/{TICKER}/?p={TICKER}"
 URL = "http://eoddata.com/{INDEX}/{EXCHANGE}/{SYMBOL}.htm"
@@ -58,8 +57,8 @@ def parallel_log(msg):
 def get_bs_obj(index, exchange, symbol):
 
 	url = URL.format(INDEX=index, EXCHANGE=exchange, SYMBOL=symbol)
-	page = requests.get(url, headers=HEADERS)
-	return BeautifulSoup(page.text, features=FEATURES)
+	page = request(CONFIG, url)
+	return BeautifulSoup(page.content, features=FEATURES)
 
 def get_exchanges():
 
@@ -80,7 +79,7 @@ def get_exchanges():
 def get_sector_and_industry(ticker):
 
 	url = YAHOO_PROFILE.format(TICKER=ticker)
-	page = requests.get(url, headers=HEADERS)
+	page = request(CONFIG, url)
 	page = BeautifulSoup(page.content, features=FEATURES)
 
 	if page.find("span", text="Fund Overview"):
@@ -108,7 +107,7 @@ def get_sector_and_industry(ticker):
 def get_market_cap(ticker):
 
 	url = YAHOO_QUOTE.format(TICKER=ticker)
-	page = requests.get(url, headers=HEADERS)
+	page = request(CONFIG, url)
 	page = BeautifulSoup(page.content, features=FEATURES)
 
 	if page.find("span", text="Net Assets"):

@@ -5,13 +5,14 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
 import itertools
-import requests
 import sys, os
 import time
 
+sys.path.append(f"{DIR}/../utils")
+from request import request
+
 ###################################################################################################
 
-headers_mobile = { 'User-Agent' : 'Mozilla/5.0 (iPhone; CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B137 Safari/601.1'}
 ANALYSIS = "https://ca.finance.yahoo.com/quote/{ticker}/analysis?p={ticker}"
 STATS = "https://finance.yahoo.com/quote/{ticker}/key-statistics?p={ticker}"
 OPTIONS = "https://finance.yahoo.com/quote/{ticker}/options?p={ticker}"
@@ -78,6 +79,7 @@ class Ticker():
 			self.sleep()
 
 	def sleep(self):
+
 		time.sleep(0.5)
 
 	def fmt(self, str_, metric=''):
@@ -140,8 +142,8 @@ class Ticker():
 
 	def get_dividends(self):
 
-		response = requests.get(SUMMARY.format(ticker = self.ticker), headers = headers_mobile)
-		bs = BeautifulSoup(response.text, PARSER)
+		url = SUMMARY.format(ticker = self.ticker)
+		bs = BeautifulSoup(request(CONFIG, url, self.logger).content, PARSER)
 
 		table = bs.find_all("table")[1]
 		div = table.find("td", {"data-test" : "DIVIDEND_AND_YIELD-value"})
@@ -156,8 +158,8 @@ class Ticker():
 
 	def get_ohlc(self):
 
-		ohlc = OHLC.format(ticker = self.ticker)
-		bs = BeautifulSoup(requests.get(ohlc, headers = headers_mobile).content, PARSER)
+		url = OHLC.format(ticker = self.ticker)
+		bs = BeautifulSoup(request(CONFIG, url, self.logger).content, PARSER)
 
 		prices = bs.find("table", {"data-test" : "historical-prices"})
 		prices = prices.find_all("tr")[1]
@@ -206,7 +208,7 @@ class Ticker():
 			ctr, max_ctr = 0, 3
 			while (ctr < max_ctr):
 				
-				bs = BeautifulSoup(requests.get(url, headers = headers_mobile).text, PARSER)
+				bs = BeautifulSoup(request(CONFIG, url, self.logger).content, PARSER)
 				options = bs.find_all("option")
 
 				if len(options) != 0:
@@ -279,7 +281,7 @@ class Ticker():
 			return main_div.find_all("td")
 
 		url = STATS.format(ticker = self.ticker)
-		bs = requests.get(url, headers=headers_mobile).content
+		bs = request(CONFIG, url, self.logger).content
 		bs = BeautifulSoup(bs, PARSER)
 
 		tds = get_tds(bs, "Financial Highlights")
@@ -347,7 +349,7 @@ class Ticker():
 			return df[['category', 'feature', 'feature_two', 'modifier', 'value']]
 
 		url = ANALYSIS.format(ticker = self.ticker)
-		bs = requests.get(url, headers=headers_mobile).content
+		bs = request(CONFIG, url, self.logger).content
 		bs = BeautifulSoup(bs, PARSER)
 
 		dfs = []
