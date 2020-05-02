@@ -143,7 +143,7 @@ class Ticker():
 	def get_dividends(self):
 
 		url = SUMMARY.format(ticker = self.ticker)
-		bs = BeautifulSoup(request(CONFIG, url).content, PARSER)
+		bs = BeautifulSoup(request(CONFIG, url, self.logger).content, PARSER)
 
 		table = bs.find_all("table")[1]
 		div = table.find("td", {"data-test" : "DIVIDEND_AND_YIELD-value"})
@@ -159,7 +159,7 @@ class Ticker():
 	def get_ohlc(self):
 
 		url = OHLC.format(ticker = self.ticker)
-		bs = BeautifulSoup(request(CONFIG, url).content, PARSER)
+		bs = BeautifulSoup(request(CONFIG, url, self.logger).content, PARSER)
 
 		prices = bs.find("table", {"data-test" : "historical-prices"})
 		prices = prices.find_all("tr")[1]
@@ -208,7 +208,7 @@ class Ticker():
 			ctr, max_ctr = 0, 3
 			while (ctr < max_ctr):
 				
-				bs = BeautifulSoup(request(CONFIG, url).content, PARSER)
+				bs = BeautifulSoup(request(CONFIG, url, self.logger).content, PARSER)
 				options = bs.find_all("option")
 
 				if len(options) != 0:
@@ -281,7 +281,7 @@ class Ticker():
 			return main_div.find_all("td")
 
 		url = STATS.format(ticker = self.ticker)
-		bs = request(CONFIG, url).content
+		bs = request(CONFIG, url, self.logger).content
 		bs = BeautifulSoup(bs, PARSER)
 
 		tds = get_tds(bs, "Financial Highlights")
@@ -349,7 +349,7 @@ class Ticker():
 			return df[['category', 'feature', 'feature_two', 'modifier', 'value']]
 
 		url = ANALYSIS.format(ticker = self.ticker)
-		bs = request(CONFIG, url).content
+		bs = request(CONFIG, url, self.logger).content
 		bs = BeautifulSoup(bs, PARSER)
 
 		dfs = []
