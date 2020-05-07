@@ -59,6 +59,10 @@ class Ticker():
 				self.logger.info(f"{ticker},{batch_id},Key Stats,Success,")
 			except Exception as e:
 				self.logger.warning(f"{ticker},{batch_id},Key Stats,Failure,{e}")
+				try:
+					self.logger.warning(f"{ticker},{batch_id},Key Stats,Failure,{self.bs}")
+				except:
+					pass
 			self.sleep()
 
 		if not retries or retries['analysis']:
@@ -282,6 +286,7 @@ class Ticker():
 
 		url = STATS.format(ticker = self.ticker)
 		bs = request(CONFIG, url, self.logger).content
+		self.bs = bs
 		bs = BeautifulSoup(bs, PARSER)
 
 		tds = get_tds(bs, "Financial Highlights")
