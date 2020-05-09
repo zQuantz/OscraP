@@ -59,10 +59,6 @@ class Ticker():
 				self.logger.info(f"{ticker},{batch_id},Key Stats,Success,")
 			except Exception as e:
 				self.logger.warning(f"{ticker},{batch_id},Key Stats,Failure,{e}")
-				try:
-					self.logger.warning(f"{ticker},{batch_id},Key Stats,Failure,{self.bs}")
-				except:
-					pass
 			self.sleep()
 
 		if not retries or retries['analysis']:
@@ -278,20 +274,29 @@ class Ticker():
 
 	def get_key_stats(self):
 
-		def get_tds(bs, text):
+		def get_items(bs, text):
 
 			span = bs.find("span", text=text)
 			main_div = span.parent.parent
-			return main_div.find_all("td")
+
+			items = []
+			for tr in main_div.find_all("tr"):
+				
+				tds = tr.find_all("td")
+				if len(tds) == 0:
+					continue
+
+				items.append([tds[0].text, tds[1].text])
+
+			return items
 
 		url = STATS.format(ticker = self.ticker)
 		bs = request(CONFIG, url, self.logger).content
-		self.bs = bs
 		bs = BeautifulSoup(bs, PARSER)
 
-		tds = get_tds(bs, "Financial Highlights")
-		tds.extend(get_tds(bs, "Trading Information"))
-		tds.extend(get_tds(bs, "Valuation Measures"))
+		tds = get_items(bs, "Financial Highlights")
+		tds.extend(get_items(bs, "Trading Information"))
+		tds.extend(get_items(bs, "Valuation Measures"))
 
 		key_stats = []
 		for feature_name, feature in zip(tds[0::2], tds[1::2]):
