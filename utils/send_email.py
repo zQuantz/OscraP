@@ -26,6 +26,8 @@ def encode_zip(filename, filepath):
 		b64_file.seek(0)
 		content = b64_file.read()
 	content = content.decode()
+	
+	os.remove(f"{filepath}/{filename}.b64")
 
 	return {
 		"ContentType" : "application/zip",

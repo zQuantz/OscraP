@@ -294,16 +294,16 @@ class Ticker():
 		bs = request(CONFIG, url, self.logger).content
 		bs = BeautifulSoup(bs, PARSER)
 
-		tds = get_items(bs, "Financial Highlights")
-		tds.extend(get_items(bs, "Trading Information"))
-		tds.extend(get_items(bs, "Valuation Measures"))
+		items = get_items(bs, "Financial Highlights")
+		items.extend(get_items(bs, "Trading Information"))
+		items.extend(get_items(bs, "Valuation Measures"))
 
 		key_stats = []
-		for feature_name, feature in zip(tds[0::2], tds[1::2]):
-			key = self.feature_conversion(feature_name.text)
+		for feature_name, feature in items:
+			key = self.feature_conversion(feature_name)
 			key_stats.append([
 				*key,
-				self.fmt(feature.text, metric = key[0])
+				self.fmt(feature, metric = key[0])
 			])
 
 		df = pd.DataFrame(key_stats, columns = ["feature", "modifier", "value"])
