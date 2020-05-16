@@ -308,7 +308,7 @@ class Ticker():
 
 		df = pd.DataFrame(key_stats, columns = ["feature", "modifier", "value"])
 
-		if not self.retries:
+		if not self.retries and len(df) > 0:
 			
 			df.to_csv(f"{DIR}/financial_data/{DATE}/key_stats/{self.ticker}_{DATE}.csv", index=False)
 
@@ -368,7 +368,7 @@ class Ticker():
 			dfs.append(parse_table(table))
 		df = pd.concat(dfs)
 
-		if not self.retries:
+		if not self.retries and len(df) > 0:
 			
 			df.to_csv(f"{DIR}/financial_data/{DATE}/analysis/{self.ticker}_{DATE}.csv", index=False)
 
