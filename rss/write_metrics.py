@@ -9,7 +9,7 @@ RSS_NEWS_METRIC_ID = "custom.googleapis.com/rss_daily_collected_news_dfs_1d44b52
 CLIENT = monitoring_v3.MetricServiceClient()
 PROJECT_NAME = CLIENT.project_path("dev-utility-270718")
 
-def write_rss_daily_news_collected_dfs():	
+def write_rss_daily_news_collected_dfs():
 
 	series = monitoring_v3.types.TimeSeries()
 
