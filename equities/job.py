@@ -9,10 +9,13 @@ import sqlalchemy as sql
 import pandas as pd
 import sys, os
 
+sys.path.append(f"{DIR}/../utils")
+from send_gcp_metric import send_gcp_metric
+
 ###################################################################################################
 
 DATE = CONFIG['date']
-BATCH_SIZE = 25
+BATCH_SIZE = 50
 N_USD = 900
 N_CAD = 100
 
@@ -20,48 +23,28 @@ N_CAD = 100
 
 def get_job_success_rates(tickers):
 
-	collected_options = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{DATE}/options')]
-	collected_ohlc = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{DATE}/ohlc')]
-	collected_analysis = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{DATE}/analysis')]
-	collected_key_stats = [file.split('_')[0] for file in os.listdir(f'{DIR}/financial_data/{DATE}/key_stats')]
-
 	success = {
-		"options" : 0,
-		"ohlc" : 0,
-		"key_stats" : 0,
-		"analysis" : 0
+		"options" : len(os.listdir(f'{DIR}/financial_data/{DATE}/options')),
+		"ohlc" : len(os.listdir(f'{DIR}/financial_data/{DATE}/ohlc')),
+		"key_stats" : len(os.listdir(f'{DIR}/financial_data/{DATE}/key_stats')),
+		"analysis" : len(os.listdir(f'{DIR}/financial_data/{DATE}/analysis'))
 	}
 
 	failure = {
-		"options" : 0,
-		"ohlc" : 0,
-		"key_stats" : 0,
-		"analysis" : 0
+		"options" : len(tickers) - success['options'],
+		"ohlc" : len(tickers) - success['ohlc'],
+		"key_stats" : len(tickers) - success['key_stats'],
+		"analysis" : len(tickers) - success['analysis']
 	}
 
-	for ticker in tickers:
-
-		if ticker in collected_options:
-			success['options'] += 1
-		else:
-			failure['options'] += 1
-
-		if ticker in collected_ohlc:
-			success['ohlc'] += 1
-		else:
-			failure['ohlc'] += 1
-
-		if ticker in collected_analysis:
-			success['analysis'] += 1
-		else:
-			failure['analysis'] += 1
-
-		if ticker in collected_key_stats:
-			success['key_stats'] += 1
-		else:
-			failure['key_stats'] += 1
-
 	return success, failure
+
+def send_metrics(success, failure):
+
+	for key in success:
+		metric = success[key]
+		metric /= success[key] + failure[key]
+		send_gcp_metric(CONFIG, f"oscrap_{key}_sucess", "double_value", metric)
 
 def fetch_tickers():
 
@@ -134,8 +117,10 @@ def main():
 		db_stats.append(b_db_stats)
 		indexing_attempts.append(b_indexing_attempt)
 
+		success, failure = get_job_success_rates(tickers[ : BATCH_SIZE * (1 + batch_id)])
+		send_metrics(success, failure)
+
 		if batch_id == midpoint:
-			success, failure = get_job_success_rates(tickers)
 			report("Partial", success, failure, faults_summary, db_flags, db_stats, indexing_attempts)
 
 	###############################################################################################
