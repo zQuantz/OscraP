@@ -51,12 +51,12 @@ def compress_files():
 	with tar.open(tar_file_name, mode="x:xz") as tar_file:
 		tar_file.add(back_file_name, arcname=os.path.basename(back_file_name))
 
-	# file_size = os.stat(tar_file_name).st_size / 1_000_000
-	# if file_size > 0:
-	# 	for file in files:
-	# 		os.remove(f'{DIR}/news_data/{file}')
-	# else:
-	# 	raise Exception("TarFile Corrupted. File Size 0.")
+	file_size = os.stat(tar_file_name).st_size / 1_000_000
+	if file_size > 0:
+		for file in files:
+			os.remove(f'{DIR}/news_data/{file}')
+	else:
+		raise Exception("TarFile Corrupted. File Size 0.")
 
 	return tar_file_name
 
