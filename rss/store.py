@@ -1,11 +1,14 @@
 from datetime import datetime, timedelta
-from google.cloud import storage
-from const import DIR, logger
+from const import DIR, CONFIG, logger
 from hashlib import md5
 import tarfile as tar
 import pandas as pd
 import sys, os
 import json
+
+sys.path.append(f"{DIR}/../utils")
+from send_gcp_metric import send_gcp_metric
+from send_to_gcp import send_to_gcp
 
 def compress_files():
 
@@ -18,20 +21,29 @@ def compress_files():
 
 	files = os.listdir(f"{DIR}/news_data")
 	files.remove('.gitignore')
-	
-	data = []
-	for file in files:
-		with open(f'{DIR}/news_data/{file}', 'r') as data_file:
-			data.extend(json.loads(data_file.read()))
-	logger.info(f"RSS,Storage,Data,{len(data)}")
 
-	hashes = []
-	for item in data:
-		hashes.append(md5(json.dumps(item).encode()).hexdigest())
-	hashes = list(set(hashes))
-	
-	data = [data[hashes.index(hash_)] for hash_ in hashes]
-	logger.info(f"RSS,Storage,Unique Data,{len(data)}")
+	ctr = 0
+	data, hashes = list(), set()
+	for file in files:
+
+		with open(f"{DIR}/news_data/{file}", "r") as data_file:
+			items = json.loads(data_file.read())
+
+			for item in items:
+
+				ctr += 1
+
+				hash_ = md5(json.dumps(item).encode()).hexdigest()
+
+				if hash_ in hashes:
+					continue
+
+				data.append(item)
+				hashes.add(hash_)
+
+	logger.info(f"RSS,Storage,Data,{ctr}")
+	logger.info(f"RSS,Storage,Unique Data,{len(hashes)}")
+	send_gcp_metric(CONFIG, "rss_daily_unique_items", "int64_value", len(hashes))
 
 	with open(back_file_name, "w") as file:
 		file.write(json.dumps(data))
@@ -39,31 +51,29 @@ def compress_files():
 	with tar.open(tar_file_name, mode="x:xz") as tar_file:
 		tar_file.add(back_file_name, arcname=os.path.basename(back_file_name))
 
-	file_size = os.stat(tar_file_name).st_size / 1_000_000
-	if file_size > 0:
-		for file in files:
-			os.remove(f'{DIR}/news_data/{file}')
-	else:
-		raise Exception("TarFile Corrupted. File Size 0.")
+	# file_size = os.stat(tar_file_name).st_size / 1_000_000
+	# if file_size > 0:
+	# 	for file in files:
+	# 		os.remove(f'{DIR}/news_data/{file}')
+	# else:
+	# 	raise Exception("TarFile Corrupted. File Size 0.")
 
 	return tar_file_name
-
-def send_to_bucket(tar_file_name):
-
-	storage_client = storage.Client()
-	bucket = storage_client.bucket("oscrap_storage")
-
-	destination_name = os.path.basename(tar_file_name)
-	blob = bucket.blob(f"rss/{destination_name}")
-	blob.upload_from_filename(tar_file_name)
-	logger.info(f"RSS,Storage,Upload Name,rss/{destination_name}")
 
 if __name__ == '__main__':
 
 	try:
 
 		tar_file_name = compress_files()
-		send_to_bucket(tar_file_name)
+
+		send_to_gcp(
+			CONFIG['gcp_bucket_prefix'],
+			CONFIG['gcp_bucket_name'],
+			os.path.basename(tar_file_name),
+			os.path.dirname(tar_file_name),
+			logger=logger
+		)
+
 		logger.info(f"RSS,Storage,Success,")
 
 	except Exception as e:

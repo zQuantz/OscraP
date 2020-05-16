@@ -13,7 +13,7 @@ def create_gcp_metric(metric_name):
 	descriptor.type = f'custom.googleapis.com/{metric_name}'
 
 	descriptor.metric_kind = (monitoring_v3.enums.MetricDescriptor.MetricKind.GAUGE)
-	descriptor.value_type = (monitoring_v3.enums.MetricDescriptor.ValueType.DOUBLE)
+	descriptor.value_type = (monitoring_v3.enums.MetricDescriptor.ValueType.INT64)
 
 	descriptor.description = 'This is a simple example of a custom metric.'
 	descriptor = client.create_metric_descriptor(project_name, descriptor)
@@ -26,3 +26,4 @@ if __name__ == '__main__':
 	# create_gcp_metric("oscrap_key_stats_sucess")
 	# create_gcp_metric("oscrap_analysis_sucess")
 	# create_gcp_metric("oscrap_ohlc_sucess")
+	# create_gcp_metric("rss_daily_unique_items")
