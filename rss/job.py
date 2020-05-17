@@ -90,8 +90,6 @@ def main():
 
 		logger.warning(e)
 
-	logger.info(f"RSS,Job,Terminated,{date_today}")
-
 if __name__ == '__main__':
 
 	main()
