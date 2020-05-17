@@ -23,8 +23,11 @@ logger.addHandler(fh)
 with open(f"{DIR}/../config.json", "r") as file:
 	CONFIG = json.loads(file.read())
 
+date = datetime.today().strftime("%Y-%m-%d")
 with open(f"{DIR}/../config.json", "w") as file:
 	
+	CONFIG['date'] = date
+
 	if socket.gethostname() == "gpsvm":
 		CONFIG['db'] = "compour9_finance"
 		CONFIG['gcp_bucket_prefix'] = "rss"
