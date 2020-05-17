@@ -40,7 +40,7 @@ def parallel_job(job_id, parallel_group):
 	try:
 		
 		feed_threads = {}
-		
+
 		for i, group in enumerate(parallel_group):
 			
 			group, sleep = group, groups[group]
@@ -70,6 +70,10 @@ def main():
 	logger.info(f"RSS,Job,Initated,{date_today}")
 
 	for file in os.listdir(f"{DIR}/pids"):
+		
+		if file == ".gitignore":
+			continue
+		
 		os.remove(f"{DIR}/pids/{file}")
 
 	group_keys = list(groups.keys())
