@@ -1,7 +1,9 @@
-from const import DIR
 import pandas as pd
 import sys, os
 import joblib
+
+sys.path.append(f".")
+from const import DIR
 
 df = pd.read_csv(f"{DIR}/data/rss.csv")
 counts = df.Source.value_counts().to_dict()
@@ -28,9 +30,12 @@ for group in groups:
     sleep = round(max(1, 60 / num_feeds))
     group_info[tuple(group)] = sleep
 
+## Manually set GlobeNewsWire to 3 seconds
+group_info[("GlobeNewsWire",)] = 3
+
 print()
 for group in group_info:
-	print("Group:", group, "Sleep Timer:", group_info[group])
+    print("Group:", group, "Sleep Timer:", group_info[group])
 
 with open('data/groups.pkl', 'wb') as file:
 	joblib.dump(group_info, file)
