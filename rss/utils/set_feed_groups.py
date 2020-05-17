@@ -19,7 +19,7 @@ groups = [
     ["CNBC", "Investing"],
     ["NASDAQ", "BBC", "Wall Street Journal"],
     ["MarketWatch", "Yahoo Finance", "Bank of Canada", "Bank of England"]
-]
+]   
 
 ## Get group sleep values
 group_info = {}

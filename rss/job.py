@@ -4,6 +4,9 @@ from feeds import Feeds
 import pandas as pd
 import sys, os
 import joblib
+import signal
+
+###################################################################################################
 
 feeds = pd.read_csv(f"{DIR}/data/rss.csv").iloc[:, :2]
 feeds.columns = ['source', 'feed']
@@ -11,16 +14,33 @@ feeds.columns = ['source', 'feed']
 with open(f'{DIR}/data/groups.pkl', 'rb') as file:
 	groups = joblib.load(file)
 
+###################################################################################################
+
 def parallel_job(job_id, parallel_group):
 
+	logger.info(f"RSS,Job,PID,{os.getpid()}")
+
 	def on_close():
+
 		for group in parallel_group:
+
 			feed_threads[group].on_close()
 			logger.info(f"RSS,Thread,Closed,{job_id} - {group}")
+
+	def sigterm_handler(signal_number, frame):
+
+		logger.info(f"RSS,Job,SIGTERM,{os.getpid()}")
+		on_close()
+
+	signal.signal(signal.SIGTERM, sigterm_handler)
+	os.system(f"touch {DIR}/pids/{os.getpid()}")
+
+	###############################################################################################
 
 	try:
 		
 		feed_threads = {}
+		
 		for i, group in enumerate(parallel_group):
 			
 			group, sleep = group, groups[group]
@@ -40,13 +60,17 @@ def parallel_job(job_id, parallel_group):
 	except Exception as e:
 
 		logger.warning(f"RSS,Thread,Error,{job_id} - {e}")
+
 		on_close()
 		
 		raise Exception(f"RSS,Job,Terminated,{job_id} - {e}")
 
-if __name__ == '__main__':
+def main():
 
 	logger.info(f"RSS,Job,Initated,{date_today}")
+
+	for file in os.listdir(f"{DIR}/pids"):
+		os.remove(f"{DIR}/pids/{file}")
 
 	group_keys = list(groups.keys())
 	parallel_groups = [group_keys[0::2], group_keys[1::2]]
@@ -61,3 +85,9 @@ if __name__ == '__main__':
 	except Exception as e:
 
 		logger.warning(e)
+
+	logger.info(f"RSS,Job,Terminated,{date_today}")
+
+if __name__ == '__main__':
+
+	main()
