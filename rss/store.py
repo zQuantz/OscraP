@@ -20,20 +20,29 @@ def compress_files():
 	tar_file_name = f'{DIR}/news_data_backup/{tar_file_name}'
 
 	files = os.listdir(f"{DIR}/news_data")
-	files.remove('.gitignore')
+	files = [f"{DIR}/news_data/{file}" for file in files]
+
+	files = sorted(files, key=os.path.getmtime)
+	files = files[::-1]
+	
+	files.remove(f"{DIR}/news_data/.gitignore")
 
 	ctr = 0
 	data, hashes = list(), set()
 	for file in files:
 
-		with open(f"{DIR}/news_data/{file}", "r") as data_file:
+		with open(file, "r") as data_file:
+
 			items = json.loads(data_file.read())
 
 			for item in items:
 
 				ctr += 1
 
-				hash_ = md5(json.dumps(item).encode()).hexdigest()
+				item_ = item.copy()
+				item_.pop("oscrap_acquisition_datetime")
+
+				hash_ = md5(json.dumps(item_).encode()).hexdigest()
 
 				if hash_ in hashes:
 					continue
@@ -43,7 +52,9 @@ def compress_files():
 
 	logger.info(f"RSS,Storage,Data,{ctr}")
 	logger.info(f"RSS,Storage,Unique Data,{len(hashes)}")
+	
 	send_gcp_metric(CONFIG, "rss_daily_unique_items", "int64_value", len(hashes))
+	send_gcp_metric(CONFIG, "rss_total_daily_items", "int64_value", ctr)
 
 	with open(back_file_name, "w") as file:
 		file.write(json.dumps(data))
@@ -54,7 +65,7 @@ def compress_files():
 	file_size = os.stat(tar_file_name).st_size / 1_000_000
 	if file_size > 0:
 		for file in files:
-			os.remove(f'{DIR}/news_data/{file}')
+			os.remove(file)
 	else:
 		raise Exception("TarFile Corrupted. File Size 0.")
 
