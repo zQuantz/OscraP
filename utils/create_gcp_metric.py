@@ -27,3 +27,4 @@ if __name__ == '__main__':
 	# create_gcp_metric("oscrap_analysis_sucess")
 	# create_gcp_metric("oscrap_ohlc_sucess")
 	# create_gcp_metric("rss_total_daily_items")
+	# create_gcp_metric("rates_success_indicator")
