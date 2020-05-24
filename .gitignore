@@ -4,10 +4,12 @@ __pycache__
 tmp/
 
 equities/utils/tmp
+equities/utils/tformed
 equities/utils/*.tar.xz
 equities/scraper.log
 equities/log.log
 equities/err.log
+
 
 rss/rss.log
 

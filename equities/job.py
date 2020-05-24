@@ -2,11 +2,13 @@ from const import DIR, logger, CONFIG
 
 from batch import main as batch_main
 from store import main as store
+from datetime import timedelta
 from datetime import datetime
 from ticker import Ticker
 from report import report
 import sqlalchemy as sql
 import pandas as pd
+import numpy as np
 import sys, os
 
 sys.path.append(f"{DIR}/../utils")
@@ -50,13 +52,13 @@ def fetch_tickers():
 
 	engine = sql.create_engine(CONFIG['db_address'])
 	query = f"""
-	    SELECT
-	        *
-	    FROM
-	        instruments
-	    WHERE
-	        market_cap >= {1_000_000}
-	    ORDER BY market_cap DESC
+		SELECT
+			*
+		FROM
+			instruments
+		WHERE
+			market_cap >= {1_000_000}
+		ORDER BY market_cap DESC
 	"""
 
 	conn = engine.connect()
@@ -72,6 +74,50 @@ def fetch_tickers():
 
 	return tuple(df.ticker)
 
+def fetch_rates():
+
+	engine = sql.create_engine(CONFIG['db_address'])
+
+	date = datetime.now() - timedelta(days=7)
+	date = date.strftime("%Y-%m-%d")
+
+	query = f"""
+		SELECT
+			*
+		FROM
+			rates
+		WHERE
+			date_current >= "{date}"
+	"""
+	
+	rates = pd.read_sql(query, engine)
+	rates = rates.iloc[0, :]
+
+	t_map = [
+		0,
+		30,
+		60,
+		90,
+		180,
+		12 * 30,
+		24 * 30,
+		36 * 30,
+		60 * 30,
+		72 * 30,
+		120 * 30,
+		240 * 30,
+		360 * 30
+	]
+	t_map = np.array(t_map) / 360
+	r_map = [0] + list(rates.values[1:])
+	r_map = np.array(r_map)
+
+	return {
+		"t_map" : t_map,
+		"r_map" : r_map,
+		"rates" : {}
+	}
+
 def init_folders():
 
 	os.mkdir(f'{DIR}/financial_data/{DATE}')
@@ -86,7 +132,8 @@ def main():
 
 	init_folders()
 	tickers = fetch_tickers()
-	
+	CONFIG['rates'] = fetch_rates()
+
 	midpoint = len(tickers) / BATCH_SIZE
 	midpoint = int(midpoint / 2)
 

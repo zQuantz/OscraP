@@ -1,5 +1,6 @@
 from const import DIR, CONVERTER, NUMBERS, CONFIG
 
+from greeks import calculate_greeks
 from datetime import datetime
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -171,6 +172,7 @@ class Ticker():
 
 		cols = ['open', 'high', 'low', 'close', 'adj_close', 'stock_volume']
 		prices = list(map(self.option_fmt, prices[1:], cols))
+		self.adj_close = prices[-2]
 
 		prices += [self.div, DATE]
 		cols += ["dividend_yield", 'date_current']
@@ -251,6 +253,8 @@ class Ticker():
 		self.options = pd.DataFrame(self.options, columns = ['date_current', 'expiration_date', 'time_to_expiry',
 															 'option_type', 'strike_price', 'bid', 'ask', 'volume',
 															 'option_price', 'implied_volatility', 'open_interest'])
+		self.options = calculate_greeks(self.adj_close, self.div, self.options)
+
 		if not self.retries and len(self.options) > 0:
 			
 			self.options.to_csv(f"{DIR}/financial_data/{DATE}/options/{self.ticker}_{DATE}.csv", index=False)
