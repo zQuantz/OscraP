@@ -209,7 +209,12 @@ def all_options_greeks(database):
 
 			table_name = file.split('.')[0]
 			df = pd.read_csv(f"{DIR}/utils/tmp/{file}")
-			df.to_csv(f"{DIR}/utils/tformed/{date}/{file}")
+
+			if table_name == "options" and "expiration_date" not in df.columns:
+				df['expiration_date'] = df.option_id.str.split(' ', expand=True)[1]
+				print(df.expiration_date)		
+
+			df.to_csv(f"{DIR}/utils/tformed/{date}/{file}", index=False)
 
 			file_date = df.date_current.values[0]
 			folder_date = os.path.basename(blob.name.split('.')[0])
@@ -220,32 +225,6 @@ def all_options_greeks(database):
 			while tries < max_tries:
 			
 				try:
-
-					# if idx_ctr != 0:
-
-					# 	delete_query = f"""
-					# 		DELETE FROM
-					# 			{table_name}
-					# 		WHERE
-					# 			date_current = "{folder_date}"
-					# 	"""
-						
-					# 	conn = engine.connect()
-					# 	result = conn.execute(delete_query)
-					# 	print(result)
-					# 	conn.close()
-						
-					# 	delete_query = f"""
-					# 		DELETE FROM
-					# 			{table_name}
-					# 		WHERE
-					# 			date_current = "{file_date}"
-					# 	"""
-						
-					# 	conn = engine.connect()
-					# 	result = conn.execute(delete_query)
-					# 	print(result)
-					# 	conn.close()
 					
 					conn = engine.connect()
 					result = df.to_sql(table_name, conn, if_exists='append', index=False, chunksize=10_000)
