@@ -37,7 +37,7 @@ class Ticker():
 		self.retries = retries
 		self.fault_dict = fault_dict
 
-		if not retries or retries["ohlc"]:
+		if not retries or retries["ohlc"] or retries['options']:
 			try:
 				self.div = self.get_dividends()
 				self.logger.info(f"{ticker},{batch_id},Dividend,Success,")
@@ -208,7 +208,7 @@ class Ticker():
 		def get_page(url):
 
 			ctr, max_ctr = 0, 3
-			while (ctr < max_ctr):
+			while (ctr < max_ctr):	
 				
 				bs = BeautifulSoup(request(CONFIG, url, self.logger).content, PARSER)
 				options = bs.find_all("option")
@@ -258,8 +258,8 @@ class Ticker():
 		if not self.retries and len(self.options) > 0:
 			
 			self.options.to_csv(f"{DIR}/financial_data/{DATE}/options/{self.ticker}_{DATE}.csv", index=False)
-		
-		else:
+
+		elif len(self.options) != 0:
 			
 			try:
 				old = pd.read_csv(f"{DIR}/financial_data/{DATE}/options/{self.ticker}_{DATE}.csv")
@@ -275,6 +275,10 @@ class Ticker():
 			delta = self.fault_dict['options']['new_options'] - self.fault_dict['options']['options']
 
 			self.logger.info(f"{self.ticker},{self.batch_id},Re-Options,Success,{delta}")
+
+		else:
+
+			self.logger.info(f"{self.ticker},{self.batch_id},Options,None Collected,")
 
 	def get_key_stats(self):
 
@@ -316,7 +320,7 @@ class Ticker():
 			
 			df.to_csv(f"{DIR}/financial_data/{DATE}/key_stats/{self.ticker}_{DATE}.csv", index=False)
 
-		else:
+		elif len(df) != 0:
 			
 			try:
 				old = pd.read_csv(f"{DIR}/financial_data/{DATE}/key_stats/{self.ticker}_{DATE}.csv")
@@ -331,6 +335,10 @@ class Ticker():
 			delta = self.fault_dict['key_stats']['new_null_percentage'] - self.fault_dict['key_stats']['null_percentage']
 			
 			self.logger.info(f"{self.ticker},{self.batch_id},Re-Key Stats,Success,{delta}")
+
+		else:
+
+			self.logger.info(f"{self.ticker},{self.batch_id},Key Stats,None Collected,")
 
 	def get_analysis(self):
 
@@ -376,7 +384,7 @@ class Ticker():
 			
 			df.to_csv(f"{DIR}/financial_data/{DATE}/analysis/{self.ticker}_{DATE}.csv", index=False)
 
-		else:
+		elif len(df) != 0:
 
 			try:
 				old = pd.read_csv(f"{DIR}/financial_data/{DATE}/analysis/{self.ticker}_{DATE}.csv")
@@ -392,3 +400,7 @@ class Ticker():
 			delta = self.fault_dict['analysis']['new_null_percentage'] - self.fault_dict['analysis']['null_percentage']
 			
 			self.logger.info(f"{self.ticker},{self.batch_id},Re-Analysis,Success,{delta}")
+
+		else:
+
+			self.logger.info(f"{self.ticker},{self.batch_id},Analysis,None Collected,")
