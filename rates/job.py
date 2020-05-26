@@ -10,6 +10,7 @@ import json
 sys.path.append(f"{DIR}/../utils")
 from send_gcp_metric import send_gcp_metric
 from send_to_gcp import send_to_gcp
+from send_email import send_email
 
 ###################################################################################################
 
@@ -75,18 +76,35 @@ def collect():
 	df.to_sql("rates", engine, if_exists='append', index=False, chunksize=10_000)
 	df.to_csv(f"{DIR}/rate_data/{DATE}.csv")
 
+	return df
+
 if __name__ == '__main__':
 
-	try:
-		
-		collect()
-		store()
+	max_attempts = 5
+	collection_attempts = 0
 
-		metric = 1
+	while collection_attempts < max_attempts:
 
-	except Exception as e:
+		try:
+			
+			df = collect()
+			store()
 
-		logger.info(e)
-		metric = 0
+			metric = 1
+			df['Attempts'] = metric
+
+			send_email(CONFIG, "Interest Rate Summary", df.to_html(), [], logger)
+			break
+
+		except Exception as e:
+
+			logger.info(e)
+			metric = 0
+
+		collection_attempts += 1
+
+	if collection_attempts >= max_attempts:
+		body = f"<p>Too many attempts ({collection_attempts}). Process Failed.</p>"
+		send_email(CONFIG, "Interest Rate Summary - FAILED", body, [], logger)
 
 	send_gcp_metric(CONFIG, "rates_success_indicator", "int64_value", metric)
