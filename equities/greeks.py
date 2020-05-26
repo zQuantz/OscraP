@@ -12,7 +12,7 @@ def calculate_greeks(stock_price, div, options):
 	rates = CONFIG['rates']['rates']
 
 	def get_rate(t):
-	
+
 		if t in rates:
 			return rates[t]
 
