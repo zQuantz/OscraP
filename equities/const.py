@@ -33,7 +33,7 @@ with open(f"{DIR}/../config.json", "r") as file:
 date = datetime.today().strftime("%Y-%m-%d")
 with open(f"{DIR}/../config.json", "w") as file:
 	
-	CONFIG['date'] = date
+	CONFIG['date'] = "2020-05-22"#date
 
 	if socket.gethostname() == "gpsvm":
 		CONFIG['db'] = "compour9_finance"
