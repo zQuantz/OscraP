@@ -142,19 +142,37 @@ def all_options_greeks(database):
 	engine = sql.create_engine(engine)
 
 	bucket = storage.Client().bucket(CONFIG['gcp_bucket_name'])
-	idx_ctr = 0
+
 	for i, blob in enumerate(bucket.list_blobs()):
 		
 		if "equities/" not in blob.name:
 			continue
 
-		blob.download_to_filename(f"{DIR}/utils/current.tar.xz")
-		with tar.open(f"{DIR}/utils/current.tar.xz", "r") as tar_file:
-			tar_file.extractall(f"{DIR}/utils/tmp")
+		date = os.path.basename(blob.name[:-7])
+
+		try:
+
+			blob.download_to_filename(f"{DIR}/utils/current.tar.xz")
+			with tar.open(f"{DIR}/utils/current.tar.xz", "r") as tar_file:
+				tar_file.extractall(f"{DIR}/utils/tmp")
+
+		except Exception as e:
+
+			print(e)
+
+		try:
+
+			for file in os.listdir(f"{DIR}/utils/tmp/{date}"):
+				os.rename(f"{DIR}/utils/tmp/{date}/{file}", f"{DIR}/utils/tmp/{file}")
+
+			os.rmdir(f"{DIR}/utils/tmp/{date}")
+
+		except Exception as e:
+
+			print(e)
 
 		ohlc = pd.read_csv(f"{DIR}/utils/tmp/ohlc.csv")
 		options = pd.read_csv(f"{DIR}/utils/tmp/options.csv")
-		date = os.path.basename(blob.name[:-7])
 
 		try:
 			os.mkdir(f"{DIR}/utils/tformed/{date}")
@@ -195,6 +213,7 @@ def all_options_greeks(database):
 				stock_price = stock_price_cache[ticker]
 				div_yield = dividend_cache[ticker]
 
+			tmp_options = tmp_options.dropna()
 			greeks.append(calculate_greeks(stock_price, div_yield, tmp_options))
 
 		options = pd.concat(greeks, axis=0).reset_index(drop=True)
@@ -212,7 +231,9 @@ def all_options_greeks(database):
 
 			if table_name == "options" and "expiration_date" not in df.columns:
 				df['expiration_date'] = df.option_id.str.split(' ', expand=True)[1]
-				print(df.expiration_date)		
+				fcols = ['ticker', 'date_current', 'option_id', 'expiration_date']
+				df = df[fcols + [col for col in df.columns if col not in fcols]]
+				print(df.expiration_date)
 
 			df.to_csv(f"{DIR}/utils/tformed/{date}/{file}", index=False)
 
@@ -239,8 +260,8 @@ def all_options_greeks(database):
 					
 				tries += 1
 
-		idx_ctr += 1
-
+		for file in os.listdir(f"{DIR}/utils/tmp"):
+			os.remove(f"{DIR}/utils/tmp/{file}")
 
 def one(folder, database):
 
