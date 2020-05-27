@@ -89,20 +89,12 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		New Rows Added: {options_counts[1] - options_counts[0]}<br>
 		<br>
 
-		Options Fault Summary<br>
-		{option_faults_str}<br>
-		<br>
-
 		OHLC Summary<br>
 		Successful Tickers: {successful['ohlc']}, {round(successful['ohlc'] / total * 100, 2)}%<br>
 		Failed Tickers: {failures['ohlc']}, {round(failures['ohlc'] / total * 100, 2)}%<br>
 		Starting Row Count: {ohlc_counts[0]}<br>
 		Ending Row Count: {ohlc_counts[1]}<br>
 		New Rows Added: {ohlc_counts[1] - ohlc_counts[0]}<br>
-		<br>
-
-		OHLC Fault Summary<br>
-		{ohlc_faults_str}<br>
 		<br>
 
 		Analysis Summary<br>
@@ -113,16 +105,24 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		New Rows Added: {analysis_counts[1] - analysis_counts[0]}<br>
 		<br>
 
-		Analysis Fault Summary<br>
-		{analysis_faults_str}<br>
-		<br>
-
 		Key Statistics Summary<br>
 		Successful Tickers: {successful['key_stats']}, {round(successful['key_stats'] / total * 100, 2)}%<br>
 		Failed Tickers: {failures['key_stats']}, {round(failures['key_stats'] / total * 100, 2)}%<br>
 		Starting Row Count: {key_stats_counts[0]}<br>
 		Ending Row Count: {key_stats_counts[1]}<br>
 		New Rows Added: {key_stats_counts[1] - key_stats_counts[0]}<br>
+		<br>
+
+		Options Fault Summary<br>
+		{option_faults_str}<br>
+		<br>
+
+		OHLC Fault Summary<br>
+		{ohlc_faults_str}<br>
+		<br>
+
+		Analysis Fault Summary<br>
+		{analysis_faults_str}<br>
 		<br>
 
 		Key Statistics Fault Summary<br>
@@ -138,11 +138,18 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 
 	shutil.make_archive(f"{DIR}/financial_data/{DATE}", "zip", f"{DIR}/financial_data/{DATE}")
 	filename = f'{DIR}/financial_data/{DATE}.zip'
-	attachments.append({
-		"ContentType" : "application/zip",
-		"filename" : f"{DATE}.zip",
-		"filepath" : f"{DIR}/financial_data"
-	})
+	
+	filesize = os.stat(filename).st_size
+	filesize /= 1_000_000
+
+	if filesize < 15:
+		attachments.append({
+			"ContentType" : "application/zip",
+			"filename" : f"{DATE}.zip",
+			"filepath" : f"{DIR}/financial_data"
+		})
+	else:
+		logger.warning("SCRAPER,REPORT,File Size Too Large,")
 
 	os.system(f"bash {DIR}/utils/truncate_log_file.sh")
 	filename = f'{DIR}/log.log'

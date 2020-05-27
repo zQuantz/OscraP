@@ -80,6 +80,7 @@ def calculate_greeks(stock_price, div, options):
 		])
 
 	greeks = pd.DataFrame(greeks, options.index, columns = ['delta', 'gamma', 'vega', 'rho', 'theta'])
+	greeks = greeks.round(5)
 	greeks = greeks.fillna(0)
 
 	options = pd.concat([options, greeks], axis=1)

@@ -86,7 +86,7 @@ if __name__ == '__main__':
 	while collection_attempts < max_attempts:
 
 		try:
-			
+
 			df = collect()
 			store()
 
