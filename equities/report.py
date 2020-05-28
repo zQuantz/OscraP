@@ -139,17 +139,11 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 	shutil.make_archive(f"{DIR}/financial_data/{DATE}", "zip", f"{DIR}/financial_data/{DATE}")
 	filename = f'{DIR}/financial_data/{DATE}.zip'
 	
-	filesize = os.stat(filename).st_size
-	filesize /= 1_000_000
-
-	if filesize < 15:
-		attachments.append({
-			"ContentType" : "application/zip",
-			"filename" : f"{DATE}.zip",
-			"filepath" : f"{DIR}/financial_data"
-		})
-	else:
-		logger.warning("SCRAPER,REPORT,File Size Too Large,")
+	attachments.append({
+		"ContentType" : "application/zip",
+		"filename" : f"{DATE}.zip",
+		"filepath" : f"{DIR}/financial_data"
+	})
 
 	os.system(f"bash {DIR}/utils/truncate_log_file.sh")
 	filename = f'{DIR}/log.log'
