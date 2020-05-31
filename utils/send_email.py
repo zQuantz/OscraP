@@ -1,7 +1,7 @@
 from dummy_logger import DummyLogger
 from mailjet_rest import Client
 import base64
-import os
+import sys,os
 
 def encode_text(filename, filepath):
 
@@ -59,9 +59,18 @@ def send_email(config, subject, body, attachments, logger=None):
 				filepath = attachment['filepath']
 
 				if attachment['ContentType'] == "plain/text":
+					
 					b64_attachments.append(encode_text(filename, filepath))
+
 				elif attachment['ContentType'] == "application/zip":
-					b64_attachments.append(encode_zip(filename, filepath))
+					
+					encoded_zip = encode_zip(filename, filepath)
+					
+					filesize = sys.getsizeof(encoded_zip['Base64Content'])
+					filesize /= 1_000_000
+
+					if filesize < 15:
+						b64_attachments.append(encoded_zip)
 
 			data = {
 				"Messages" : [

@@ -37,6 +37,9 @@ def aggregate():
 
 			data[folder].append(df)
 
+		if len(data[folder]) == 0:
+			continue
+
 		df = pd.concat(data[folder]).reset_index(drop=True)
 
 		first_cols = ["ticker", "date_current"]

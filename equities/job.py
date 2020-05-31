@@ -109,7 +109,7 @@ def fetch_rates():
 		360 * 30
 	]
 	t_map = np.array(t_map) / 360
-	r_map = [0] + list(rates.values[1:])
+	r_map = [0] + list(rates.values[1:] / 100)
 	r_map = np.array(r_map)
 
 	return {
