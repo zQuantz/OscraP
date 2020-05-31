@@ -141,6 +141,18 @@ class Ticker():
 		else:
 			return (str_, '')
 
+	def drop_by_na(self, pkey, df, key='value'):
+
+		def select_nna(x): 
+			nn = x.value.notnull()
+			if nn.sum() > 0:
+				return x.loc[nn, key].values[0]
+			else:
+				return x[key].values[0]
+
+		df = df.groupby(pkey).apply(lambda x: select_nna(x))
+		return df.rename(key).reset_index(drop=False)
+
 	def get_dividends(self):
 
 		url = SUMMARY.format(ticker = self.ticker)
@@ -315,6 +327,8 @@ class Ticker():
 			])
 
 		df = pd.DataFrame(key_stats, columns = ["feature", "modifier", "value"])
+		pkey = ["feature", "modifier"]
+		df.loc[:, pkey] = df[pkey].fillna('')
 
 		if not self.retries and len(df) > 0:
 			
@@ -328,7 +342,7 @@ class Ticker():
 				old = pd.DataFrame()
 
 			df = pd.concat([old, df]).reset_index(drop=True)
-			df = df.drop_duplicates()
+			df = self.drop_by_na(pkey, df)
 			df.to_csv(f"{DIR}/financial_data/{DATE}/key_stats/{self.ticker}_{DATE}.csv", index=False)
 
 			self.fault_dict['key_stats']['new_null_percentage'] = df.value.isnull().sum() / len(df)
@@ -378,7 +392,11 @@ class Ticker():
 		tables = bs.find_all("table")
 		for table in tables:
 			dfs.append(parse_table(table))
+		
 		df = pd.concat(dfs)
+		
+		pkey = ["category", "feature", "feature_two", "modifier"]
+		df.loc[:, pkey] = df[pkey].fillna('')
 
 		if not self.retries and len(df) > 0:
 			
@@ -392,7 +410,7 @@ class Ticker():
 				old = pd.DataFrame()
 
 			df = pd.concat([old, df]).reset_index(drop=True)
-			df = df.drop_duplicates()
+			df = self.drop_by_na(pkey, df)
 
 			df.to_csv(f"{DIR}/financial_data/{DATE}/analysis/{self.ticker}_{DATE}.csv", index=False)
 
