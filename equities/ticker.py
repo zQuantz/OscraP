@@ -192,7 +192,7 @@ class Ticker():
 		df = pd.DataFrame([prices], columns = cols)
 		df.to_csv(f"{DIR}/financial_data/{DATE}/ohlc/{self.ticker}_{DATE}.csv", index=False)
 
-		if self.retries:
+		if self.retries and self.retries['ohlc']:
 
 			self.fault_dict['ohlc']['new_status'] = 1
 			self.logger.info(f"{self.ticker},{self.batch_id},Re-OHLC,Success,1")
