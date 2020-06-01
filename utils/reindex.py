@@ -218,7 +218,7 @@ def transform(rates, ohlc_map):
 				print(file, len(df), df.ticker.nunique())
 				df = drop_by_na(pkey, df)
 				print(file, len(df), df.ticker.nunique())
-				df.to_csv(f"{DIR}/new/{folder}/analysis.csv")
+				df.to_csv(f"{DIR}/new/{folder}/analysis.csv", index=False)
 			
 			elif file == "key_stats.csv":
 
@@ -229,7 +229,7 @@ def transform(rates, ohlc_map):
 				print(file, len(df), df.ticker.nunique())
 				df = drop_by_na(pkey, df)
 				print(file, len(df), df.ticker.nunique())
-				df.to_csv(f"{DIR}/new/{folder}/key_stats.csv")
+				df.to_csv(f"{DIR}/new/{folder}/key_stats.csv", index=False)
 
 		print()
 
