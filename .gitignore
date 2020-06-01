@@ -13,6 +13,7 @@ equities/err.log
 utils/new
 utils/old
 utils/tmp
+utils/tars
 
 rss/rss.log
 

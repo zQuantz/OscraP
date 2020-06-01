@@ -77,7 +77,7 @@ def calculate_greeks(stock_price, div, options):
 
 	cols = ['delta', 'gamma', 'theta', 'vega', 'rho']
 	options.loc[:, cols] = options[cols].replace([-np.inf, np.inf], np.nan)
-	options.loc[:, cols] = options[cols].fillna(0)
+	options.loc[:, cols] = options[cols].round(6).fillna(0)
 
 	return options.drop(['stock_price', 'dividend_yield', 'rate'], axis=1)
 
@@ -156,7 +156,7 @@ def calculate_greeks2(stock_price, div, options):
 		])
 
 	greeks = pd.DataFrame(greeks, options.index, columns = ['delta', 'gamma', 'vega', 'rho', 'theta'])
-	greeks = greeks.round(5)
+	greeks = greeks.round(6)
 	greeks = greeks.fillna(0)
 
 	options = pd.concat([options, greeks], axis=1)

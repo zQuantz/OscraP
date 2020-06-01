@@ -310,7 +310,7 @@ def calculate_greeks(options, rates, ohlc_map):
 
 	cols = ['delta', 'gamma', 'theta', 'vega', 'rho']
 	options[cols] = options[cols].replace([-np.inf, np.inf], np.nan)
-	options[cols] = options[cols].fillna(0)
+	options[cols] = options[cols].fillna(0).round(6)
 
 	options = options.drop(['adj_close', 'dividend_yield', 'rate'], axis=1)
 
@@ -388,23 +388,41 @@ def index_tables():
 	for folder in sorted(os.listdir(f"{DIR}/new")):
 		
 		for file in sorted(os.listdir(f"{DIR}/new/{folder}")):
+
+			max_tries = 5
+			tries = 0
 			
-			print("Indexing:", folder, file)
+			while tries < max_tries:
+			
+				try:
 
-			table_name = file[:-4]
-			df = pd.read_csv(f"{DIR}/new/{folder}/{file}")
+					print("Indexing:", folder, file)
 
-			conn = ENGINE.connect()
-			df.to_sql(name=table_name, con=conn, if_exists='append', index=False, chunksize=100_000)
-			conn.close()
+					table_name = file[:-4]
+					df = pd.read_csv(f"{DIR}/new/{folder}/{file}")
+
+					conn = ENGINE.connect()
+					df.to_sql(name=table_name, con=conn, if_exists='append', index=False, chunksize=100_000)
+					conn.close()
+
+					break
+
+				except Exception as e:
+					
+					print(e)
+
+				tries += 1
+
+			if tries >= max_tries:
+				raise Exception(f"Too many tries. {folder},{file}")
 
 		print()
 
 if __name__ == '__main__':
 
-	# initdirs()
-	# download()
-	# flatten()
+	initdirs()
+	download()
+	flatten()
 
 	rates = initrates()
 	ohlc_map = collect_ohlc()
