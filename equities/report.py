@@ -135,16 +135,7 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 	###############################################################################################
 
 	attachments = []
-
-	shutil.make_archive(f"{DIR}/financial_data/{DATE}", "zip", f"{DIR}/financial_data/{DATE}")
-	filename = f'{DIR}/financial_data/{DATE}.zip'
 	
-	attachments.append({
-		"ContentType" : "application/zip",
-		"filename" : f"{DATE}.zip",
-		"filepath" : f"{DIR}/financial_data"
-	})
-
 	os.system(f"bash {DIR}/utils/truncate_log_file.sh")
 	filename = f'{DIR}/log.log'
 	attachments.append({

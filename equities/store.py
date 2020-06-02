@@ -71,8 +71,6 @@ def remove():
 		if os.path.isdir(folder):
 			shutil.rmtree(folder)
 
-	os.remove(f"{DIR}/financial_data/{DATE}.zip")
-
 def main():
 
 	logger.info(f"SCRAPER,STORE,INITIATED,,")

@@ -385,7 +385,9 @@ def create_tables():
 
 def index_tables():
 
-	for folder in sorted(os.listdir(f"{DIR}/new")):
+	folders = sorted(os.listdir(f"{DIR}/new"))
+	idx = folders.index("2020-03-16")
+	for folder in folders[idx:]:
 		
 		for file in sorted(os.listdir(f"{DIR}/new/{folder}")):
 
@@ -420,14 +422,14 @@ def index_tables():
 
 if __name__ == '__main__':
 
-	initdirs()
-	download()
-	flatten()
+	# initdirs()
+	# download()
+	# flatten()
 
-	rates = initrates()
-	ohlc_map = collect_ohlc()
-	transform(rates, ohlc_map)
+	# rates = initrates()
+	# ohlc_map = collect_ohlc()
+	# transform(rates, ohlc_map)
 
-	drop_tables()
-	create_tables()
-	index_tables()
+	# drop_tables()
+	# create_tables()
+	# index_tables()
