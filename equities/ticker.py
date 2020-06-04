@@ -76,7 +76,7 @@ class Ticker():
 				self.get_options()
 				self.logger.info(f"{ticker},{batch_id},Options,Success,")	
 			except Exception as e:
-				self.logger.warning(f"{ticker},{batch_id},Options,Failure,{e}")
+				self.logger.warning(f"{ticker},{batch_id},Options,Failure,{e}")					
 			self.sleep()
 
 	def sleep(self):
