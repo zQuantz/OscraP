@@ -32,8 +32,18 @@ SQL_TABLE = """
 			market_cap BIGINT
 		)
 	"""
+###################################################################################################
 
 DIR = os.path.realpath(os.path.dirname(__file__))
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+fh = logging.FileHandler(f'{DIR}/instruments.log')
+formatter = logging.Formatter('%(asctime)s - %(message)s')
+fh.setLevel(logging.DEBUG)
+fh.setFormatter(formatter)
+logger.addHandler(fh)
 
 ###################################################################################################
 
