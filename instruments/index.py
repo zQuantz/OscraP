@@ -1,4 +1,4 @@
-from const import CONFIG, DIR
+from const import CONFIG, DIR, logger
 
 import sqlalchemy as sql
 import pandas as pd
@@ -48,7 +48,7 @@ def index_instruments():
 
 	return df
 
-def index(parallel_log):
+def index():
 
 	max_attempts = 5
 	indexing_attempts = 0
@@ -62,7 +62,7 @@ def index(parallel_log):
 
 		except Exception as e:
 
-			parallel_log(f"Index Fail. {e}")
+			logger.warning(f"Index Fail. {e}")
 			indexing_attempts += 1
 
 	if indexing_attempts >= max_attempts:

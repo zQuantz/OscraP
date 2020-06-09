@@ -1,6 +1,5 @@
-from const import COLUMNS, DIR, CONFIG
+from const import COLUMNS, DIR, CONFIG, logger
 
-from joblib import Parallel, delayed
 from datetime import datetime
 from bs4 import BeautifulSoup
 from report import report
@@ -51,9 +50,6 @@ N_JOBS = 2
 
 ###################################################################################################
 
-def parallel_log(msg):
-	print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')} - {msg}")
-
 def get_bs_obj(index, exchange, symbol):
 
 	url = URL.format(INDEX=index, EXCHANGE=exchange, SYMBOL=symbol)
@@ -72,7 +68,7 @@ def get_exchanges():
 			continue
 
 		exchanges.append((option.get_attribute_list("value")[0], option.text))
-		parallel_log(','.join(exchanges[-1]))
+		logger.info(','.join(exchanges[-1]))
 
 	return exchanges
 
@@ -137,86 +133,77 @@ def get_market_cap(ticker):
 
 def scrape(exchange_code, exchange_name, modifier=''):
 
-	with open(f'{DIR}/instrument_data/{DATE}/{exchange_code}_log.log', 'a') as file:
+	stats = []
+	for letter in LETTERS:
 
-		stats = []
-		for letter in LETTERS:
+		page = get_bs_obj(index="stocklist", exchange=exchange_code, symbol=letter)
+		rows = page.find("table", {"class" : "quotes"}).find_all("tr")[1:]
 
-			page = get_bs_obj(index="stocklist", exchange=exchange_code, symbol=letter)
-			rows = page.find("table", {"class" : "quotes"}).find_all("tr")[1:]
+		if rows[0].find('td').text[0] != letter.upper():
+			continue
 
-			if rows[0].find('td').text[0] != letter.upper():
-				continue
+		for row in rows:
 
-			for row in rows:
+			try:
 
-				try:
+				error = None
 
-					error = None
+				ticker = row.find('td').text
+				name = row.find("td", text=ticker).next_sibling.text
 
-					ticker = row.find('td').text
-					name = row.find("td", text=ticker).next_sibling.text
-
-					ticker = ticker.replace('.', '-')
-					ticker += modifier
-					
-					market_cap = get_market_cap(ticker)
-					sector, industry, instrument_type = get_sector_and_industry(ticker)
+				ticker = ticker.replace('.', '-')
+				ticker += modifier
 				
-				except Exception as e:
+				market_cap = get_market_cap(ticker)
+				sector, industry, instrument_type = get_sector_and_industry(ticker)
+			
+			except Exception as e:
 
-					market_cap = 0
-					sector, industry, instrument_type = None, None, None
-					error = e
+				market_cap = 0
+				sector, industry, instrument_type = None, None, None
+				error = e
 
-				stats.append([
-					ticker,
-					name,
-					exchange_code,
-					exchange_name,
-					sector,
-					industry,
-					instrument_type,
-					round(market_cap, 3),
-				])
+			stats.append([
+				ticker,
+				name,
+				exchange_code,
+				exchange_name,
+				sector,
+				industry,
+				instrument_type,
+				round(market_cap, 3),
+			])
 
-				log_entry = list(map(str, stats[-1]))
-				log_entry = ','.join(log_entry)
-				log_entry += ',' if not error else ',' + str(error)
-				file.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')} - {log_entry}\n")
+			log_entry = list(map(str, stats[-1]))
+			log_entry = ','.join(log_entry)
+			log_entry += ',' if not error else ',' + str(error)
+			logger.info(log_entry)
 
-				time.sleep(SLEEP)
+			time.sleep(SLEEP)
 
-		df = pd.DataFrame(stats, columns = COLUMNS)
-		df.to_csv(f'{DIR}/instrument_data/{DATE}/{exchange_code}_tickers.csv', index=False)
+	df = pd.DataFrame(stats, columns = COLUMNS)
+	df.to_csv(f'{DIR}/instrument_data/{DATE}/{exchange_code}_tickers.csv', index=False)
 
 def main():
 
-	parallel_log("Job Initiated.")
+	logger.info("Job Initiated.")
 
-	parallel_log("Creating Directory.")
+	logger.info("Creating Directory.")
 	os.mkdir(f"{DIR}/instrument_data/{DATE}")
 
 	for exchange_code, exchange_name in get_exchanges():
 		modifier = '.TO' if exchange_code == 'TSX' else ''
 		scrape(exchange_code, exchange_name, modifier)
 
-	# parallel_log("Parallel Jobs.")
-	# Parallel(n_jobs=1)(
-	# 	delayed(scrape)
-	# 	(exchange_code, exchange_name, '.TO' if exchange_code == 'TSX' else '')
-	# 	for exchange_code, exchange_name in get_exchanges()
-	# )
+	logger.info("Indexing.")
+	df = index()
 
-	parallel_log("Indexing.")
-	df = index(parallel_log)
-
-	parallel_log("Emailing.")
+	logger.info("Emailing.")
 	report(df)
 
 	###############################################################################################
 
-	parallel_log("Storing.")
+	logger.info("Storing.")
 	try:
 
 		df.to_csv(f"{DIR}/instrument_data/{DATE}/{DATE}.csv", index=False)
@@ -234,15 +221,15 @@ def main():
 
 	except Exception as e:
 
-		parallel_log(f"Storage Error - {e}")
+		logger.info(f"Storage Error - {e}")
 
 	###############################################################################################
 
-	parallel_log("Job Terminated.")
+	logger.info("Job Terminated.")
 
 if __name__ == '__main__':
 
 	try:
 		main()
 	except Exception as e:
-		parallel_log(f"Main Job Error - {e}")
+		logger.info(f"Main Job Error - {e}")
