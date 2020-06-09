@@ -197,12 +197,16 @@ def main():
 	parallel_log("Creating Directory.")
 	os.mkdir(f"{DIR}/instrument_data/{DATE}")
 
-	parallel_log("Parallel Jobs.")
-	Parallel(n_jobs=2)(
-		delayed(scrape)
-		(exchange_code, exchange_name, '.TO' if exchange_code == 'TSX' else '')
-		for exchange_code, exchange_name in get_exchanges()
-	)
+	for exchange_code, exchange_name in get_exchanges():
+		modifier = '.TO' if exchange_code == 'TSX' else ''
+		scrape(exchange_code, exchange_name, modifier)
+
+	# parallel_log("Parallel Jobs.")
+	# Parallel(n_jobs=1)(
+	# 	delayed(scrape)
+	# 	(exchange_code, exchange_name, '.TO' if exchange_code == 'TSX' else '')
+	# 	for exchange_code, exchange_name in get_exchanges()
+	# )
 
 	parallel_log("Indexing.")
 	df = index(parallel_log)
