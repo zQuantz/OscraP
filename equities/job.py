@@ -91,7 +91,7 @@ def fetch_rates():
 	"""
 	
 	rates = pd.read_sql(query, engine)
-	rates = rates.iloc[0, :]
+	rates = rates.iloc[-1, :]
 
 	t_map = [
 		0,
