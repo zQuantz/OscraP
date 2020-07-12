@@ -1,10 +1,8 @@
 from google.cloud import monitoring_v3
 
-PROJECT_ID = "dev-utility-270718"
-CLIENT = monitoring_v3.MetricServiceClient()
-PROJECT_NAME = CLIENT.project_path("dev-utility-270718")
+PROJECT_ID = "rosy-etching-282820"
 
-def create_gcp_metric(metric_name):
+def create_gcp_metric(metric_name, value_type):
 
 	client = monitoring_v3.MetricServiceClient()
 	project_name = client.project_path(PROJECT_ID)
@@ -13,7 +11,7 @@ def create_gcp_metric(metric_name):
 	descriptor.type = f'custom.googleapis.com/{metric_name}'
 
 	descriptor.metric_kind = (monitoring_v3.enums.MetricDescriptor.MetricKind.GAUGE)
-	descriptor.value_type = (monitoring_v3.enums.MetricDescriptor.ValueType.INT64)
+	descriptor.value_type = (monitoring_v3.enums.MetricDescriptor.ValueType[value_type])
 
 	descriptor.description = 'This is a simple example of a custom metric.'
 	descriptor = client.create_metric_descriptor(project_name, descriptor)
@@ -22,9 +20,17 @@ def create_gcp_metric(metric_name):
 
 if __name__ == '__main__':
 
-	# create_gcp_metric("oscrap_options_sucess")
-	# create_gcp_metric("oscrap_key_stats_sucess")
-	# create_gcp_metric("oscrap_analysis_sucess")
-	# create_gcp_metric("oscrap_ohlc_sucess")
-	# create_gcp_metric("rss_total_daily_items")
-	# create_gcp_metric("rates_success_indicator")
+	# OscraP
+	create_gcp_metric("oscrap_options_sucess", "DOUBLE")
+	create_gcp_metric("oscrap_key_stats_sucess", "DOUBLE")
+	create_gcp_metric("oscrap_analysis_sucess", "DOUBLE")
+	create_gcp_metric("oscrap_ohlc_sucess", "DOUBLE")
+	
+	# Rates
+	create_gcp_metric("rates_success_indicator", "INT64")
+
+	# RSS
+	create_gcp_metric("rss_daily_item_total", "INT64")
+	create_gcp_metric("rss_daily_item_counter", "INT64")
+	create_gcp_metric("rss_daily_item_uniques", "INT64")
+

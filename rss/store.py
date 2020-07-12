@@ -53,8 +53,8 @@ def compress_files():
 	logger.info(f"RSS,Storage,Data,{ctr}")
 	logger.info(f"RSS,Storage,Unique Data,{len(hashes)}")
 	
-	send_gcp_metric(CONFIG, "rss_daily_unique_items", "int64_value", len(hashes))
-	send_gcp_metric(CONFIG, "rss_total_daily_items", "int64_value", ctr)
+	send_gcp_metric(CONFIG, "rss_daily_item_uniques", "int64_value", len(hashes))
+	send_gcp_metric(CONFIG, "rss_daily_item_total", "int64_value", ctr)
 
 	with open(back_file_name, "w") as file:
 		file.write(json.dumps(data))
