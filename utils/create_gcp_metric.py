@@ -1,11 +1,13 @@
 from google.cloud import monitoring_v3
-
-PROJECT_ID = "rosy-etching-282820"
+import json
 
 def create_gcp_metric(metric_name, value_type):
 
+	with open("../config.json", "r") as file:
+		CONFIG = json.loads(file.read())
+
 	client = monitoring_v3.MetricServiceClient()
-	project_name = client.project_path(PROJECT_ID)
+	project_name = client.project_path(CONFIG['gcp_project_id'])
 
 	descriptor = monitoring_v3.types.MetricDescriptor()
 	descriptor.type = f'custom.googleapis.com/{metric_name}'
@@ -20,17 +22,20 @@ def create_gcp_metric(metric_name, value_type):
 
 if __name__ == '__main__':
 
-	# OscraP
-	create_gcp_metric("oscrap_options_sucess", "DOUBLE")
-	create_gcp_metric("oscrap_key_stats_sucess", "DOUBLE")
-	create_gcp_metric("oscrap_analysis_sucess", "DOUBLE")
-	create_gcp_metric("oscrap_ohlc_sucess", "DOUBLE")
-	
-	# Rates
-	create_gcp_metric("rates_success_indicator", "INT64")
+	create_gcp_metric("test_metric_test", "DOUBLE")
 
-	# RSS
-	create_gcp_metric("rss_daily_item_total", "INT64")
-	create_gcp_metric("rss_daily_item_counter", "INT64")
-	create_gcp_metric("rss_daily_item_uniques", "INT64")
+
+	# # OscraP
+	# create_gcp_metric("oscrap_options_sucess", "DOUBLE")
+	# create_gcp_metric("oscrap_key_stats_sucess", "DOUBLE")
+	# create_gcp_metric("oscrap_analysis_sucess", "DOUBLE")
+	# create_gcp_metric("oscrap_ohlc_sucess", "DOUBLE")
+	
+	# # Rates
+	# create_gcp_metric("rates_success_indicator", "INT64")
+
+	# # RSS
+	# create_gcp_metric("rss_daily_item_total", "INT64")
+	# create_gcp_metric("rss_daily_item_counter", "INT64")
+	# create_gcp_metric("rss_daily_item_uniques", "INT64")
 
