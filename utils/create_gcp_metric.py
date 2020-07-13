@@ -22,9 +22,6 @@ def create_gcp_metric(metric_name, value_type):
 
 if __name__ == '__main__':
 
-	create_gcp_metric("test_metric_test", "DOUBLE")
-
-
 	# # OscraP
 	# create_gcp_metric("oscrap_options_sucess", "DOUBLE")
 	# create_gcp_metric("oscrap_key_stats_sucess", "DOUBLE")
