@@ -84,9 +84,9 @@ def get_sector_and_industry(ticker):
 		industry = page.find("span", text="Fund Family").next_sibling.text
 		return sector, industry, "ETF"
 
-	elif page.find("span", text="Sector"):
+	elif page.find("span", text="Industry"):
 
-		span = page.find("span", text="Sector")
+		span = page.find("span", text=["Sector", "Sector(s)"])
 		sibs = span.fetchNextSiblings()[0]
 		sector = sibs.text
 
