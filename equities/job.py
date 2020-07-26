@@ -18,8 +18,8 @@ from send_gcp_metric import send_gcp_metric
 
 DATE = CONFIG['date']
 BATCH_SIZE = 50
-N_USD = 900
-N_CAD = 100
+N_USD = 1350
+N_CAD = 150
 
 ###################################################################################################
 
@@ -134,8 +134,8 @@ def main():
 	tickers = fetch_tickers()
 	CONFIG['rates'] = fetch_rates()
 
-	midpoint = len(tickers) / BATCH_SIZE
-	midpoint = int(midpoint / 2)
+	checkpoint = len(tickers) / BATCH_SIZE
+	checkpoint = int(checkpoint / 4)
 
 	faults_summary = {
 		"options" : {},
@@ -167,7 +167,7 @@ def main():
 		success, failure = get_job_success_rates(tickers[ : BATCH_SIZE * (1 + batch_id)])
 		send_metrics(success, failure)
 
-		if batch_id == midpoint:
+		if batch_id % checkpoint == 0 and batch_id != 0:
 			report("Partial", success, failure, faults_summary, db_flags, db_stats, indexing_attempts)
 
 	###############################################################################################
