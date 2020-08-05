@@ -1,4 +1,5 @@
 from datetime import datetime
+import numpy as np
 import logging
 import socket
 import json
@@ -43,3 +44,20 @@ with open(f"{DIR}/../config.json", "w") as file:
 	file.write(json.dumps(CONFIG))
 
 ###################################################################################################
+
+t_map = [
+    0,
+    30,
+    60,
+    90,
+    180,
+    12 * 30,
+    24 * 30,
+    36 * 30,
+    60 * 30,
+    72 * 30,
+    120 * 30,
+    240 * 30,
+    360 * 30
+]
+t_map = np.array(t_map) / 360
