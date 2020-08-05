@@ -276,41 +276,105 @@ def calculate_greeks(options, rates, ohlc_map):
 	###############################################################################################
 
 	o = options.copy()
-	m = o.option_type.map({"C" : 1, "P" : -1})
+	m = o.option_type.map({"C" : 1, "P" : -1}).values
 
-	eqt = np.exp(-o.dividend_yield * o.time_to_expiry)
-	kert = o.strike_price * np.exp(-o.rate * o.time_to_expiry)
+	tau = o.time_to_expiry.values
+	rtau = np.sqrt(tau)
+	iv = o.implied_volatility.values
+	S = o.stock_price.values
+	K = o.strike_price.values
+	q = o.dividend_yield.values
+	r = o.rate.values
 
-	d1 = np.log(o.adj_close / o.strike_price)
-	d1 += (o.rate - o.dividend_yield + 0.5 * (o.implied_volatility ** 2)) * o.time_to_expiry
-	d1 /= o.implied_volatility * np.sqrt(o.time_to_expiry)
-	d2 = d1 - o.implied_volatility * np.sqrt(o.time_to_expiry)
+	###############################################################################################
 
-	delta = m * eqt * norm.cdf(m * d1)
+	eqt = np.exp(-q * tau)
+	kert = K * np.exp(-r * tau)
 
-	gamma = eqt * norm.pdf(d1)
-	gamma /= (o.adj_close * o.implied_volatility * np.sqrt(o.time_to_expiry))
+	d1 = np.log(S / K)
+	d1 += (r - q + 0.5 * (iv ** 2)) * tau
+	d1 /= iv * rtau
+	d2 = d1 - iv * rtau
 
-	vega = o.adj_close * eqt * norm.pdf(d1) * np.sqrt(o.time_to_expiry)	
+	npd1 = norm.pdf(d1)
+	ncd1 = norm.cdf(m * d1)
+	ncd2 = norm.cdf(m * d2)
 
-	rho = m * o.time_to_expiry * kert * norm.cdf(m * d2)
+	###############################################################################################
 
-	theta = (o.adj_close * norm.pdf(m * d1) * o.implied_volatility)
-	theta *= -eqt / (2 * np.sqrt(o.time_to_expiry))
-	theta -= m * o.rate * kert * norm.cdf(m * d2)
-	theta += m * o.dividend_yield * o.adj_close * eqt * norm.cdf(m * d1)
+	delta = m * eqt * ncd1
+
+	gamma = np.exp(q - r) * npd1
+	gamma /= (S * iv * rtau)
+
+	vega = S * eqt * npd1 * rtau	
+	vega /= 100
+
+	rho = m * tau * kert * ncd2
+	rho /= 100
+
+	theta = (S * norm.pdf(m * d1) * iv)
+	theta *= -eqt / (2 * rtau)
+	theta -= m * r * kert * ncd2
+	theta += m * q * S * eqt * ncd1
+	theta /= 365
+
+	###############################################################################################
+
+	vanna = (vega / S)
+	vanna *= (1 - d1 / (iv * rtau))
+
+	vomma = (vega / iv) * (d1 * d2)
+
+	charm = 2 * (r - q) * tau - d2 * iv * rtau
+	charm /= 2 * tau * iv * rtau
+	charm *= eqt * npd1
+	charm = m * q * eqt * ncd1 - charm
+	charm /= 365
+
+	veta = q.copy()
+	veta += ((r - q) * d1) / (iv * rtau)
+	veta -= (1 + d1 * d2) / (2 * tau)
+	veta *= -S * eqt * npd1 * rtau
+	veta /= 365 * 100
+
+	speed = 1
+	speed += d1 / (iv * rtau)
+	speed *= -gamma / S
+
+	zomma = (d1 * d2 - 1) / iv
+	zomma *= gamma
+
+	color = 2 * (r - q) * tau
+	color -= d2 * iv * rtau
+	color *= d1 / (iv * rtau)
+	color += 2 * q * tau + 1
+	color *= -eqt * npd1 / (2 * S * tau * iv * rtau)
+	color /= 365
+
+	ultima = d1 * d2 * (1 - d1 * d2) + d1 * d1 + d2 * d2
+	ultima *= -vega / (iv * iv)
 
 	###############################################################################################
 
 	options['delta'] = delta
 	options['gamma'] = gamma
-	options['theta'] = theta / 365
-	options['vega'] = vega / 100
-	options['rho'] = rho / 100
+	options['theta'] = theta
+	options['vega'] = vega
+	options['rho'] = rho
 
-	cols = ['delta', 'gamma', 'theta', 'vega', 'rho']
-	options[cols] = options[cols].replace([-np.inf, np.inf], np.nan)
-	options[cols] = options[cols].fillna(0).round(6)
+	options['vanna'] = vanna
+	options['vomma'] = vomma
+	options['charm'] = charm
+	options['veta'] = veta
+	options['speed'] = speed
+	options['zomma'] = zomma
+	options['color'] = color
+	options['ultima'] = ultima
+
+	cols = ['delta', 'gamma', 'theta', 'vega', 'rho', 'vanna', 'vomma', 'charm', 'veta', 'speed', 'zomma', 'color', 'ultima']
+	options.loc[:, cols] = options[cols].replace([-np.inf, np.inf], np.nan)
+	options.loc[:, cols] = options[cols].round(6).fillna(0)
 
 	options = options.drop(['adj_close', 'dividend_yield', 'rate'], axis=1)
 
