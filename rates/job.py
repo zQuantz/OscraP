@@ -22,25 +22,6 @@ DATE = CONFIG['date']
 
 ###################################################################################################
 
-def get_rate(t):
-        
-    if t >= 30:
-        return r_map[-1]
-
-    b1 = t_map <= t
-    b2 = t_map > t
-
-    r1 = r_map[b1][-1]
-    r2 = r_map[b2][0]
-
-    t1 = t_map[b1][-1]
-    t2 = t_map[b2][0]
-
-    interpolated_rate = (t - t1) / (t2 - t1)
-    interpolated_rate *= (r2 - r1)
-
-    return interpolated_rate + r1
-
 def store():
 
 	with tar.open(f"{DIR}/rate_data/{DATE}.tar.xz", "x:xz") as tar_file:
@@ -94,16 +75,37 @@ def collect():
 	df.to_sql("rates", engine, if_exists='append', index=False, chunksize=10_000)
 	df.to_csv(f"{DIR}/rate_data/{DATE}.csv")
 
+	###############################################################################################
+
 	r_map = df.iloc[-1, 1:].values
 	r_map = np.array([0] + r_map.tolist())
 	r_map /= 100
 
-	df = pd.DataFrame()
-	df['date_current'] = DATE
-	df['time_to_expiry'] = np.arange(0, 365 * 10 + 1).astype(int)
-	df['rate'] = df.time_to_expiry.apply(get_rate)
+	def get_rate(t):
+		
+		if t >= 30:
+			return r_map[-1]
 
-	df.to_sql("ratemap", engine, if_exists="append", index=False, chunksize=10_000)
+		b1 = t_map <= t
+		b2 = t_map > t
+
+		r1 = r_map[b1][-1]
+		r2 = r_map[b2][0]
+
+		t1 = t_map[b1][-1]
+		t2 = t_map[b2][0]
+
+		interpolated_rate = (t - t1) / (t2 - t1)
+		interpolated_rate *= (r2 - r1)
+
+		return interpolated_rate + r1
+
+	rm_df = pd.DataFrame()
+	rm_df['time_to_expiry'] = np.arange(0, 365 * 10 + 1).astype(int)
+	rm_df['rate'] = rm_df.time_to_expiry.apply(get_rate)
+	rm_df['date_current'] = DATE
+
+	rm_df.to_sql("ratemap", engine, if_exists="append", index=False, chunksize=10_000)
 
 	return df
 
