@@ -7,8 +7,7 @@ import sys, os
 import json
 
 sys.path.append(f"{DIR}/../utils")
-from send_gcp_metric import send_gcp_metric
-from send_to_gcp import send_to_gcp
+from gcp import send_to_bucket, send_gcp_metric
 
 def compress_files():
 
@@ -77,7 +76,7 @@ if __name__ == '__main__':
 
 		tar_file_name = compress_files()
 
-		send_to_gcp(
+		send_to_bucket(
 			CONFIG['gcp_bucket_prefix'],
 			CONFIG['gcp_bucket_name'],
 			os.path.basename(tar_file_name),

@@ -4,7 +4,7 @@ import sys, os
 import time
 
 sys.path.append(f"{DIR}/../utils")
-from send_gcp_metric import send_gcp_metric
+from gcp import send_gcp_metric
 
 if __name__ == '__main__':
 

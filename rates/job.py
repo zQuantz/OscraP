@@ -8,8 +8,7 @@ import sys, os
 import json
 
 sys.path.append(f"{DIR}/../utils")
-from send_gcp_metric import send_gcp_metric
-from send_to_gcp import send_to_gcp
+from gcp import send_to_bucket, send_gcp_metric
 from send_email import send_email
 
 ###################################################################################################
@@ -49,7 +48,7 @@ def store():
 		filename = f"{DIR}/rate_data/{DATE}.csv"
 		tar_file.add(filename, os.path.basename(filename))
 
-	send_to_gcp(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz", f"{DIR}/rate_data/", logger=logger)
+	send_to_bucket(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz", f"{DIR}/rate_data/", logger=logger)
 	os.remove(filename)
 
 def collect():

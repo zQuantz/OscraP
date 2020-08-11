@@ -14,7 +14,7 @@ import shutil
 import time
 
 sys.path.append(f"{DIR}/../utils")
-from send_to_gcp import send_to_gcp
+from gcp import send_to_bucket
 from request import request
 
 ###################################################################################################
@@ -213,7 +213,7 @@ def main():
 				tar_file.add(f"{DIR}/instrument_data/{DATE}/{file}", arcname=file)
 			tar_file.add(f"{DIR}/err.log", arcname="err.log")
 		
-		send_to_gcp(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz", f"{DIR}/instrument_data/")
+		send_to_bucket(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz", f"{DIR}/instrument_data/")
 
 		for folder in os.listdir(f"{DIR}/instrument_data"):
 			if os.path.isdir(f"{DIR}/instrument_data/{folder}"):

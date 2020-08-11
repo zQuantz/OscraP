@@ -8,7 +8,7 @@ import sys, os
 import shutil
 
 sys.path.append(f"{DIR}/../utils")
-from send_to_gcp import send_to_gcp
+from gcp import send_to_bucket
 
 ###################################################################################################
 
@@ -79,7 +79,7 @@ def main():
 	
 		aggregate() ; compress()
 
-		send_to_gcp(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz",
+		send_to_bucket(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz",
 				    f"{DIR}/financial_data/", logger=logger)
 		
 		remove()

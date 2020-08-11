@@ -12,7 +12,7 @@ import numpy as np
 import sys, os
 
 sys.path.append(f"{DIR}/../utils")
-from send_gcp_metric import send_gcp_metric
+from gcp import send_gcp_metric
 
 ###################################################################################################
 
