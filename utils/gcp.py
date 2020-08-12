@@ -2,8 +2,11 @@ from google.cloud import monitoring_v3
 
 from dummy_logger import DummyLogger
 from google.cloud import storage
+from datetime import datetime
 from hashlib import sha256
+import tarfile as tar
 
+import shutil
 import json
 import time
 import os
@@ -101,7 +104,62 @@ def create_gcp_metric(metric_name, value_type):
 
 	print('Created {}.'.format(descriptor.name))
 
+def bucket_backup():
+
+	date = datetime.now().strftime("%Y-%m-%d")
+	dir_ = f"{os.path.expanduser('~')}/Downloads/OSCRAP_BACKUP_{date}"
+	os.mkdir(dir_)
+
+	BUCKETS = [
+		"oscrap_storage",
+		"cnbc-storage"
+	]
+
+	BUCKET_FOLDERS = {
+		"oscrap_storage" : ["rss", "equities", "instruments", "rates"],
+		"cnbc-storage" : ["CNBCNews", "GoogleNews"]
+	}
+
+	for bucket_name in BUCKETS:
+
+		os.mkdir(f"{dir_}/{bucket_name}")
+
+		for folder in BUCKET_FOLDERS[bucket_name]:
+
+			os.mkdir(f"{dir_}/{bucket_name}/{folder}")
+
+	###############################################################################################
+
+	with tar.open(f"{dir_}.tar.xz", mode="x:xz") as tar_file:
+
+		for bucket_name in BUCKETS:
+
+			bucket = STORAGE_CLIENT.bucket(bucket_name)
+
+			for blob in bucket.list_blobs():
+
+				if "/" not in blob.name:
+					continue
+
+				names = blob.name.split("/")	
+				if names[0] not in BUCKET_FOLDERS[bucket_name]:
+					continue
+
+				folder, file_name = names
+				if file_name == '':
+					continue
+
+				print(folder, file_name)
+				fullpath = f"{dir_}/{bucket_name}/{folder}/{file_name}"
+
+				blob.download_to_filename(fullpath)
+				tar_file.add(fullpath, arcname=f"{bucket_name}/{folder}/{file_name}")
+
+	shutil.rmtree(dir_)
+
 if __name__ == '__main__':
+
+	bucket_backup()
 
 	# # OscraP
 	# create_gcp_metric("oscrap_options_sucess", "DOUBLE")
