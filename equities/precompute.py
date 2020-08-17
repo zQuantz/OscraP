@@ -20,10 +20,28 @@ typemap = {"C" : 1, "P" : -1}
 
 ###################################################################################################
 
-def pre_surface(options, ohlc):
+def pre_options(options, ohlc):
 
 	ohlc = ohlc[['date_current', 'ticker', 'adj_close']]
 	options = options.merge(ohlc, on=['date_current', 'ticker'], how="inner")
+
+	delta = (options.expiration_date - options.date_current)
+	options['days'] = delta.dt.days
+	options['years'] = delta.dt.days / 365
+	
+	options['moneyness'] = options.strike_price / options.adj_close
+	options['otm'] = options.adj_close - options.strike_price
+	options['otm'] = options.otm * options.option_type.map(typemap)
+
+	options = options[options.otm < 0]
+	options = options[options.expiration_date.astype(str).isin(regulars)]
+
+	surface = pre_surface(options)
+	time_surface = pre_time_surface(options)
+
+	return surface, time_surface
+
+def pre_surface(options):
 
 	def by_ticker(df):
 
@@ -94,16 +112,6 @@ def pre_surface(options, ohlc):
 
 		return df.groupby('expiration').apply(by_expiration)
 
-	options['years'] = (options.expiration_date - options.date_current)
-	options['years'] = options.years.dt.days / 365
-	
-	options['moneyness'] = options.strike_price / options.adj_close
-	options['otm'] = options.adj_close - options.strike_price
-	options['otm'] = options.otm * options.option_type.map(typemap)
-
-	options = options[options.otm < 0]
-	options = options[options.expiration_date.astype(str).isin(regulars)]
-
 	surface = options.groupby(["date_current", "ticker"]).apply(by_ticker)
 	surface = surface.reset_index()
 	
@@ -116,3 +124,15 @@ def pre_surface(options, ohlc):
 	surface['date_current'] = CONFIG['date']
 	
 	return surface
+
+def pre_time_surface(options):
+
+	options['time_group'] = (np.log(options.days) / np.log(2)).astpye(int)
+	options = options[options.time_group.between(4, 9)]
+	options = options[options.moneynesses.between(0.8, 1.2)]
+	time_surface = options.groupby(["ticker", "time_group"]).mean().reset_index()
+	
+	time_surface['date_current'] = CONFIG['date']
+	time_surface = time_surface[time_surface.time_group.between(4, 9)]
+
+	return time_surface
