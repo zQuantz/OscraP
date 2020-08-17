@@ -20,27 +20,6 @@ typemap = {"C" : 1, "P" : -1}
 
 ###################################################################################################
 
-def pre_options(options, ohlc):
-
-	ohlc = ohlc[['date_current', 'ticker', 'adj_close']]
-	options = options.merge(ohlc, on=['date_current', 'ticker'], how="inner")
-
-	delta = (options.expiration_date - options.date_current)
-	options['days'] = delta.dt.days
-	options['years'] = delta.dt.days / 365
-	
-	options['moneyness'] = options.strike_price / options.adj_close
-	options['otm'] = options.adj_close - options.strike_price
-	options['otm'] = options.otm * options.option_type.map(typemap)
-
-	options = options[options.otm < 0]
-	options = options[options.expiration_date.astype(str).isin(regulars)]
-
-	surface = pre_surface(options)
-	time_surface = pre_time_surface(options)
-
-	return surface, time_surface
-
 def pre_surface(options):
 
 	def by_ticker(df):
@@ -103,6 +82,8 @@ def pre_surface(options):
 
 				else:
 
+					iv = ivs[-1]
+
 				surface.append([
 					int(100 * moneynesses[i][0]),
 					iv
@@ -112,8 +93,31 @@ def pre_surface(options):
 
 		return df.groupby('expiration').apply(by_expiration)
 
+	ohlc = ohlc[['date_current', 'ticker', 'adj_close']]
+	options = options.merge(ohlc, on=['date_current', 'ticker'], how="inner")
+
+	delta = (options.expiration_date - options.date_current)
+	options['days'] = delta.dt.days
+	options['years'] = delta.dt.days / 365
+	
+	options['moneyness'] = options.strike_price / options.adj_close
+	options['otm'] = options.adj_close - options.strike_price
+	options['otm'] = options.otm * options.option_type.map(typemap)
+
+	options = options[options.otm < 0]
+	options = options[options.expiration_date.astype(str).isin(regulars)]
+
 	surface = options.groupby(["date_current", "ticker"]).apply(by_ticker)
 	surface = surface.reset_index()
+
+	cols = ['date_current', 'ticker', 'expiration', 'iv']
+    time_surface = surface[cols]
+    time_surface = time_surface.groupby(cols[:-1], as_index = False).mean()
+    time_surface = time_surface.pivot(index="ticker", columns="expiration", values="iv")
+    
+    time_surface.columns = [f"m{e}" for e in time_surface.columns]
+    time_surface = time_surface.reset_index()
+    time_surface['date_current'] = CONFIG['date']
 	
 	label = "m" + surface.expiration.astype(str)
 	label += "m" + surface.moneyness.astype(str)
@@ -123,16 +127,4 @@ def pre_surface(options):
 	surface = surface[label.unique()].reset_index()
 	surface['date_current'] = CONFIG['date']
 	
-	return surface
-
-def pre_time_surface(options):
-
-	options['time_group'] = (np.log(options.days) / np.log(2)).astpye(int)
-	options = options[options.time_group.between(4, 9)]
-	options = options[options.moneynesses.between(0.8, 1.2)]
-	time_surface = options.groupby(["ticker", "time_group"]).mean().reset_index()
-	
-	time_surface['date_current'] = CONFIG['date']
-	time_surface = time_surface[time_surface.time_group.between(4, 9)]
-
-	return time_surface
+	return surface, time_surface
