@@ -1,4 +1,5 @@
 from const import DIR, CONFIG, COUNT_QUERY
+from precompute import precompute
 
 import sqlalchemy as sql
 import pandas as pd
@@ -10,6 +11,9 @@ DB_ADDRESS = CONFIG['db_address']
 DATE = CONFIG['date']
 
 ###################################################################################################
+
+def to_sql(df, table_name, conn):
+	df.to_sql(table_name, conn, if_exists='append', index=False, chunksize=10_000)
 
 def index(tickers):
 
@@ -71,19 +75,29 @@ def index(tickers):
 
 		if len(options) > 0:
 			options = pd.concat(options)
-			options.to_sql(name='options', con=conn, if_exists='append', index=False, chunksize=10_000)
+			to_sql(options, "options", conn)
 
 		if len(ohlc) > 0:
 			ohlc = pd.concat(ohlc)
-			ohlc.to_sql(name='ohlc', con=conn, if_exists='append', index=False, chunksize=10_000)
+			to_sql(ohlc, "ohlc", conn)
 
 		if len(analysis) > 0:
 			analysis = pd.concat(analysis)
-			analysis.to_sql(name='analysis', con=conn, if_exists='append', index=False, chunksize=10_000)
+			to_sql(analysis, "analysis", conn)
 
 		if len(key_stats) > 0:
 			key_stats = pd.concat(key_stats)
-			key_stats.to_sql(name='key_stats', con=conn, if_exists='append', index=False, chunksize=10_000)
+			to_sql(key_stats, "key_stats", conn)
+
+		if len(options) > 0 and len(ohlc) > 0:
+			
+			surface, time_surface, tickerdates_query, tickeroids_query = precompute(options, ohlc)
+			
+			to_sql(surface, "surface", conn)
+			to_sql(time_surface, "time_surface", conn)			
+			
+			conn.execute(tickerdates_query)
+			conn.execute(tickeroids_query)
 
 		count_df['post'] = pd.read_sql(COUNT_QUERY, conn).iloc[:, 1]
 

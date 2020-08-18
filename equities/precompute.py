@@ -20,7 +20,36 @@ typemap = {"C" : 1, "P" : -1}
 
 ###################################################################################################
 
-def pre_surface(options):
+def precompute(options, ohlc):
+
+	tickerdates_query = f"""
+		INSERT INTO tickerdates
+		SELECT
+			ticker,
+			date_current
+		FROM
+			options
+		WHERE
+			date_current = "{CONFIG['date']}"
+		GROUP BY ticker, date_current
+	"""
+
+	tickeroids_query = f"""
+		INSERT IGNORE INTO tickeroids
+		SELECT
+			ticker,
+			option_id
+		FROM
+			options
+		WHERE
+			date_current = "{CONFIG['date']}"
+		GROUP BY ticker, option_id 
+	"""
+	
+	surface, time_surface = pre_surface(options, ohlc)
+	return surface, time_surface, tickerdates_query, tickeroids_query
+
+def pre_surface(options, ohlc):
 
 	def by_ticker(df):
 
