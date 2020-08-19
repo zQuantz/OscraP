@@ -3,6 +3,9 @@ __pycache__
 
 tmp/
 
+db/data
+db/tmp
+
 equities/utils/tmp
 equities/utils/tformed
 equities/utils/*.tar.xz

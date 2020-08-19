@@ -1,5 +1,3 @@
-from const import DIR, CONFIG, logger
-
 from collections import defaultdict
 
 import sqlalchemy as sql
@@ -7,20 +5,7 @@ import pandas as pd
 import numpy as np
 import sys, os
 
-###################################################################################################
-
-start = CONFIG['date']
-end = f"{int(start[:4]) + 4}-{start[4:]}"
-
-fridays = pd.date_range(start, end, freq="WOM-3FRI").astype(str)
-thursdays = pd.date_range(start, end, freq="WOM-3THU").astype(str)
-regulars = list(fridays) + list(thursdays)
-
-typemap = {"C" : 1, "P" : -1}
-
-###################################################################################################
-
-def precompute(options, ohlc):
+def precompute(options, ohlc, date):
 
 	tickerdates_query = f"""
 		INSERT INTO tickerdates
@@ -30,7 +15,7 @@ def precompute(options, ohlc):
 		FROM
 			options
 		WHERE
-			date_current = "{CONFIG['date']}"
+			date_current = "{date}"
 		GROUP BY ticker, date_current
 	"""
 
@@ -42,14 +27,14 @@ def precompute(options, ohlc):
 		FROM
 			options
 		WHERE
-			date_current = "{CONFIG['date']}"
+			date_current = "{date}"
 		GROUP BY ticker, option_id 
 	"""
 	
 	surface, time_surface = pre_surface(options, ohlc)
 	return surface, time_surface, tickerdates_query, tickeroids_query
 
-def pre_surface(options, ohlc):
+def pre_surface(options, ohlc, date):
 
 	def by_ticker(df):
 
@@ -59,7 +44,7 @@ def pre_surface(options, ohlc):
 		moneynesses = np.arange(0.8, 1.25, 0.05)
 		moneynesses = moneynesses.reshape(-1, 1)
 		
-		T = (df.expiration_date - df.date_current).dt.days
+		T = df.days_to_expiry
 		T = (T.unique() / 365).reshape(-1, 1)
 		expirations = np.repeat(expirations, len(T), axis=0)
 
@@ -122,16 +107,20 @@ def pre_surface(options, ohlc):
 
 		return df.groupby('expiration').apply(by_expiration)
 
+	start = date
+	end = f"{int(start[:4]) + 4}-{start[4:]}"
+
+	fridays = pd.date_range(start, end, freq="WOM-3FRI").astype(str)
+	thursdays = pd.date_range(start, end, freq="WOM-3THU").astype(str)
+	regulars = list(fridays) + list(thursdays)
+
 	ohlc = ohlc[['date_current', 'ticker', 'adj_close']]
 	options = options.merge(ohlc, on=['date_current', 'ticker'], how="inner")
-
-	delta = (options.expiration_date - options.date_current)
-	options['days'] = delta.dt.days
-	options['years'] = delta.dt.days / 365
+	options['years'] = options.days_to_expiry / 365
 	
 	options['moneyness'] = options.strike_price / options.adj_close
 	options['otm'] = options.adj_close - options.strike_price
-	options['otm'] = options.otm * options.option_type.map(typemap)
+	options['otm'] = options.otm * options.option_type.map({"C" : 1, "P" : -1})
 
 	options = options[options.otm < 0]
 	options = options[options.expiration_date.astype(str).isin(regulars)]
@@ -140,13 +129,13 @@ def pre_surface(options, ohlc):
 	surface = surface.reset_index()
 
 	cols = ['date_current', 'ticker', 'expiration', 'iv']
-    time_surface = surface[cols]
-    time_surface = time_surface.groupby(cols[:-1], as_index = False).mean()
-    time_surface = time_surface.pivot(index="ticker", columns="expiration", values="iv")
-    
-    time_surface.columns = [f"m{e}" for e in time_surface.columns]
-    time_surface = time_surface.reset_index()
-    time_surface['date_current'] = CONFIG['date']
+	time_surface = surface[cols]
+	time_surface = time_surface.groupby(cols[:-1], as_index = False).mean()
+	time_surface = time_surface.pivot(index="ticker", columns="expiration", values="iv")
+	
+	time_surface.columns = [f"m{e}" for e in time_surface.columns]
+	time_surface = time_surface.reset_index()
+	time_surface['date_current'] = date
 	
 	label = "m" + surface.expiration.astype(str)
 	label += "m" + surface.moneyness.astype(str)
@@ -154,6 +143,6 @@ def pre_surface(options, ohlc):
 	
 	surface = surface.pivot(index="ticker", values="iv", columns="label")
 	surface = surface[label.unique()].reset_index()
-	surface['date_current'] = CONFIG['date']
+	surface['date_current'] = date
 	
 	return surface, time_surface

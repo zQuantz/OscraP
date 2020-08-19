@@ -73,7 +73,7 @@ def collect():
 	engine = sql.create_engine(CONFIG['db_address'])
 
 	df.to_sql("rates", engine, if_exists='append', index=False, chunksize=10_000)
-	df.to_csv(f"{DIR}/rate_data/{DATE}.csv")
+	df.to_csv(f"{DIR}/rate_data/{DATE}.csv", index=False)
 
 	###############################################################################################
 
