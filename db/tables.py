@@ -1,5 +1,5 @@
 OPTIONS_TABLE = """
-	CREATE TABLE options (
+	CREATE TABLE optionsBACK (
 		ticker VARCHAR(10),
 		date_current DATE,
 		expiration_date DATE,
@@ -20,7 +20,7 @@ OPTIONS_TABLE = """
 """
 
 OHLC_TABLE = """
-	CREATE TABLE ohlc (
+	CREATE TABLE ohlcBACK (
 		ticker VARCHAR(10),
 		date_current DATE,
 		open_price FLOAT(4),
@@ -35,7 +35,7 @@ OHLC_TABLE = """
 """
 
 KEYSTATS_TABLE = """
-	CREATE TABLE keystats (
+	CREATE TABLE keystatsBACK (
 		ticker VARCHAR(10),
 		date_current DATE,
 		feature VARCHAR(100),
@@ -45,7 +45,7 @@ KEYSTATS_TABLE = """
 """
 
 ANALYSIS_TABLE = """
-	CREATE TABLE analysis (
+	CREATE TABLE analysisBACK (
 		ticker VARCHAR(10),
 		date_current DATE,
 		category VARCHAR(100),
@@ -57,7 +57,7 @@ ANALYSIS_TABLE = """
 """
 
 INSTRUMENT_TABLE = """
-	CREATE TABLE instruments (
+	CREATE TABLE instrumentsBACK (
 		last_updated DATE,
 		ticker VARCHAR(10),
 		name VARCHAR(100),
@@ -72,7 +72,7 @@ INSTRUMENT_TABLE = """
 """
 
 TREASURYRATES_TABLE = """
-	CREATE TABLE treasuryrates (
+	CREATE TABLE treasuryratesBACK (
 		date_current DATE PRIMARY KEY NOT NULL,
 		_1_month FLOAT(4),
 		_2_months FLOAT(4),
@@ -90,7 +90,7 @@ TREASURYRATES_TABLE = """
 """
 
 TREASURYRATEMAP_TABLE = """
-	CREATE TABLE treasuryratemap (
+	CREATE TABLE treasuryratemapBACK (
 		date_current DATE PRIMARY KEY NOT NULL,
 		days_to_expiry SMALLINT UNSIGNED,
 		treasuryrate FLOAT(4)
@@ -99,7 +99,7 @@ TREASURYRATEMAP_TABLE = """
 """
 
 TICKERDATES_TABLE = """
-	CREATE TABLE tickerdates (
+	CREATE TABLE tickerdatesBACK (
 		ticker VARCAHR(10),
 		date_current DATE
 		PRIMARY KEY(ticker, date_current)
@@ -107,17 +107,47 @@ TICKERDATES_TABLE = """
 """
 
 TICKEROIDS_TABLE = """
-	CREATE TABLE tickeroids (
+	CREATE TABLE tickeroidsBACK (
 		ticker VARCHAR(10),
 		option_id VARCHAR(50),
 		PRIMARY KEY(ticker, option_id)
 	)
 """
 
+columns = ""
+for expiry in [1, 3, 6, 9, 12, 18, 24]:
+	for moneyness in range(80, 125, 5):
+		columns += f"m{expiry}m{moneyness} FLOAT(6), "
+
+SURFACE_TABLE = """
+	CREATE TABLE surfaceBACK (
+		ticker VARCHAR(10),
+		date_current DATE,
+		{columns}
+		PRIMARY KEY(ticker, date_current)
+	)
+""".format(columns=columns)
+
+
+TIMESURFACE_TABLE = """
+	CREATE TABLE timesurfaceBACK (
+		ticker VARCHAR(10),
+		date_current DATE,
+		m1 FLOAT(6),
+		m3 FLOAT(6),
+		m6 FLOAT(6),
+		m9 FLOAT(6),
+		m12 FLOAT(6),
+		m18 FLOAT(6),
+		m24 FLOAT(6),
+		PRIMARY KEY(ticker, date_current)
+	)
+"""
+
 ###################################################################################################
 
 POSITIONTAGS_TABLE = """
-	CREATE TABLE positiontags (
+	CREATE TABLE positiontagsBACK (
 		username VARCHAR(30),
 		execution_time TIMESTAMP,
 		ticker VARCHAR(10),
@@ -132,7 +162,7 @@ POSITIONTAGS_TABLE = """
 """
 
 TIMEANDSALES_TABLE = """
-	CREATE TABLE timeandsales (
+	CREATE TABLE timeandsalesBACK (
 		username VARCHAR(30),
 		execution_time TIMESTAMP,
 		position_id VARCHAR(32),
@@ -154,7 +184,7 @@ TIMEANDSALES_TABLE = """
 """
 
 USERS_TABLE = """
-	CREATE TABLE users (
+	CREATE TABLE usersBACK (
 		username TEXT PRIMARY KEY NOT NULL,
 		password TEXT NOT NULL
 	)

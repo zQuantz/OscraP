@@ -9,10 +9,18 @@ from precompute import pre_surface
 
 ###################################################################################################
 
-equity_dir = f"{DIR}/data/old/equities"
-rates_dir = f"{DIR}/data/old/rates"
-instruments_dir = f"{DIR}/data/old/instruments"
-EQUITY_FOLDERS = sorted(os.listdir(equity_dir))
+OLD = {
+	"equity" : f"{DIR}/data/old/equities",
+	"rates" : f"{DIR}/data/old/rates",
+	"instruments" : f"{DIR}/data/old/instruments"
+}
+
+NEW = {
+	key : value.replace("/old/", "/new/")
+	for key, value in OLD.items()
+}
+
+EQUITY_FOLDERS = sorted(os.listdir(OLD['equity']))
 
 ###################################################################################################
 
@@ -22,11 +30,11 @@ def options_core():
 
 		print("Options Core Transformation:", folder)
 
-		if "options.csv" not in os.listdir(f"{equity_dir}/{folder}/"):
+		if "options.csv" not in os.listdir(f"{OLD['equity']}/{folder}/"):
 			print("No options file found.")
 			continue
 		
-		options = pd.read_csv(f"{equity_dir}/{folder}/options.csv",
+		options = pd.read_csv(f"{OLD['equity']}/{folder}/options.csv",
 							  parse_dates=["date_current", "expiration_date"])
 		
 		cols = ["time_to_expiry", "delta", "gamma", "theta", "vega", "rho"]
@@ -42,8 +50,7 @@ def options_core():
 			}
 		options = options.rename(renames, axis=1)
 
-		new_filename = f"{equity_dir}/{folder}/options.csv"
-		new_filename = new_filename.replace("/old/", "/new/")
+		new_filename = f"{NEW['equity']}/{folder}/options.csv"
 		options.to_csv(new_filename, index=False)
 
 def keystats_core():
@@ -52,13 +59,12 @@ def keystats_core():
 
 		print("Key Stats Core Transformation:", folder)
 
-		if "key_stats.csv" not in os.listdir(f"{equity_dir}/{folder}/"):
+		if "key_stats.csv" not in os.listdir(f"{OLD['equity']}/{folder}/"):
 			print("No Key Stats file found.")
 			continue
 		
-		key_stats = pd.read_csv(f"{equity_dir}/{folder}/key_stats.csv")
-		new_filename = f"{equity_dir}/{folder}/key_stats.csv"
-		new_filename = new_filename.replace("/old/", "/new/")
+		key_stats = pd.read_csv(f"{OLD['equity']}/{folder}/key_stats.csv")
+		new_filename = f"{NEW['equity']}/{folder}/key_stats.csv"
 		key_stats.to_csv(new_filename, index=False)
 
 def analysis_core():
@@ -67,13 +73,12 @@ def analysis_core():
 
 		print("Analysis Core Transformation:", folder)
 
-		if "key_stats.csv" not in os.listdir(f"{equity_dir}/{folder}/"):
+		if "key_stats.csv" not in os.listdir(f"{OLD['equity']}/{folder}/"):
 			print("No analysis file found.")
 			continue
 		
-		analysis = pd.read_csv(f"{equity_dir}/{folder}/analysis.csv")
-		new_filename = f"{equity_dir}/{folder}/analysis.csv"
-		new_filename = new_filename.replace("/old/", "/new/")
+		analysis = pd.read_csv(f"{OLD['equity']}/{folder}/analysis.csv")
+		new_filename = f"{NEW['equity']}/{folder}/analysis.csv"
 		analysis.to_csv(new_filename, index=False)
 
 def ohlc_core():
@@ -82,24 +87,22 @@ def ohlc_core():
 
 		print("OHLC Core Transformation:", folder)
 
-		if "ohlc.csv" not in os.listdir(f"{equity_dir}/{folder}/"):
+		if "ohlc.csv" not in os.listdir(f"{OLD['equity']}/{folder}/"):
 			print("No OHLC file found.")
 			continue
 		
-		ohlc = pd.read_csv(f"{equity_dir}/{folder}/ohlc.csv")
-		new_filename = f"{equity_dir}/{folder}/ohlc.csv"
-		new_filename = new_filename.replace("/old/", "/new/")
+		ohlc = pd.read_csv(f"{OLD['equity']}/{folder}/ohlc.csv")
+		new_filename = f"{NEW['equity']}/{folder}/ohlc.csv"
 		ohlc.to_csv(new_filename, index=False)
 
 def rates_core():
 
-	for file in sorted(os.listdir(rates_dir)):
+	for file in sorted(os.listdir(OLD['rates'])):
 
 		print("Rates Core Transformation:", file)
 		
-		rates = pd.read_csv(f"{rates_dir}/{file}")
-		new_filename = f"{rates_dir}/{file}"
-		new_filename = new_filename.replace("/old/", "/new/")
+		rates = pd.read_csv(f"{OLD['rates']}/{file}")
+		new_filename = f"{NEW['rates']}/{file}"
 		
 		if rates.shape[1] == 14:
 			rates = rates.iloc[:, 1:]
@@ -108,71 +111,77 @@ def rates_core():
 
 def instruments_core():
 
-	for file in sorted(os.listdir(instruments_dir)):
+	for file in sorted(os.listdir(OLD['instruments'])):
 
 		if "_" in file or ".log" in file:
 			continue
 
 		print("Instruments Core Transformation:", file)
 		
-		instruments = pd.read_csv(f"{instruments_dir}/{file}")
-		new_filename = f"{instruments_dir}/{file}"
-		new_filename = new_filename.replace("/old/", "/new/")
+		instruments = pd.read_csv(f"{OLD['instruments']}/{file}")
+		new_filename = f"{NEW['instruments']}/{file}"
 		instruments.to_csv(new_filename, index=False)
 
 def surface():
 
-	new_equity_dir = equity_dir.replace("/old/", "/new/")
-
 	ohlcs = []
-	for folder in os.listdir(new_equity_dir):
-		ohlcs.append(pd.read_csv(f"{new_equity_dir}/{folder}/ohlc.csv"))
+	for folder in os.listdir(NEW['equity']):
+		ohlcs.append(pd.read_csv(f"{NEW['equity']}/{folder}/ohlc.csv"))
 	
 	ohlc = pd.concat(ohlcs)
 	ohlc = ohlc[['ticker', 'date_current', 'adj_close']]
 
-	for folder in sorted(os.listdir(new_equity_dir)):
+	NEW['surface'] = f"{DIR}/data/new/surface"
+	os.mkdir(NEW['surface'])
 
-		print("Processing Surface:", folder)
+	for folder in sorted(os.listdir(NEW['equity'])):
 
-		options = pd.read_csv(f"{new_equity_dir}/{folder}/options.csv")
+		if "options.csv" not in os.listdir(f"{NEW['equity']}/{folder}"):
+			continue
+
+		options = pd.read_csv(f"{NEW['equity']}/{folder}/options.csv")
 		surface_df, timesurface_df = pre_surface(options, ohlc, folder)
 		
+		print("Processing Surface:", folder)
 		print(len(surface_df), len(timesurface_df))
+		print()
 
-		surface_df.to_csv(f"{new_equity_dir}/{folder}/surface.csv", index=False)
-		timesurface_df.to_csv(f"{new_equity_dir}/{folder}/timesurface.csv", index=False)
+		os.mkdir(f"{NEW['surface']}/{folder}")
+
+		surface_df.to_csv(f"{NEW['surface']}/{folder}/surface.csv", index=False)
+		timesurface_df.to_csv(f"{NEW['surface']}/{folder}/timesurface.csv", index=False)
 
 def ticker_maps():
 
-	new_equity_dir = equity_dir.replace("/old/", "/new/")
 	tickeroids = pd.DataFrame(columns=['ticker', 'option_id'])
+	NEW['tickermaps'] = f"{DIR}/data/new/tickermaps"
+	os.mkdir(NEW['tickermaps'])
 
-	for folder in sorted(os.listdir(new_equity_dir)):
+	for folder in sorted(os.listdir(NEW['equity'])):
 
 		print("Processing Ticker Maps:", folder)
 
-		if "options.csv" not in os.listdir(f"{new_equity_dir}/{folder}/"):
+		if "options.csv" not in os.listdir(f"{NEW['equity']}/{folder}/"):
 			continue 
 
-		options = pd.read_csv(f"{new_equity_dir}/{folder}/options.csv")
+		options = pd.read_csv(f"{NEW['equity']}/{folder}/options.csv")
+
+		os.mkdir(f"{NEW['tickermaps']}/{folder}")
 
 		tickerdates = options[['ticker', 'date_current']].drop_duplicates()
-		tickerdates.to_csv(f"{new_equity_dir}/{folder}/tickerdates.csv", index=False)
+		tickerdates.to_csv(f"{NEW['tickermaps']}/{folder}/tickerdates.csv", index=False)
 
 		new_tickeroids = options[['ticker', 'option_id']].drop_duplicates()
 		new_tickeroids = new_tickeroids[~new_tickeroids.option_id.isin(tickeroids.option_id)]
-		new_tickeroids.to_csv(f"{new_equity_dir}/{folder}/tickeroids.csv", index=False)
+		new_tickeroids.to_csv(f"{NEW['tickermaps']}/{folder}/tickeroids.csv", index=False)
 
 		tickeroids = pd.concat([tickeroids, new_tickeroids])
 
 def treasuryratemap():
 
-	new_rate_dir = rates_dir.replace("/old/", "/new/")
 	rates = []
-
-	for file in sorted(os.listdir(new_rate_dir)):
-		ratedf = pd.read_csv(f"{new_rate_dir}/{file}")
+	for file in sorted(os.listdir(NEW['rates'])):
+		ratedf = pd.read_csv(f"{NEW['rates']}/{file}")
 		rates.append(ratedf)
 
 	rates = pd.concat(rates)
@@ -230,16 +239,19 @@ def treasuryratemap():
 	ratemap = rates.iloc[:, :].groupby("date_current").apply(by_date)
 	ratemap = ratemap.reset_index()
 	ratemap = ratemap[['date_current', 'days_to_expiry', 'rate']]
+	ratemap['date_current'] = ratemap.date_current.astype(str)
 
-	new_ratemap_dir = f"{DIR}/data/new/ratemap"
-	os.mkdir(new_ratemap_dir)
+	NEW['treasuryratemap'] = f"{DIR}/data/new/treasuryratemap"
+	os.mkdir(NEW['treasuryratemap'])
 
 	for date in ratemap.date_current.unique():
 
 		print("Processing Treasury Map:", date)
 
 		rmap = ratemap[ratemap.date_current == date]
-		rmap.to_csv(f"{new_ratemap_dir}/{date}.csv", index=False)
+		rmap.to_csv(f"{NEW['treasuryratemap']}/{date}.csv", index=False)
+
+###################################################################################################
 
 def core():
 
@@ -259,5 +271,5 @@ def precalcs():
 
 if __name__ == '__main__':
 
-	core()
-	precalcs()
+	# core()
+	# precalcs()
