@@ -1,4 +1,5 @@
 from const import DIR
+import tarfile as tar
 
 import pandas as pd
 import numpy as np
@@ -12,13 +13,15 @@ from precompute import pre_surface
 OLD = {
 	"equity" : f"{DIR}/data/old/equities",
 	"rates" : f"{DIR}/data/old/rates",
-	"instruments" : f"{DIR}/data/old/instruments"
+	"instruments" : f"{DIR}/data/old/instruments",
+	"rss" : f"{DIR}/data/old/rss"
 }
 
 NEW = {
 	key : value.replace("/old/", "/new/")
 	for key, value in OLD.items()
 }
+NEW['rates'] = f"{DIR}/data/new/treasuryrates"
 
 EQUITY_FOLDERS = sorted(os.listdir(OLD['equity']))
 
@@ -26,17 +29,8 @@ EQUITY_FOLDERS = sorted(os.listdir(OLD['equity']))
 
 def options_core():
 
-	for folder in EQUITY_FOLDERS:
+	def transformation(options):
 
-		print("Options Core Transformation:", folder)
-
-		if "options.csv" not in os.listdir(f"{OLD['equity']}/{folder}/"):
-			print("No options file found.")
-			continue
-		
-		options = pd.read_csv(f"{OLD['equity']}/{folder}/options.csv",
-							  parse_dates=["date_current", "expiration_date"])
-		
 		cols = ["time_to_expiry", "delta", "gamma", "theta", "vega", "rho"]
 		options = options.drop(cols, axis=1)
 
@@ -49,11 +43,30 @@ def options_core():
 				"ask" : "ask_price"
 			}
 		options = options.rename(renames, axis=1)
+		
+		return options
+
+	for folder in EQUITY_FOLDERS:
+
+		print("Options Core Transformation:", folder)
+
+		if "options.csv" not in os.listdir(f"{OLD['equity']}/{folder}/"):
+			print("No options file found.")
+			continue
+		
+		options = pd.read_csv(f"{OLD['equity']}/{folder}/options.csv",
+							  parse_dates=["date_current", "expiration_date"])
+
+		options = transformation(options)
 
 		new_filename = f"{NEW['equity']}/{folder}/options.csv"
 		options.to_csv(new_filename, index=False)
 
 def keystats_core():
+
+	def transformation(keystats):
+
+		return keystats
 
 	for folder in EQUITY_FOLDERS:
 
@@ -63,11 +76,18 @@ def keystats_core():
 			print("No Key Stats file found.")
 			continue
 		
-		key_stats = pd.read_csv(f"{OLD['equity']}/{folder}/key_stats.csv")
-		new_filename = f"{NEW['equity']}/{folder}/key_stats.csv"
-		key_stats.to_csv(new_filename, index=False)
+		keystats = pd.read_csv(f"{OLD['equity']}/{folder}/key_stats.csv")
+		
+		keystats = transformation(keystats)
+
+		new_filename = f"{NEW['equity']}/{folder}/keystats.csv"
+		keystats.to_csv(new_filename, index=False)
 
 def analysis_core():
+
+	def transformation(analysis):
+
+		return analysis
 
 	for folder in EQUITY_FOLDERS:
 
@@ -78,10 +98,17 @@ def analysis_core():
 			continue
 		
 		analysis = pd.read_csv(f"{OLD['equity']}/{folder}/analysis.csv")
+
+		analysis = transformation(analysis)
+
 		new_filename = f"{NEW['equity']}/{folder}/analysis.csv"
 		analysis.to_csv(new_filename, index=False)
 
 def ohlc_core():
+
+	def transformation(ohlc):
+
+		return ohlc
 
 	for folder in EQUITY_FOLDERS:
 
@@ -92,16 +119,26 @@ def ohlc_core():
 			continue
 		
 		ohlc = pd.read_csv(f"{OLD['equity']}/{folder}/ohlc.csv")
+
+		ohlc = transformation(ohlc)
+
 		new_filename = f"{NEW['equity']}/{folder}/ohlc.csv"
 		ohlc.to_csv(new_filename, index=False)
 
 def rates_core():
+
+	def transformation(rates):
+
+		return rates
 
 	for file in sorted(os.listdir(OLD['rates'])):
 
 		print("Rates Core Transformation:", file)
 		
 		rates = pd.read_csv(f"{OLD['rates']}/{file}")
+
+		rates = transformation(rates)
+
 		new_filename = f"{NEW['rates']}/{file}"
 		
 		if rates.shape[1] == 14:
@@ -111,6 +148,10 @@ def rates_core():
 
 def instruments_core():
 
+	def transformation(instruments):
+
+		return instruments
+
 	for file in sorted(os.listdir(OLD['instruments'])):
 
 		if "_" in file or ".log" in file:
@@ -119,8 +160,31 @@ def instruments_core():
 		print("Instruments Core Transformation:", file)
 		
 		instruments = pd.read_csv(f"{OLD['instruments']}/{file}")
+
+		transformation(instruments)
+
 		new_filename = f"{NEW['instruments']}/{file}"
 		instruments.to_csv(new_filename, index=False)
+
+def rss_core():
+
+	def transformation(rss):
+
+		return rss
+
+	for filename in sorted(os.listdir(OLD['rss'])):
+
+		print("Processing RSS:", filename)
+
+		with open(f"{OLD['rss']}/{filename}", "r") as file:
+			rss = file.read()
+
+		rss = transformation(rss)
+
+		with open(f"{NEW['rss']}/{filename}", "w") as file:
+			file.write(rss)
+
+###################################################################################################
 
 def surface():
 
@@ -259,6 +323,7 @@ def core():
 	ohlc_core()
 	analysis_core()
 	keystats_core()
+	rss_core()
 
 	rates_core()
 	instruments_core()
@@ -271,5 +336,5 @@ def precalcs():
 
 if __name__ == '__main__':
 
-	# core()
-	# precalcs()
+	core()
+	precalcs()
