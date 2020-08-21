@@ -108,6 +108,14 @@ def ohlc_core():
 
 	def transformation(ohlc):
 
+		rename = {
+			key : f"{key}_price"
+			for key in ["open", "high", "low", "close"]
+		}
+		rename['stock_volume'] = 'volume'
+		rename['adj_close'] = 'adjclose_price'
+		ohlc = ohlc.rename(rename, axis=1)
+
 		return ohlc
 
 	for folder in EQUITY_FOLDERS:
@@ -204,16 +212,13 @@ def surface():
 			continue
 
 		options = pd.read_csv(f"{NEW['equity']}/{folder}/options.csv")
-		surface_df, timesurface_df = pre_surface(options, ohlc, folder)
+		surface_df = pre_surface(options, ohlc, folder)
 		
 		print("Processing Surface:", folder)
-		print(len(surface_df), len(timesurface_df))
+		print(len(surface_df))
 		print()
 
-		os.mkdir(f"{NEW['surface']}/{folder}")
-
-		surface_df.to_csv(f"{NEW['surface']}/{folder}/surface.csv", index=False)
-		timesurface_df.to_csv(f"{NEW['surface']}/{folder}/timesurface.csv", index=False)
+		surface_df.to_csv(f"{NEW['surface']}/{folder}.csv", index=False)
 
 def ticker_maps():
 

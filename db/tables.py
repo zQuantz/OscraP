@@ -12,11 +12,9 @@ OPTIONS_TABLE = """
 		ask_price FLOAT(4),
 		implied_volatility FLOAT(6),
 		volume INT UNSIGNED,
-		open_interest INT UNSIGNED
+		open_interest INT UNSIGNED,
 		PRIMARY KEY (date_current, option_id)
 	)
-	PARTITION BY HASH(ticker)
-	PARTITIONS 10
 """
 
 OHLC_TABLE = """
@@ -27,9 +25,9 @@ OHLC_TABLE = """
 		high_price FLOAT(4),
 		low_price FLOAT(4),
 		close_price FLOAT(4),
-		adj_close_price FLOAT(4),
+		adjclose_price FLOAT(4),
 		volume INT UNSIGNED,
-		dividend_yield FLOAT(6)
+		dividend_yield FLOAT(6),
 		PRIMARY KEY (ticker, date_current)
 	)
 """
@@ -61,12 +59,12 @@ INSTRUMENT_TABLE = """
 		last_updated DATE,
 		ticker VARCHAR(10),
 		name VARCHAR(100),
-		exchange_code VARCHAR(100),
+		exchange_code VARCHAR(10),
 		exchange_name VARCHAR(50),
 		sector VARCHAR(100),
 		industry VARCHAR(100),
 		instrument_type CHAR(10),
-		market_cap BIGINT
+		market_cap BIGINT,
 		PRIMARY KEY(ticker, exchange_code)
 	)
 """
@@ -85,23 +83,23 @@ TREASURYRATES_TABLE = """
 		_7_years FLOAT(4),
 		_10_years FLOAT(4),
 		_20_years FLOAT(4),
-		_30_years FLOAT(4),
+		_30_years FLOAT(4)
 	)
 """
 
 TREASURYRATEMAP_TABLE = """
 	CREATE TABLE treasuryratemapBACK (
-		date_current DATE PRIMARY KEY NOT NULL,
+		date_current DATE,
 		days_to_expiry SMALLINT UNSIGNED,
-		treasuryrate FLOAT(4)
+		rate FLOAT(6),
 		PRIMARY KEY(date_current, days_to_expiry)
 	)
 """
 
 TICKERDATES_TABLE = """
 	CREATE TABLE tickerdatesBACK (
-		ticker VARCAHR(10),
-		date_current DATE
+		ticker VARCHAR(10),
+		date_current DATE,
 		PRIMARY KEY(ticker, date_current)
 	)
 """
@@ -127,22 +125,6 @@ SURFACE_TABLE = """
 		PRIMARY KEY(ticker, date_current)
 	)
 """.format(columns=columns)
-
-
-TIMESURFACE_TABLE = """
-	CREATE TABLE timesurfaceBACK (
-		ticker VARCHAR(10),
-		date_current DATE,
-		m1 FLOAT(6),
-		m3 FLOAT(6),
-		m6 FLOAT(6),
-		m9 FLOAT(6),
-		m12 FLOAT(6),
-		m18 FLOAT(6),
-		m24 FLOAT(6),
-		PRIMARY KEY(ticker, date_current)
-	)
-"""
 
 ###################################################################################################
 

@@ -31,8 +31,8 @@ def precompute(options, ohlc, date):
 		GROUP BY ticker, option_id 
 	"""
 	
-	surface, time_surface = pre_surface(options, ohlc)
-	return surface, time_surface, tickerdates_query, tickeroids_query
+	surface = pre_surface(options, ohlc)
+	return surface, tickerdates_query, tickeroids_query
 
 def pre_surface(options, ohlc, date):
 
@@ -127,15 +127,6 @@ def pre_surface(options, ohlc, date):
 
 	surface = options.groupby(["date_current", "ticker"]).apply(by_ticker)
 	surface = surface.reset_index()
-
-	cols = ['date_current', 'ticker', 'expiration', 'iv']
-	time_surface = surface[cols]
-	time_surface = time_surface.groupby(cols[:-1], as_index = False).mean()
-	time_surface = time_surface.pivot(index="ticker", columns="expiration", values="iv")
-	
-	time_surface.columns = [f"m{e}" for e in time_surface.columns]
-	time_surface = time_surface.reset_index()
-	time_surface['date_current'] = date
 	
 	label = "m" + surface.expiration.astype(str)
 	label += "m" + surface.moneyness.astype(str)
@@ -145,4 +136,4 @@ def pre_surface(options, ohlc, date):
 	surface = surface[label.unique()].reset_index()
 	surface['date_current'] = date
 	
-	return surface, time_surface
+	return surface

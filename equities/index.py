@@ -91,10 +91,9 @@ def index(tickers):
 
 		if len(options) > 0 and len(ohlc) > 0:
 			
-			surface, time_surface, tickerdates_query, tickeroids_query = precompute(options, ohlc)
+			surface, tickerdates_query, tickeroids_query = precompute(options, ohlc)
 			
 			to_sql(surface, "surface", conn)
-			to_sql(time_surface, "time_surface", conn)			
 			
 			conn.execute(tickerdates_query)
 			conn.execute(tickeroids_query)
