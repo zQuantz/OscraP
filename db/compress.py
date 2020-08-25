@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
 			for folder in sorted(os.listdir(NEW[key])):
 				
-				print("Processing File:", folder)
+				print("Compressing File:", folder)
 
 				with tar.open(f"{TAR[key]}/{folder}.tar.xz", "x:xz") as tar_file:
 
@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
 			for file in sorted(os.listdir(NEW[key])):
 
-				print("Processing File:", file)
+				print("Compressing File:", file)
 
 				basename = file.split(".")[0]
 

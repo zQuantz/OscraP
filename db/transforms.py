@@ -22,6 +22,8 @@ NEW = {
 	for key, value in OLD.items()
 }
 NEW['rates'] = f"{DIR}/data/new/treasuryrates"
+NEW['tickermaps'] = f"{DIR}/data/new/tickermaps"
+NEW['treasuryratemap'] = f"{DIR}/data/new/treasuryratemap"
 
 EQUITY_FOLDERS = sorted(os.listdir(OLD['equity']))
 
@@ -182,7 +184,7 @@ def rss_core():
 
 	for filename in sorted(os.listdir(OLD['rss'])):
 
-		print("Processing RSS:", filename)
+		print("RSS Transformation:", filename)
 
 		with open(f"{OLD['rss']}/{filename}", "r") as file:
 			rss = file.read()
@@ -201,7 +203,7 @@ def surface():
 		ohlcs.append(pd.read_csv(f"{NEW['equity']}/{folder}/ohlc.csv"))
 	
 	ohlc = pd.concat(ohlcs)
-	ohlc = ohlc[['ticker', 'date_current', 'adj_close']]
+	ohlc = ohlc[['ticker', 'date_current', 'adjclose_price']]
 
 	NEW['surface'] = f"{DIR}/data/new/surface"
 	os.mkdir(NEW['surface'])
@@ -215,15 +217,12 @@ def surface():
 		surface_df = pre_surface(options, ohlc, folder)
 		
 		print("Processing Surface:", folder)
-		print(len(surface_df))
-		print()
 
 		surface_df.to_csv(f"{NEW['surface']}/{folder}.csv", index=False)
 
 def ticker_maps():
 
 	tickeroids = pd.DataFrame(columns=['ticker', 'option_id'])
-	NEW['tickermaps'] = f"{DIR}/data/new/tickermaps"
 	os.mkdir(NEW['tickermaps'])
 
 	for folder in sorted(os.listdir(NEW['equity'])):
@@ -310,7 +309,6 @@ def treasuryratemap():
 	ratemap = ratemap[['date_current', 'days_to_expiry', 'rate']]
 	ratemap['date_current'] = ratemap.date_current.astype(str)
 
-	NEW['treasuryratemap'] = f"{DIR}/data/new/treasuryratemap"
 	os.mkdir(NEW['treasuryratemap'])
 
 	for date in ratemap.date_current.unique():
@@ -329,15 +327,14 @@ def core():
 	analysis_core()
 	keystats_core()
 	rss_core()
-
 	rates_core()
 	instruments_core()
 
 def precalcs():
 
-	surface()
-	ticker_maps()
 	treasuryratemap()
+	ticker_maps()
+	surface()
 
 if __name__ == '__main__':
 

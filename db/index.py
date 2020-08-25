@@ -182,10 +182,14 @@ def index_options():
 			to_sql(options, "optionsBACK", engine)
 			options = []
 
+def index():
+
+	index_instruments()
+	index_rates()
+	index_tickermaps()
+	index_equities()
+	index_options()
+
 if __name__ == "__main__":
 
-	# index_instruments()
-	# index_rates()
-	# index_tickermaps()
-	# index_equities()
-	index_options()
+	index()
