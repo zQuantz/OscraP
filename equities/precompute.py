@@ -114,12 +114,12 @@ def pre_surface(options, ohlc, date):
 	thursdays = pd.date_range(start, end, freq="WOM-3THU").astype(str)
 	regulars = list(fridays) + list(thursdays)
 
-	ohlc = ohlc[['date_current', 'ticker', 'adj_close']]
+	ohlc = ohlc[['date_current', 'ticker', 'adjclose_price']]
 	options = options.merge(ohlc, on=['date_current', 'ticker'], how="inner")
 	options['years'] = options.days_to_expiry / 365
 	
-	options['moneyness'] = options.strike_price / options.adj_close
-	options['otm'] = options.adj_close - options.strike_price
+	options['moneyness'] = options.strike_price / options.adjclose_price
+	options['otm'] = options.adjclose_price - options.strike_price
 	options['otm'] = options.otm * options.option_type.map({"C" : 1, "P" : -1})
 
 	options = options[options.otm < 0]

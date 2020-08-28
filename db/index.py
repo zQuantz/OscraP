@@ -188,7 +188,7 @@ def index():
 	index_rates()
 	index_tickermaps()
 	index_equities()
-	index_options()
+	index_options()	
 
 if __name__ == "__main__":
 
