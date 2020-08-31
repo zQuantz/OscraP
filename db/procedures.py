@@ -139,9 +139,9 @@ INITAGGOPTIONSTATS = """
 		SELECT
 			date_current,
 			ticker,
-			SUM(IF(option_type = "C", volume, 0)) as call_volume,
-			SUM(IF(option_type = "P", volume, 0)) as put_volume,
-			SUM(volume) as total_volume
+			SUM(IF(option_type = "C", volume, 0)) AS call_volume,
+			SUM(IF(option_type = "P", volume, 0)) AS put_volume,
+			SUM(volume) AS total_volume
 		FROM
 			options
 		GROUP BY
@@ -150,7 +150,7 @@ INITAGGOPTIONSTATS = """
 		ORDER BY
 			ticker ASC,
 			date_current DESC
-		) as t1;
+		) AS t1;
 
 """
 
@@ -179,15 +179,12 @@ OHLCSTATS = """
 		SUM(stock_volume * _0d) / (SUM(stock_volume * _126) / 126) AS relvolume126,
 		SUM(stock_volume * _0d) / (SUM(stock_volume * _189) / 189) AS relvolume189,
 		SUM(stock_volume * _0d) / (SUM(stock_volume * _252) / 252) AS relvolume252,
-		pct_change as pctchange1d,
-		100 * (SUM(adj_close * _0d) / SUM(adj_close * _5d) - 1) as pctchange5d,
-		100 * (SUM(adj_close * _0d) / SUM(adj_close * _10d) - 1) as pctchange10d,
-		100 * (SUM(adj_close * _0d) / SUM(adj_close * _21d) - 1) as pctchange21d,
-		100 * (SUM(adj_close * _0d) / SUM(adj_close * _42d) - 1) as pctchange42d,
-		100 * (SUM(adj_close * _0d) / SUM(adj_close * _63d) - 1) as pctchange63d,
-		100 * (SUM(adj_close * _0d) / SUM(adj_close * _126d) - 1) as pctchange126d,
-		100 * (SUM(adj_close * _0d) / SUM(adj_close * _189d) - 1) as pctchange189d,
-		100 * (SUM(adj_close * _0d) / SUM(adj_close * _252d) - 1) as pctchange252d
+		pct_change AS pctchange1d,
+		100 * (SUM(adj_close * _0d) / SUM(adj_close * _5d) - 1) AS pctchange5d,
+		100 * (SUM(adj_close * _0d) / SUM(adj_close * _10d) - 1) AS pctchange10d,
+		100 * (SUM(adj_close * _0d) / SUM(adj_close * _21d) - 1) AS pctchange21d,
+		100 * (SUM(adj_close * _0d) / SUM(adj_close * _42d) - 1) AS pctchange42d,
+		100 * (SUM(adj_close * _0d) / SUM(adj_close * _63d) - 1) AS pctchange63d
 	FROM
 		(
 			SELECT
@@ -206,7 +203,7 @@ OHLCSTATS = """
 					ohlc AS o2
 					ON o2.date_current = d1.prev_lag_date 
 					AND o2.ticker = o1.ticker
-		) as t1
+		) AS t1
 	GROUP BY
 		ticker;
 	
@@ -221,23 +218,18 @@ AGGOPTIONSTATS = """
 			SELECT
 				ticker,
 				date_current,
-				SUM(_0d * call_volume) / (SUM(call_volume * _5) / 5) as rcv5,
-				SUM(_0d * put_volume) / (SUM(put_volume * _5) / 5) as rpv5,
-				SUM(_0d * total_volume) / (SUM(total_volume * _5) / 5) as rtv5,
-				SUM(_0d * call_volume) / (SUM(call_volume * _10) / 10) as rcv10,
-				SUM(_0d * put_volume) / (SUM(put_volume * _10) / 10) as rpv10,
-				SUM(_0d * total_volume) / (SUM(total_volume * _10) / 10) as rtv10,
-				SUM(_0d * call_volume) / (SUM(call_volume * _20) / 20) as rcv20,
-				SUM(_0d * put_volume) / (SUM(put_volume * _20) / 20) as rpv20,
-				SUM(_0d * total_volume) / (SUM(total_volume * _20) / 20) as rtv20,
-				SUM(_0d * call_volume) / (SUM(call_volume * _20) / 20) as rcv20,
-				SUM(_0d * put_volume) / (SUM(put_volume * _20) / 20) as rpv20,
-				SUM(_0d * total_volume) / (SUM(total_volume * _20) / 20) as rtv20,
-				SUM(_0d * total_volume) / (SUM(total_volume * _20) / 20) as rtv20,
-				SUM(_0d * total_volume) / (SUM(total_volume * _20) / 20) as rtv20,
-				SUM(_0d * cpv_spread) / (SUM(cpv_spread * _5) / 5) as rcpvs5,
-				SUM(_0d * cpv_spread) / (SUM(cpv_spread * _10) / 10) as rcpvs10,
-				SUM(_0d * cpv_spread) / (SUM(cpv_spread * _20) / 20) as rcpvs20
+				SUM(_0d * call_volume) / (SUM(call_volume * _5) / 5) AS rcv5,
+				SUM(_0d * put_volume) / (SUM(put_volume * _5) / 5) AS rpv5,
+				SUM(_0d * total_volume) / (SUM(total_volume * _5) / 5) AS rtv5,
+				SUM(_0d * call_volume) / (SUM(call_volume * _10) / 10) AS rcv10,
+				SUM(_0d * put_volume) / (SUM(put_volume * _10) / 10) AS rpv10,
+				SUM(_0d * total_volume) / (SUM(total_volume * _10) / 10) AS rtv10,
+				SUM(_0d * call_volume) / (SUM(call_volume * _20) / 20) AS rcv20,
+				SUM(_0d * put_volume) / (SUM(put_volume * _20) / 20) AS rpv20,
+				SUM(_0d * total_volume) / (SUM(total_volume * _20) / 20) AS rtv20,
+				SUM(_0d * cpv_spread) / (SUM(cpv_spread * _5) / 5) AS rcpvs5,
+				SUM(_0d * cpv_spread) / (SUM(cpv_spread * _10) / 10) AS rcpvs10,
+				SUM(_0d * cpv_spread) / (SUM(cpv_spread * _20) / 20) AS rcpvs20
 			FROM
 				aggoptionstats AS o
 			INNER JOIN
@@ -245,7 +237,7 @@ AGGOPTIONSTATS = """
 				ON o.date_current = d.lag_date
 			GROUP BY
 				ticker
-		) as t1
+		) AS t1
 	WHERE
 		date_current = "2020-08-27";
 
@@ -256,17 +248,17 @@ OPTIONSTATS = """
 	SELECT
 		date_current,
 		option_id,
-		100 * ((SUM(_0d * option_price) / SUM(_1d * option_price)) - 1) as pctchange1d,
-		100 * ((SUM(_0d * option_price) / SUM(_5d * option_price)) - 1) as pctchange5d,
-		100 * ((SUM(_0d * option_price) / SUM(_10d * option_price)) - 1) as pctchange10d,
-		100 * ((SUM(_0d * option_price) / SUM(_20d * option_price)) - 1) as pctchange20d,
-		100 * (SUM(_0d * implied_volatility) - SUM(_1d * implied_volatility)) as ivchange1d,
-		100 * (SUM(_0d * implied_volatility) - SUM(_5d * implied_volatility)) as ivchange5d,
-		100 * (SUM(_0d * implied_volatility) - SUM(_10d * implied_volatility)) as ivchange10d,
-		100 * (SUM(_0d * implied_volatility) - SUM(_20d * implied_volatility)) as ivchange20d,
-		SUM(_0d * volume) / (SUM(_5 * volume) / 5) as relvolume5,
-		SUM(_0d * volume) / (SUM(_10 * volume) / 10) as relvolume10,
-		SUM(_0d * volume) / (SUM(_20 * volume) / 20) as relvolume20
+		100 * ((SUM(_0d * option_price) / SUM(_1d * option_price)) - 1) AS pctchange1d,
+		100 * ((SUM(_0d * option_price) / SUM(_5d * option_price)) - 1) AS pctchange5d,
+		100 * ((SUM(_0d * option_price) / SUM(_10d * option_price)) - 1) AS pctchange10d,
+		100 * ((SUM(_0d * option_price) / SUM(_20d * option_price)) - 1) AS pctchange20d,
+		100 * (SUM(_0d * implied_volatility) - SUM(_1d * implied_volatility)) AS ivchange1d,
+		100 * (SUM(_0d * implied_volatility) - SUM(_5d * implied_volatility)) AS ivchange5d,
+		100 * (SUM(_0d * implied_volatility) - SUM(_10d * implied_volatility)) AS ivchange10d,
+		100 * (SUM(_0d * implied_volatility) - SUM(_20d * implied_volatility)) AS ivchange20d,
+		SUM(_0d * volume) / (SUM(_5 * volume) / 5) AS relvolume5,
+		SUM(_0d * volume) / (SUM(_10 * volume) / 10) AS relvolume10,
+		SUM(_0d * volume) / (SUM(_20 * volume) / 20) AS relvolume20
 	FROM
 		options AS o
 	INNER JOIN

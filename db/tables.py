@@ -1,7 +1,7 @@
 OPTIONS_TABLE = """
 	CREATE TABLE optionsBACK (
-		ticker VARCHAR(10),
 		date_current DATE,
+		ticker VARCHAR(10),
 		expiration_date DATE,
 		days_to_expiry SMALLINT UNSIGNED,
 		option_id VARCHAR(40),
@@ -17,10 +17,49 @@ OPTIONS_TABLE = """
 	)
 """
 
+OPTIONSTATS_TABLE = """
+	CREATE TABLE optionstatsBACK (
+		date_current DATE,
+		option_id VARCHAR(40),
+		pctchange1d FLOAT(4),
+		pctchange5d FLOAT(4),
+		pctchange10d FLOAT(4),
+		pctchange20d FLOAT(4),
+		ivchange1d FLOAT(4),
+		ivchange5d FLOAT(4),
+		ivchange10d FLOAT(4),
+		ivchange20d FLOAT(4),
+		relvolume5 FLOAT(4),
+		relvolume10 FLOAT(4),
+		relvolume20 FLOAT(4),
+		PRIMARY KEY(date_current, option_id)
+	)
+"""
+
+AGGOPTIONSTATS_TABLE = """
+	CREATE TABLE aggoptionstatsBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		rcv5 FLOAT(4),
+		rpv5 FLOAT(4),
+		rtv5 FLOAT(4),
+		rcv10 FLOAT(4),
+		rpv10 FLOAT(4),
+		rtv10 FLOAT(4),
+		rcv20 FLOAT(4),
+		rpv20 FLOAT(4),
+		rtv20 FLOAT(4),
+		rcpvs5 FLOAT(4),
+		rcpvs10 FLOAT(4),
+		rcpvs20 FLOAT(4),
+		PRIMARY KEY(date_current, ticker)
+	)
+"""
+
 OHLC_TABLE = """
 	CREATE TABLE ohlcBACK (
-		ticker VARCHAR(10),
 		date_current DATE,
+		ticker VARCHAR(10),
 		open_price FLOAT(4),
 		high_price FLOAT(4),
 		low_price FLOAT(4),
@@ -28,14 +67,41 @@ OHLC_TABLE = """
 		adjclose_price FLOAT(4),
 		volume INT UNSIGNED,
 		dividend_yield FLOAT(6),
-		PRIMARY KEY (ticker, date_current)
+		PRIMARY KEY(date_current, ticker)
+	)
+"""
+
+OHLCSTATS_TABLE = """
+	CREATE TABLE ohlcstatsBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		hvol1m FLOAT(4),
+		hvol2m FLOAT(4),
+		hvol3m FLOAT(4),
+		hvol6m FLOAT(4),
+		hvol9m FLOAT(4),
+		hvol12m FLOAT(4),
+		avgvolume10 BIGINT,
+		avgvolume21 BIGINT,
+		avgvolume42 BIGINT,
+		avgvolume63 BIGINT,
+		avgvolume126 BIGINT,
+		avgvolume189 BIGINT,
+		avgvolume252 BIGINT,
+		pctchange1d FLOAT(4),
+		pctchange5d FLOAT(4),
+		pctchange10d FLOAT(4),
+		pctchange21d FLOAT(4),
+		pctchange42d FLOAT(4),
+		pctchange63d FLOAT(4),
+		PRIMARY KEY(date_current, ticker)
 	)
 """
 
 KEYSTATS_TABLE = """
 	CREATE TABLE keystatsBACK (
-		ticker VARCHAR(10),
 		date_current DATE,
+		ticker VARCHAR(10),
 		feature VARCHAR(100),
 		modifier VARCHAR(100),
 		value VARCHAR(100)
@@ -44,8 +110,8 @@ KEYSTATS_TABLE = """
 
 ANALYSIS_TABLE = """
 	CREATE TABLE analysisBACK (
-		ticker VARCHAR(10),
 		date_current DATE,
+		ticker VARCHAR(10),
 		category VARCHAR(100),
 		feature VARCHAR(100),
 		feature_two VARCHAR(100),
@@ -119,8 +185,8 @@ for expiry in [1, 3, 6, 9, 12, 18, 24]:
 
 SURFACE_TABLE = """
 	CREATE TABLE surfaceBACK (
-		ticker VARCHAR(10),
 		date_current DATE,
+		ticker VARCHAR(10),
 		{columns}
 		PRIMARY KEY(ticker, date_current)
 	)
