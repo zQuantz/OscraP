@@ -1,27 +1,104 @@
-from const import CONFIG, DIR
+from const import CONFIG, DIR, OLD, NEW, TAR
+from google.cloud import storage
 import sqlalchemy as sql
+import tarfile as tar
 from tables import *
 import pandas as pd
 import sys, os
+import json
 
 ###################################################################################################
 
-NEW = f"{DIR}/data/new"
-db = CONFIG['db_address'].replace("test", "finance")
+NEWDIR = f"{DIR}/data/new"
+
+db = CONFIG['db_address'].replace("finance", "test")
 engine = sql.create_engine(db)
+
+BUCKET = storage.Client().bucket(CONFIG["gcp_bucket_name"])
 
 ###################################################################################################
 
 def to_sql(df, tablename, conn):
 	df.to_sql(tablename, conn, if_exists="append", index=False, chunksize=100_000)
 
-def index_instruments():
+###################################################################################################
+
+def download_data():
+
+	os.mkdir(f"{DIR}/data/old")
+	os.mkdir(f"{DIR}/data/new")
+	os.mkdir(f"{DIR}/data/tar")
+	os.mkdir(f"{DIR}/data/tar/old")
+	os.mkdir(f"{DIR}/data/tar/new")
+
+	FOLDERS = ["equities", "rates", "instruments", "rss"]
+	for folder in FOLDERS:
+		os.mkdir(f"{DIR}/data/old/{folder}")
+		os.mkdir(f"{DIR}/data/tar/old/{folder}")
+		if folder == "rates":
+			folder = "treasuryrates"
+		os.mkdir(f"{DIR}/data/new/{folder}")
+		os.mkdir(f"{DIR}/data/tar/new/{folder}")
+
+	for blob in BUCKET.list_blobs():
+
+		if "/" not in blob.name:
+			continue
+
+		folder, filename = blob.name.split("/")
+		filedate = filename.split(".")[0]
+
+		if folder not in FOLDERS:
+			continue
+
+		modifier = ""
+		if folder == "equities":
+			modifier = f"/{filedate}/"
+			os.mkdir(f"{DIR}/data/old/{folder}/{filedate}")
+			os.mkdir(f"{DIR}/data/new/{folder}/{filedate}")
+
+		print("Downloading:", folder, filename)
+		blob.download_to_filename(f"{DIR}/data/tar/old/{folder}/{filename}")
+		with tar.open(f"{DIR}/data/tar/old/{folder}/{filename}", "r:xz") as tar_file:
+			tar_file.extractall(path=f"{DIR}/data/old/{folder}{modifier}")
+
+def compress_data():
+
+	for key in TAR:
+
+		print("Processing Folder:", key)
+
+		if key == "equity":
+
+			for folder in sorted(os.listdir(NEW[key])):
+				
+				print("Compressing File:", folder)
+
+				with tar.open(f"{TAR[key]}/{folder}.tar.xz", "x:xz") as tar_file:
+
+					for file in os.listdir(f"{NEW[key]}/{folder}"):
+						tar_file.add(f"{NEW[key]}/{folder}/{file}", file)
+
+		else:
+
+			for file in sorted(os.listdir(NEW[key])):
+
+				print("Compressing File:", file)
+
+				basename = file.split(".")[0]
+
+				with tar.open(f"{TAR[key]}/{basename}.tar.xz", "x:xz") as tar_file:
+					tar_file.add(f"{NEW[key]}/{file}", file)
+
+###################################################################################################
+
+def init_instruments():
 
 	print("Instruments")
 
 	instruments = []
-	for file in sorted(os.listdir(f"{NEW}/instruments")):
-		instruments.append(pd.read_csv(f"{NEW}/instruments/{file}", parse_dates=['last_updated']))
+	for file in sorted(os.listdir(f"{NEWDIR}/instruments")):
+		instruments.append(pd.read_csv(f"{NEWDIR}/instruments/{file}", parse_dates=['last_updated']))
 	
 	instruments = pd.concat(instruments)
 	instruments = instruments.sort_values(["last_updated", "market_cap"], ascending=[False, False])
@@ -35,13 +112,13 @@ def index_instruments():
 	to_sql(instruments, "instrumentsBACK", conn)
 	conn.close()
 
-def index_rates():
+def init_rates():
 
 	print("Treasury Rates")
 
 	treasuryrates = []
-	for file in sorted(os.listdir(f"{NEW}/treasuryrates")):
-		treasuryrates.append(pd.read_csv(f"{NEW}/treasuryrates/{file}", parse_dates=["date_current"]))
+	for file in sorted(os.listdir(f"{NEWDIR}/treasuryrates")):
+		treasuryrates.append(pd.read_csv(f"{NEWDIR}/treasuryrates/{file}", parse_dates=["date_current"]))
 	
 	treasuryrates = pd.concat(treasuryrates)
 	treasuryrates = treasuryrates[treasuryrates.date_current >= "2019-01-01"]
@@ -61,8 +138,8 @@ def index_rates():
 	print("Treasury Ratemap")
 
 	treasuryratemap = []
-	for file in sorted(os.listdir(f"{NEW}/treasuryratemap")):
-		treasuryratemap.append(pd.read_csv(f"{NEW}/treasuryratemap/{file}", parse_dates=["date_current"]))
+	for file in sorted(os.listdir(f"{NEWDIR}/treasuryratemap")):
+		treasuryratemap.append(pd.read_csv(f"{NEWDIR}/treasuryratemap/{file}", parse_dates=["date_current"]))
 	
 	treasuryratemap = pd.concat(treasuryratemap)
 	treasuryratemap = treasuryratemap[treasuryratemap.date_current >= "2019-01-01"]
@@ -79,14 +156,14 @@ def index_rates():
 
 	###############################################################################################
 
-def index_tickermaps():
+def init_tickermaps():
 
 	print("Ticker Maps")
 
 	tickeroids, tickerdates = [], []
-	for folder in sorted(os.listdir(f"{NEW}/tickermaps")):
-		tickeroids.append(pd.read_csv(f"{NEW}/tickermaps/{folder}/tickeroids.csv"))
-		tickerdates.append(pd.read_csv(f"{NEW}/tickermaps/{folder}/tickerdates.csv"))
+	for folder in sorted(os.listdir(f"{NEWDIR}/tickermaps")):
+		tickeroids.append(pd.read_csv(f"{NEWDIR}/tickermaps/{folder}/tickeroids.csv"))
+		tickerdates.append(pd.read_csv(f"{NEWDIR}/tickermaps/{folder}/tickerdates.csv"))
 
 	tickeroids = pd.concat(tickeroids)
 	tickerdates = pd.concat(tickerdates)
@@ -111,23 +188,23 @@ def index_tickermaps():
 	to_sql(tickerdates, "tickerdatesBACK", conn)
 	conn.close()
 
-def index_equities():
+def init_equities():
 
 	print("Equities Excl. Options")
 
 	analysis, ohlc, keystats = [], [], []
-	for folder in os.listdir(f"{NEW}/equities"):
+	for folder in os.listdir(f"{NEWDIR}/equities"):
 
-		files = os.listdir(f"{NEW}/equities/{folder}")
+		files = os.listdir(f"{NEWDIR}/equities/{folder}")
 
 		if "ohlc.csv" in files:
-			ohlc.append(pd.read_csv(f"{NEW}/equities/{folder}/ohlc.csv"))
+			ohlc.append(pd.read_csv(f"{NEWDIR}/equities/{folder}/ohlc.csv"))
 		
 		if "analysis.csv" in files:
-			analysis.append(pd.read_csv(f"{NEW}/equities/{folder}/analysis.csv"))
+			analysis.append(pd.read_csv(f"{NEWDIR}/equities/{folder}/analysis.csv"))
 		
 		if "keystats.csv" in files:
-			keystats.append(pd.read_csv(f"{NEW}/equities/{folder}/keystats.csv"))
+			keystats.append(pd.read_csv(f"{NEWDIR}/equities/{folder}/keystats.csv"))
 
 	ohlc = pd.concat(ohlc)
 	analysis = pd.concat(analysis)
@@ -156,7 +233,7 @@ def index_equities():
 	print(keystats)
 	to_sql(keystats, "keystatsBACK", engine)
 
-def index_options():
+def init_options():
 
 	print("Options")
 
@@ -166,14 +243,14 @@ def index_options():
 	conn.close()
 
 	options = []
-	for folder in sorted(os.listdir(f"{NEW}/equities")):
+	for folder in sorted(os.listdir(f"{NEWDIR}/equities")):
 
 		print("Processing Folder:", folder)
 
-		if "options.csv" not in os.listdir(f"{NEW}/equities/{folder}"):
+		if "options.csv" not in os.listdir(f"{NEWDIR}/equities/{folder}"):
 			continue
 
-		options.append(pd.read_csv(f"{NEW}/equities/{folder}/options.csv"))
+		options.append(pd.read_csv(f"{NEWDIR}/equities/{folder}/options.csv"))
 
 		if len(options) % 10 == 0:
 
@@ -182,14 +259,14 @@ def index_options():
 			to_sql(options, "optionsBACK", engine)
 			options = []
 
-def index():
+def init():
 
-	index_instruments()
-	index_rates()
-	index_tickermaps()
-	index_equities()
-	index_options()	
+	init_instruments()
+	init_rates()
+	init_tickermaps()
+	init_equities()
+	init_options()	
 
 if __name__ == "__main__":
 
-	index()
+	init()
