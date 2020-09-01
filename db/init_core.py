@@ -1,6 +1,5 @@
-from const import CONFIG, DIR, OLD, NEW, TAR
+from const import CONFIG, DIR, OLD, NEW, TAR, ENGINE
 from google.cloud import storage
-import sqlalchemy as sql
 import tarfile as tar
 from tables import *
 import pandas as pd
@@ -10,13 +9,7 @@ import json
 ###################################################################################################
 
 NEWDIR = f"{DIR}/data/new"
-
-db = CONFIG['db_address'].replace("finance", "test")
-engine = sql.create_engine(db)
-
 BUCKET = storage.Client().bucket(CONFIG["gcp_bucket_name"])
-
-###################################################################################################
 
 def to_sql(df, tablename, conn):
 	df.to_sql(tablename, conn, if_exists="append", index=False, chunksize=100_000)
@@ -33,10 +26,13 @@ def download_data():
 
 	FOLDERS = ["equities", "rates", "instruments", "rss"]
 	for folder in FOLDERS:
+
 		os.mkdir(f"{DIR}/data/old/{folder}")
 		os.mkdir(f"{DIR}/data/tar/old/{folder}")
+
 		if folder == "rates":
 			folder = "treasuryrates"
+
 		os.mkdir(f"{DIR}/data/new/{folder}")
 		os.mkdir(f"{DIR}/data/tar/new/{folder}")
 
@@ -72,7 +68,7 @@ def compress_data():
 
 			for folder in sorted(os.listdir(NEW[key])):
 				
-				print("Compressing File:", folder)
+				print("Compressing Equity Folder:", folder)
 
 				with tar.open(f"{TAR[key]}/{folder}.tar.xz", "x:xz") as tar_file:
 
@@ -83,7 +79,7 @@ def compress_data():
 
 			for file in sorted(os.listdir(NEW[key])):
 
-				print("Compressing File:", file)
+				print(f"Compressing {key.capitalize()} File:", file)
 
 				basename = file.split(".")[0]
 
@@ -92,9 +88,188 @@ def compress_data():
 
 ###################################################################################################
 
+def transform_options():
+
+	def transformation(options):
+
+		cols = ["time_to_expiry", "delta", "gamma", "theta", "vega", "rho"]
+		options = options.drop(cols, axis=1)
+
+		days = options.expiration_date - options.date_current
+		days = days.dt.days
+		options['days_to_expiry'] = days
+
+		renames = {
+				"bid" : "bid_price",
+				"ask" : "ask_price"
+			}
+		options = options.rename(renames, axis=1)
+		
+		return options
+
+	for folder in sorted(os.listdir(OLD['equity'])):
+
+		print("Options Core Transformation:", folder)
+
+		if "options.csv" not in os.listdir(f"{OLD['equity']}/{folder}/"):
+			print("No options file found.")
+			continue
+		
+		options = pd.read_csv(f"{OLD['equity']}/{folder}/options.csv",
+							  parse_dates=["date_current", "expiration_date"])
+
+		options = transformation(options)
+
+		new_filename = f"{NEW['equity']}/{folder}/options.csv"
+		options.to_csv(new_filename, index=False)
+
+def transform_keystats():
+
+	def transformation(keystats):
+
+		return keystats.dropna(subset=["value"])
+
+	for folder in sorted(os.listdir(OLD['equity'])):
+
+		print("Key Stats Core Transformation:", folder)
+
+		if "key_stats.csv" not in os.listdir(f"{OLD['equity']}/{folder}/"):
+			print("No Key Stats file found.")
+			continue
+		
+		keystats = pd.read_csv(f"{OLD['equity']}/{folder}/key_stats.csv")
+		
+		keystats = transformation(keystats)
+
+		new_filename = f"{NEW['equity']}/{folder}/keystats.csv"
+		keystats.to_csv(new_filename, index=False)
+
+def transform_analysis():
+
+	def transformation(analysis):
+
+		return analysis.dropna(subset=["value"])
+
+	for folder in sorted(os.listdir(OLD['equity'])):
+
+		print("Analysis Core Transformation:", folder)
+
+		if "key_stats.csv" not in os.listdir(f"{OLD['equity']}/{folder}/"):
+			print("No analysis file found.")
+			continue
+		
+		analysis = pd.read_csv(f"{OLD['equity']}/{folder}/analysis.csv")
+
+		analysis = transformation(analysis)
+
+		new_filename = f"{NEW['equity']}/{folder}/analysis.csv"
+		analysis.to_csv(new_filename, index=False)
+
+def transform_ohlc():
+
+	def transformation(ohlc):
+
+		rename = {
+			key : f"{key}_price"
+			for key in ["open", "high", "low", "close"]
+		}
+		rename['stock_volume'] = 'volume'
+		rename['adj_close'] = 'adjclose_price'
+		ohlc = ohlc.rename(rename, axis=1)
+
+		return ohlc
+
+	for folder in sorted(os.listdir(OLD['equity'])):
+
+		print("OHLC Core Transformation:", folder)
+
+		if "ohlc.csv" not in os.listdir(f"{OLD['equity']}/{folder}/"):
+			print("No OHLC file found.")
+			continue
+		
+		ohlc = pd.read_csv(f"{OLD['equity']}/{folder}/ohlc.csv")
+
+		ohlc = transformation(ohlc)
+
+		new_filename = f"{NEW['equity']}/{folder}/ohlc.csv"
+		ohlc.to_csv(new_filename, index=False)
+
+def transform_rates():
+
+	def transformation(rates):
+
+		return rates
+
+	for file in sorted(os.listdir(OLD['rates'])):
+
+		print("Rates Core Transformation:", file)
+		
+		rates = pd.read_csv(f"{OLD['rates']}/{file}")
+
+		rates = transformation(rates)
+
+		new_filename = f"{NEW['rates']}/{file}"
+		
+		if rates.shape[1] == 14:
+			rates = rates.iloc[:, 1:]
+		
+		rates.to_csv(new_filename, index=False)
+
+def transform_instruments():
+
+	def transformation(instruments):
+
+		return instruments
+
+	for file in sorted(os.listdir(OLD['instruments'])):
+
+		if "_" in file or ".log" in file:
+			continue
+
+		print("Instruments Core Transformation:", file)
+		
+		instruments = pd.read_csv(f"{OLD['instruments']}/{file}")
+
+		transformation(instruments)
+
+		new_filename = f"{NEW['instruments']}/{file}"
+		instruments.to_csv(new_filename, index=False)
+
+def transform_rss():
+
+	def transformation(rss):
+
+		return rss
+
+	for filename in sorted(os.listdir(OLD['rss'])):
+
+		print("RSS Core Transformation:", filename)
+
+		with open(f"{OLD['rss']}/{filename}", "r") as file:
+			rss = file.read()
+
+		rss = transformation(rss)
+
+		with open(f"{NEW['rss']}/{filename}", "w") as file:
+			file.write(rss)
+
+def transform():
+
+	print("Core Data Transformation")
+
+	transform_ohlc()
+	transform_options()
+	transform_analysis()
+	transform_keystats()
+	transform_rates()
+	transform_instruments()
+	transform_rss()
+
+###################################################################################################
+
 def init_instruments():
 
-	print("Instruments")
+	print("Initializing Instruments")
 
 	instruments = []
 	for file in sorted(os.listdir(f"{NEWDIR}/instruments")):
@@ -105,8 +280,9 @@ def init_instruments():
 	instruments = instruments.drop_duplicates(subset=["ticker", "exchange_code"], keep="first")
 
 	print("Indexing Instruments")
+	print(instruments)
 
-	conn = engine.connect()
+	conn = ENGINE.connect()
 	conn.execute("DROP TABLE IF EXISTS instrumentsBACK;")
 	conn.execute(INSTRUMENT_TABLE)
 	to_sql(instruments, "instrumentsBACK", conn)
@@ -114,7 +290,7 @@ def init_instruments():
 
 def init_rates():
 
-	print("Treasury Rates")
+	print("Initializing Treasury Rates")
 
 	treasuryrates = []
 	for file in sorted(os.listdir(f"{NEWDIR}/treasuryrates")):
@@ -127,7 +303,7 @@ def init_rates():
 	print("Indexing Treasury Rates")
 	print(treasuryrates)
 
-	conn = engine.connect()
+	conn = ENGINE.connect()
 	conn.execute("DROP TABLE IF EXISTS treasuryratesBACK;")
 	conn.execute(TREASURYRATES_TABLE)
 	to_sql(treasuryrates, "treasuryratesBACK", conn)
@@ -135,30 +311,30 @@ def init_rates():
 
 	###############################################################################################
 
-	print("Treasury Ratemap")
+	# print("Treasury Ratemap")
 
-	treasuryratemap = []
-	for file in sorted(os.listdir(f"{NEWDIR}/treasuryratemap")):
-		treasuryratemap.append(pd.read_csv(f"{NEWDIR}/treasuryratemap/{file}", parse_dates=["date_current"]))
+	# treasuryratemap = []
+	# for file in sorted(os.listdir(f"{NEWDIR}/treasuryratemap")):
+	# 	treasuryratemap.append(pd.read_csv(f"{NEWDIR}/treasuryratemap/{file}", parse_dates=["date_current"]))
 	
-	treasuryratemap = pd.concat(treasuryratemap)
-	treasuryratemap = treasuryratemap[treasuryratemap.date_current >= "2019-01-01"]
-	treasuryratemap = treasuryratemap.sort_values(["date_current", "days_to_expiry"])
+	# treasuryratemap = pd.concat(treasuryratemap)
+	# treasuryratemap = treasuryratemap[treasuryratemap.date_current >= "2019-01-01"]
+	# treasuryratemap = treasuryratemap.sort_values(["date_current", "days_to_expiry"])
 
-	print("Indexing Treasury Ratemap")
-	print(treasuryratemap)
+	# print("Indexing Treasury Ratemap")
+	# print(treasuryratemap)
 
-	conn = engine.connect()
-	conn.execute("DROP TABLE IF EXISTS treasuryratemapBACK;")
-	conn.execute(TREASURYRATEMAP_TABLE)
-	to_sql(treasuryratemap, "treasuryratemapBACK", conn)
-	conn.close()
+	# conn = ENGINE.connect()
+	# conn.execute("DROP TABLE IF EXISTS treasuryratemapBACK;")
+	# conn.execute(TREASURYRATEMAP_TABLE)
+	# to_sql(treasuryratemap, "treasuryratemapBACK", conn)
+	# conn.close()
 
 	###############################################################################################
 
 def init_tickermaps():
 
-	print("Ticker Maps")
+	print("Initializing Ticker Maps")
 
 	tickeroids, tickerdates = [], []
 	for folder in sorted(os.listdir(f"{NEWDIR}/tickermaps")):
@@ -173,7 +349,7 @@ def init_tickermaps():
 	print("Ticker Order IDs")
 	print(tickeroids)
 
-	conn = engine.connect()
+	conn = ENGINE.connect()
 	conn.execute("DROP TABLE IF EXISTS tickeroidsBACK;")
 	conn.execute(TICKEROIDS_TABLE)
 	to_sql(tickeroids, "tickeroidsBACK", conn)
@@ -182,7 +358,7 @@ def init_tickermaps():
 	print("Ticker Date Map")
 	print(tickerdates)
 
-	conn = engine.connect()
+	conn = ENGINE.connect()
 	conn.execute("DROP TABLE IF EXISTS tickerdatesBACK;")
 	conn.execute(TICKERDATES_TABLE)
 	to_sql(tickerdates, "tickerdatesBACK", conn)
@@ -190,7 +366,7 @@ def init_tickermaps():
 
 def init_equities():
 
-	print("Equities Excl. Options")
+	print("Initializing Equities Excl. Options")
 
 	analysis, ohlc, keystats = [], [], []
 	for folder in os.listdir(f"{NEWDIR}/equities"):
@@ -212,7 +388,7 @@ def init_equities():
 
 	###############################################################################################
 
-	conn = engine.connect()
+	conn = ENGINE.connect()
 	conn.execute("DROP TABLE IF EXISTS ohlcBACK;")
 	conn.execute("DROP TABLE IF EXISTS analysisBACK;")
 	conn.execute("DROP TABLE IF EXISTS keystatsBACK;")
@@ -221,23 +397,23 @@ def init_equities():
 	conn.execute(KEYSTATS_TABLE)
 	conn.close()
 
-	print("OHLC")
+	print("Indexing OHLC")
 	print(ohlc)
-	to_sql(ohlc, "ohlcBACK", engine)
+	to_sql(ohlc, "ohlcBACK", ENGINE)
 
-	print("Analysis")
+	print("Indexing Analysis")
 	print(analysis)
-	to_sql(analysis, "analysisBACK", engine)
+	to_sql(analysis, "analysisBACK", ENGINE)
 
-	print("Key Stats")
+	print("Indexing Key Stats")
 	print(keystats)
-	to_sql(keystats, "keystatsBACK", engine)
+	to_sql(keystats, "keystatsBACK", ENGINE)
 
 def init_options():
 
-	print("Options")
+	print("Initializing Options")
 
-	conn = engine.connect()
+	conn = ENGINE.connect()
 	conn.execute("DROP TABLE IF EXISTS optionsBACK;")
 	conn.execute(OPTIONS_TABLE)
 	conn.close()
@@ -255,18 +431,24 @@ def init_options():
 		if len(options) % 10 == 0:
 
 			options = pd.concat(options)
-			print("Indexing Options:", len(options))
-			to_sql(options, "optionsBACK", engine)
+			print("Indexing Options", len(options))
+			to_sql(options, "optionsBACK", ENGINE)
 			options = []
 
 def init():
 
 	init_instruments()
 	init_rates()
-	init_tickermaps()
 	init_equities()
-	init_options()	
+	init_options()
+
+def main():
+
+	download_data()
+	transform()
+	init()
+	# compress_data()
 
 if __name__ == "__main__":
 
-	init()
+	main()

@@ -1,3 +1,13 @@
+BATCHTICKERS = """
+
+DROP TABLE IF EXISTS batchtickers;
+CREATE TABLE batchtickers (ticker VARCHAR(10) PRIMARY KEY NOT NULL);
+
+INSERT INTO batchtickers
+VALUES {tickers};
+
+"""
+
 INITDATESERIES = """
 
 	DROP TABLE IF EXISTS dateseries;
