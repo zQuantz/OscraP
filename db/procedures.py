@@ -65,9 +65,9 @@ INITDATESERIES = """
 		(SELECT
 			DISTINCT date_current
 		FROM
-			ohlc 
+			ohlcBACK
 		WHERE
-			date_current <= "2020-08-27"
+			date_current <= @date_current
 		GROUP BY 
 			date_current DESC) AS t1;
 		
@@ -102,29 +102,29 @@ INITDATESERIES = """
 
 INITAGGOPTIONSTATS = """
 
-	DROP TABLE IF EXISTS aggoptionstats;
-	CREATE TABLE aggoptionstats (
+	DROP TABLE IF EXISTS aggoptionstatsBACK;
+	CREATE TABLE aggoptionstatsBACK (
 		date_current DATE,
 		ticker VARCHAR(10),
 		call_volume BIGINT,
 		put_volume BIGINT,
 		cpv_spread BIGINT,
 		total_volume BIGINT,
-		rcv5 FLOAT,
-		rpv5 FLOAT,
-		rtv5 FLOAT,
-		rcv10 FLOAT,
-		rpv10 FLOAT,
-		rtv10 FLOAT,
-		rcv20 FLOAT,
-		rpv20 FLOAT,
-		rtv20 FLOAT,
-		rcps5 FLOAT,
-		rcps10 FLOAT,
-		rcps20 FLOAT
+		rcv5 FLOAT(4),
+		rpv5 FLOAT(4),
+		rtv5 FLOAT(4),
+		rcv10 FLOAT(4),
+		rpv10 FLOAT(4),
+		rtv10 FLOAT(4),
+		rcv20 FLOAT(4),
+		rpv20 FLOAT(4),
+		rtv20 FLOAT(4),
+		rcps5 FLOAT(4),
+		rcps10 FLOAT(4),
+		rcps20 FLOAT(4)
 	);
 
-	INSERT INTO aggoptionstats
+	INSERT INTO aggoptionstatsBACK
 	SELECT
 		date_current,
 		ticker,
@@ -153,7 +153,9 @@ INITAGGOPTIONSTATS = """
 			SUM(IF(option_type = "P", volume, 0)) AS put_volume,
 			SUM(volume) AS total_volume
 		FROM
-			options
+			optionsBACK
+		WHERE
+			date_current = @date_current
 		GROUP BY
 			ticker,
 			date_current
@@ -164,8 +166,10 @@ INITAGGOPTIONSTATS = """
 
 """
 
-OHLCSTATS = """
-	
+INSERTOHLCSTATS = """
+
+	INSERT INTO
+		ohlcstatsBACK
 	SELECT
 		date_current,
 		ticker,
@@ -181,7 +185,7 @@ OHLCSTATS = """
 		SUM(stock_volume * _63) / 63 AS avgvolume63,
 		SUM(stock_volume * _126) / 126 AS avgvolume126,
 		SUM(stock_volume * _189) / 189 AS avgvolume189,
-		SUM(stock_volume * _252) / 252 AS relvolume252,
+		SUM(stock_volume * _252) / 252 AS avgvolume252,
 		SUM(stock_volume * _0d) / (SUM(stock_volume * _10) / 10) AS relvolume10,
 		SUM(stock_volume * _0d) / (SUM(stock_volume * _21) / 21) AS relvolume21,
 		SUM(stock_volume * _0d) / (SUM(stock_volume * _42) / 42) AS relvolume42,
@@ -215,79 +219,97 @@ OHLCSTATS = """
 					AND o2.ticker = o1.ticker
 		) AS t1
 	GROUP BY
-		ticker;
+		ticker
+	ORDER BY
+		date_current DESC;
 	
 """
 
-AGGOPTIONSTATS = """
+UPDATEAGGOPTIONSTATS = """
 
-	SELECT
-	*
-	FROM
-		(
-			SELECT
-				ticker,
-				date_current,
-				SUM(_0d * call_volume) / (SUM(call_volume * _5) / 5) AS rcv5,
-				SUM(_0d * put_volume) / (SUM(put_volume * _5) / 5) AS rpv5,
-				SUM(_0d * total_volume) / (SUM(total_volume * _5) / 5) AS rtv5,
-				SUM(_0d * call_volume) / (SUM(call_volume * _10) / 10) AS rcv10,
-				SUM(_0d * put_volume) / (SUM(put_volume * _10) / 10) AS rpv10,
-				SUM(_0d * total_volume) / (SUM(total_volume * _10) / 10) AS rtv10,
-				SUM(_0d * call_volume) / (SUM(call_volume * _20) / 20) AS rcv20,
-				SUM(_0d * put_volume) / (SUM(put_volume * _20) / 20) AS rpv20,
-				SUM(_0d * total_volume) / (SUM(total_volume * _20) / 20) AS rtv20,
-				SUM(_0d * cpv_spread) / (SUM(cpv_spread * _5) / 5) AS rcpvs5,
-				SUM(_0d * cpv_spread) / (SUM(cpv_spread * _10) / 10) AS rcpvs10,
-				SUM(_0d * cpv_spread) / (SUM(cpv_spread * _20) / 20) AS rcpvs20
-			FROM
-				aggoptionstats AS o
-			INNER JOIN
-				dateseries d
-				ON o.date_current = d.lag_date
-			GROUP BY
-				ticker
-		) AS t1
-	WHERE
-		date_current = "2020-08-27";
-
-"""
-
-OPTIONSTATS = """
-
-	SELECT
-		date_current,
-		option_id,
-		100 * ((SUM(_0d * option_price) / SUM(_1d * option_price)) - 1) AS pctchange1d,
-		100 * ((SUM(_0d * option_price) / SUM(_5d * option_price)) - 1) AS pctchange5d,
-		100 * ((SUM(_0d * option_price) / SUM(_10d * option_price)) - 1) AS pctchange10d,
-		100 * ((SUM(_0d * option_price) / SUM(_20d * option_price)) - 1) AS pctchange20d,
-		100 * (SUM(_0d * implied_volatility) - SUM(_1d * implied_volatility)) AS ivchange1d,
-		100 * (SUM(_0d * implied_volatility) - SUM(_5d * implied_volatility)) AS ivchange5d,
-		100 * (SUM(_0d * implied_volatility) - SUM(_10d * implied_volatility)) AS ivchange10d,
-		100 * (SUM(_0d * implied_volatility) - SUM(_20d * implied_volatility)) AS ivchange20d,
-		SUM(_0d * volume) / (SUM(_5 * volume) / 5) AS relvolume5,
-		SUM(_0d * volume) / (SUM(_10 * volume) / 10) AS relvolume10,
-		SUM(_0d * volume) / (SUM(_20 * volume) / 20) AS relvolume20
-	FROM
-		options AS o
+	UPDATE
+		aggoptionstatsBACK
 	INNER JOIN
 		(
 			SELECT
 				*
 			FROM
-				dateseries
+				(
+					SELECT
+						ticker,
+						date_current,
+						SUM(_0d * call_volume) / (SUM(call_volume * _5) / 5) AS rcv5,
+						SUM(_0d * put_volume) / (SUM(put_volume * _5) / 5) AS rpv5,
+						SUM(_0d * total_volume) / (SUM(total_volume * _5) / 5) AS rtv5,
+						SUM(_0d * call_volume) / (SUM(call_volume * _10) / 10) AS rcv10,
+						SUM(_0d * put_volume) / (SUM(put_volume * _10) / 10) AS rpv10,
+						SUM(_0d * total_volume) / (SUM(total_volume * _10) / 10) AS rtv10,
+						SUM(_0d * call_volume) / (SUM(call_volume * _20) / 20) AS rcv20,
+						SUM(_0d * put_volume) / (SUM(put_volume * _20) / 20) AS rpv20,
+						SUM(_0d * total_volume) / (SUM(total_volume * _20) / 20) AS rtv20,
+						SUM(_0d * cpv_spread) / (SUM(cpv_spread * _5) / 5) AS rcpvs5,
+						SUM(_0d * cpv_spread) / (SUM(cpv_spread * _10) / 10) AS rcpvs10,
+						SUM(_0d * cpv_spread) / (SUM(cpv_spread * _20) / 20) AS rcpvs20
+					FROM
+						aggoptionstatsBACK AS o
+					INNER JOIN
+						dateseries d
+						ON o.date_current = d.lag_date
+					GROUP BY
+						ticker
+				) AS t1
 			WHERE
-				lag < 20
-		) AS d
-		ON
-			o.date_current = d.lag_date
+				date_current = @date_current
+		) as t2
+	USING
+		(ticker, date_current)
+	SET
+		addoptionstatsBACK.rcv5 = t2.rcv5;
+
+"""
+
+INSERTOPTIONSTATS = """
+
+	INSERT INTO
+		optionstatsBACK
+	SELECT
+		*
+	FROM
+		(
+			SELECT
+				date_current,
+				option_id,
+				100 * ((SUM(_0d * option_price) / SUM(_1d * option_price)) - 1) AS pctchange1d,
+				100 * ((SUM(_0d * option_price) / SUM(_5d * option_price)) - 1) AS pctchange5d,
+				100 * ((SUM(_0d * option_price) / SUM(_10d * option_price)) - 1) AS pctchange10d,
+				100 * ((SUM(_0d * option_price) / SUM(_20d * option_price)) - 1) AS pctchange20d,
+				100 * (SUM(_0d * implied_volatility) - SUM(_1d * implied_volatility)) AS ivchange1d,
+				100 * (SUM(_0d * implied_volatility) - SUM(_5d * implied_volatility)) AS ivchange5d,
+				100 * (SUM(_0d * implied_volatility) - SUM(_10d * implied_volatility)) AS ivchange10d,
+				100 * (SUM(_0d * implied_volatility) - SUM(_20d * implied_volatility)) AS ivchange20d,
+				SUM(_0d * volume) / (SUM(_5 * volume) / 5) AS relvolume5,
+				SUM(_0d * volume) / (SUM(_10 * volume) / 10) AS relvolume10,
+				SUM(_0d * volume) / (SUM(_20 * volume) / 20) AS relvolume20
+			FROM
+				optionsBACK AS o
+			INNER JOIN
+				(
+					SELECT
+						*
+					FROM
+						dateseries
+					WHERE
+						lag < 20
+				) AS d
+				ON
+					o.date_current = d.lag_date
+			GROUP BY
+				option_id
+			ORDER BY
+				date_current DESC,
+				option_id ASC
+		) as t1
 	WHERE
-		ticker in ("AAPL", "TSLA")
-	GROUP BY
-		option_id
-	ORDER BY
-		date_current DESC,
-		option_id ASC;
+		date_current = @date_current
 
 """

@@ -8,7 +8,7 @@ DIR = os.path.dirname(os.path.realpath(__file__))
 with open("../config.json", "r") as file:
 	CONFIG = json.loads(file.read())
 
-ENGINE = sql.create_engine(CONFIG['db_address'].replace("finance", "test"))
+ENGINE = sql.create_engine(CONFIG['db_address'].replace("finance", "test"), pool_recycle=3600)
 
 ###################################################################################################
 

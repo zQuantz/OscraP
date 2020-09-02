@@ -435,6 +435,10 @@ def init_options():
 			to_sql(options, "optionsBACK", ENGINE)
 			options = []
 
+	options = pd.concat(options)
+	print("Final Index.\nIndexing Options", len(options))
+	to_sql(options, "optionsBACK", ENGINE)
+
 def init():
 
 	init_instruments()
