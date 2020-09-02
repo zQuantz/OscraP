@@ -1,4 +1,4 @@
-from const import DIR, NEW, ENGINE
+from const import DIR, NEW, _connector
 from procedures import *
 from tables import *
 
@@ -9,56 +9,43 @@ import sys, os
 sys.path.append("../equities")
 from precompute import pre_surface
 
-###################################################################################################
-
-def to_sql(df, tablename, conn):
-	df.to_sql(tablename, conn, if_exists="append", index=False, chunksize=100_000)
-
 def derive_surface():
 
-	with ENGINE.connect() as conn:
-
-		print("Initializing Surface")
-		conn.execute("DROP TABLE IF EXISTS surfaceBACK;")
-		conn.execute(SURFACE_TABLE)
-
-	###############################################################################################
+	print("Initializing Surface")
+	_connector.execute("DROP TABLE IF EXISTS surfaceBACK;")
+	_connector.execute(SURFACE_TABLE)
 
 	ohlcs = []
-	for folder in os.listdir(NEW['equity']):
-		ohlcs.append(pd.read_csv(f"{NEW['equity']}/{folder}/ohlc.csv"))
-	
+	for folder in NEW['equity'].iterdir():
+		ohlcs.append(pd.read_csv(folder / "ohlc.csv"))
 	ohlc = pd.concat(ohlcs)
 	ohlc = ohlc[['ticker', 'date_current', 'adjclose_price']]
 
 	surface = []
-	for folder in sorted(os.listdir(NEW['equity'])):
+	for folder in sorted(NEW['equity'].iterdir()):
 
-		if "options.csv" not in os.listdir(f"{NEW['equity']}/{folder}"):
+		file = folder / "options.csv"
+		if not file.exists():
 			continue
 
-		print("Processing", folder)
-		options = pd.read_csv(f"{NEW['equity']}/{folder}/options.csv")
-		surface.append(pre_surface(options, ohlc, folder))
+		print("Processing Surface", folder.name)
+		options = pd.read_csv(file)
+		surface.append(pre_surface(options, ohlc, folder.name))
 
 	print("Indexing IV Surface")
 	surface = pd.concat(surface)
-	to_sql(surface, "surfaceBACK", ENGINE)
+	_connector.write("surfaceBACK", surface)
 
 def derive_treasuryratemap():
 
-	with ENGINE.connect() as conn:
+	print("Initializing Treasury Rate Maps")
+	_connector.execute("DROP TABLE IF EXISTS treasuryratemapBACK;")
+	_connector.execute(TREASURYRATEMAP_TABLE)
 
-		print("Initializing Treasury Rate Maps")
-		conn.execute("DROP TABLE IF EXISTS treasuryratemapBACK;")
-		conn.execute(TREASURYRATEMAP_TABLE)
-
-	###############################################################################################
-
-	rates = []
-	for file in sorted(os.listdir(NEW['rates'])):
-		ratedf = pd.read_csv(f"{NEW['rates']}/{file}")
-		rates.append(ratedf)
+	rates = [
+		pd.read_csv(file)
+		for file in sorted(NEW['rates'].iterdir())
+	]
 
 	rates = pd.concat(rates)
 	rates['date_current'] = pd.to_datetime(rates.date_current)
@@ -118,84 +105,72 @@ def derive_treasuryratemap():
 	ratemap['date_current'] = ratemap.date_current.astype(str)
 	
 	print("Indexing Treasury Rate Map")
-	to_sql(ratemap, "treasuryratemapBACK", ENGINE)
+	_connector.write("treasuryratemapBACK", ratemap)
 
 def derive_stats():
 
-	with ENGINE.connect() as conn:
+	print("Initializing Option Stats")
+	_connector.execute("DROP TABLE IF EXISTS optionstatsBACK;")
+	_connector.execute(OPTIONSTATS_TABLE)
 
-		print("Initializing Option Stats")
-		conn.execute("DROP TABLE IF EXISTS optionstatsBACK;")
-		conn.execute(OPTIONSTATS_TABLE)
+	print("Initializing OHLC Stats")
+	_connector.execute("DROP TABLE IF EXISTS ohlcstatsBACK;")
+	_connector.execute(OHLCSTATS_TABLE)
 
-		print("Initializing OHLC Stats")
-		conn.execute("DROP TABLE IF EXISTS ohlcstatsBACK;")
-		conn.execute(OHLCSTATS_TABLE)
-
-		print("Initializing Aggregate Option Stats\n")
-		conn.execute("DROP TABLE IF EXISTS aggoptionstatsBACK;")
-		conn.execute(AGGOPTIONSTATS_TABLE)
-
-	###############################################################################################
+	print("Initializing Aggregate Option Stats\n")
+	_connector.execute("DROP TABLE IF EXISTS aggoptionstatsBACK;")
+	_connector.execute(AGGOPTIONSTATS_TABLE)
 
 	for date in sorted(os.listdir(NEW['equity'])):
 
-		with ENGINE.connect() as conn:
+		print(f"Creating dateseries table for date {date}.")
+		_connector.execute(f"""SET @date_current = "{date}";""")
 
-			print(f"Creating dateseries table for date {date}.")
-			conn.execute(f"""SET @date_current = "{date}";""")
+		for statement in INITDATESERIES.split(";")[:-1]:
+			_connector.execute(statement)
 
-			for statement in INITDATESERIES.split(";")[:-1]:
-				conn.execute(statement)
+		print("Inserting OHLC Stats")
+		_connector.execute(INSERTOHLCSTATS)
 
-			print("Inserting OHLC Stats")
-			conn.execute(INSERTOHLCSTATS)
+		print("Inserting Agg Option Stats")
+		_connector.execute(INSERTAGGOPTIONSTATS)
 
-			print("Inserting Agg Option Stats")
-			conn.execute(INSERTAGGOPTIONSTATS)
+		print("Updating Agg Option Stats")
+		_connector.execute(UPDATEAGGOPTIONSTATS)
 
-			print("Updating Agg Option Stats")
-			conn.execute(UPDATEAGGOPTIONSTATS)
+		print("Inserting Options Stats")
+		_connector.execute(INSERTOPTIONSTATS)
 
-			print("Inserting Options Stats")
-			conn.execute(INSERTOPTIONSTATS)
-
-			print("\n----------\n")
+		print("\n----------\n")
 
 def derive_tickermaps():
 
-	with ENGINE.connect() as conn:
+	print("Initializing Ticker-Date Map")
+	_connector.execute("DROP TABLE IF EXISTS tickerdatesBACK;")
+	_connector.execute(TICKERDATES_TABLE)
 
-		print("Initializing Ticker-Date Map")
-		conn.execute("DROP TABLE IF EXISTS tickerdatesBACK;")
-		conn.execute(TICKERDATES_TABLE)
-
-		print("Initializing Ticker-OptionID Map\n")
-		conn.execute("DROP TABLE IF EXISTS tickeroidsBACK;")
-		conn.execute(TICKEROIDS_TABLE)
-
-	###############################################################################################
+	print("Initializing Ticker-OptionID Map\n")
+	_connector.execute("DROP TABLE IF EXISTS tickeroidsBACK;")
+	_connector.execute(TICKEROIDS_TABLE)
 
 	for date in sorted(os.listdir(NEW['equity'])):
 
-		with ENGINE.connect() as conn:
+		print(f"Setting date_current to {date}")
+		_connector.execute(f"""SET @date_current = "{date}";""")
 
-			print(f"Setting date_current to {date}")
-			conn.execute(f"""SET @date_current = "{date}";""")
+		print("Inserting Ticker-Dates")
+		_connector.execute(INSERTTICKERDATES)
 
-			print("Inserting Ticker-Dates")
-			conn.execute(INSERTTICKERDATES)
+		print("Inserting Ticker-Option IDs")
+		_connector.execute(INSERTTICKEROIDS)
 
-			print("Inserting Ticker-Option IDs")
-			conn.execute(INSERTTICKEROIDS)
-
-			print("\n----------\n")
+		print("\n----------\n")
 
 def derive():
 
-	derive_surface()
-	derive_treasuryratemap()
-	derive_stats()
+	# derive_surface()
+	# derive_treasuryratemap()
+	# derive_stats()
 	derive_tickermaps()
 
 if __name__ == '__main__':

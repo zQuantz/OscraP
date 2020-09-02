@@ -1,3 +1,5 @@
+from connector import Connector
+from pathlib import Path
 import sqlalchemy as sql
 import json
 import os
@@ -8,7 +10,7 @@ DIR = os.path.dirname(os.path.realpath(__file__))
 with open("../config.json", "r") as file:
 	CONFIG = json.loads(file.read())
 
-ENGINE = sql.create_engine(CONFIG['db_address'].replace("finance", "test"), pool_recycle=3600)
+_connector = Connector(CONFIG)
 
 ###################################################################################################
 
@@ -30,7 +32,8 @@ TAR = {
 	for key, value in NEW.items()
 }
 
-NEW['tickermaps'] = f"{DIR}/data/new/tickermaps"
-NEW['treasuryratemap'] = f"{DIR}/data/new/treasuryratemap"
+OLD = {k : Path(v) for k, v in OLD.items()}
+NEW = {k : Path(v) for k, v in NEW.items()}
+TAR = {k : Path(v) for k, v in TAR.items()}
 
 ###################################################################################################

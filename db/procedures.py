@@ -38,31 +38,14 @@ INITDATESERIES = """
 	);
 
 	SET @i = -1;
-	INSERT INTO dateseries
+	INSERT INTO
+		dateseries (
+			lag, 
+			lag_date
+		)
 	SELECT
 		(@i:=@i+1) AS lag,
 		date_current AS lag_date,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL
 	FROM
 		(SELECT
 			DISTINCT date_current
@@ -105,26 +88,22 @@ INITDATESERIES = """
 
 INSERTAGGOPTIONSTATS = """
 
-	INSERT INTO aggoptionstatsBACK
+	INSERT INTO
+		aggoptionstatsBACK (
+			date_current, 
+			ticker, 
+			call_volume, 
+			put_volume, 
+			cpv_spread, 
+			total_volume
+		)
 	SELECT
 		date_current,
 		ticker,
 		call_volume,
 		put_volume,
 		call_volume - put_volume AS cpv_spread,
-		total_volume,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL
+		total_volume
 	FROM
 		(
 		SELECT
