@@ -60,4 +60,4 @@ t_map = [
     240 * 30,
     360 * 30
 ]
-t_map = np.array(t_map) / 360
+t_map = np.array(t_map)

@@ -83,7 +83,7 @@ def collect():
 
 	def get_rate(t):
 		
-		if t >= 30:
+		if t >= 30 * 360:
 			return r_map[-1]
 
 		b1 = t_map <= t
