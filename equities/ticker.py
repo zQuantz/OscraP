@@ -1,6 +1,5 @@
-from const import DIR, CONVERTER, NUMBERS, CONFIG
+from const import DIR, DATE, DATA, CONVERTER, NUMBERS, CONFIG
 
-from greeks import calculate_greeks
 from datetime import datetime
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -22,7 +21,33 @@ SUMMARY = "https://finance.yahoo.com/quote/{ticker}/"
 PARSER = "lxml"
 
 NAMED_DATE_FMT = "%B %d, %Y"
-DATE = CONFIG['date']
+
+OPTION_COLS = [
+	"date_current",
+	"ticker",
+	"expiration_date",
+	"days_to_expiry",
+	"option_type",
+	"strike_price",
+	"bid_price",
+	"option_price",
+	"ask_price",
+	"implied_volatility",
+	"volume",
+	"open_interest"
+]
+
+OHLC_COLS = [
+	"date_current",
+	"ticker",
+	"open_price",
+	"high_price",
+	"low_price",
+	"close_price",
+	"adjclose_price",
+	"volume",
+	"dividend_yield",
+]
 
 ###################################################################################################
 
@@ -56,7 +81,7 @@ class Ticker():
 
 		if not retries or retries['key_stats']:
 			try:
-				self.get_key_stats()
+				self.get_keystats()
 				self.logger.info(f"{ticker},{batch_id},Key Stats,Success,")
 			except Exception as e:
 				self.logger.warning(f"{ticker},{batch_id},Key Stats,Failure,{e}")
@@ -97,7 +122,6 @@ class Ticker():
 			return str_
 		
 		if str_ in ['', 'N/A', '∞']:
-			self.logger.info(f'{self.ticker},{self.batch_id},Value,{str_},{metric}')
 			return None
 		
 		str_ = str_.replace(',', '').replace('$', '')
@@ -115,11 +139,9 @@ class Ticker():
 	def option_fmt(self, str_number, metric=''):
 	
 		if str_number == '':
-			self.logger.info(f"{self.ticker},{self.batch_id},Value,'',{metric}")
 			return 0
 
 		if str_number == 'N/A':
-			self.logger.info(f'{self.ticker},{self.batch_id},Value,N/A,{metric}')
 			return 0
 
 		for token in ',$%':
@@ -182,15 +204,12 @@ class Ticker():
 		if ohlc_date != DATE:
 			raise Exception(f'Fatal')
 
-		cols = ['open', 'high', 'low', 'close', 'adj_close', 'stock_volume']
-		prices = list(map(self.option_fmt, prices[1:], cols))
-		self.adj_close = prices[-2]
+		prices = list(map(self.option_fmt, prices[1:], OHLC_COLS[:-2]))
+		prices = [DATE, self.ticker] + prices + [self.div]
+		self.adj_close = prices[-3]
 
-		prices += [self.div, DATE]
-		cols += ["dividend_yield", 'date_current']
-
-		df = pd.DataFrame([prices], columns = cols)
-		df.to_csv(f"{DIR}/financial_data/{DATE}/ohlc/{self.ticker}_{DATE}.csv", index=False)
+		ohlc = pd.DataFrame([prices], columns = OHLC_COLS)
+		ohlc.to_csv(f"{DATA}/ohlc/{self.ticker}_{DATE}.csv", index=False)
 
 		if self.retries and self.retries['ohlc']:
 
@@ -198,24 +217,6 @@ class Ticker():
 			self.logger.info(f"{self.ticker},{self.batch_id},Re-OHLC,Success,1")
 
 	def get_options(self):
-
-		def append_options(table, expiry_date_fmt, expiration_days, symbol):
-
-			for row in table.find_all("tr")[1:]:
-				es = [e for e in row.find_all("td")[2:]]
-				self.options.append([
-						DATE,
-						expiry_date_fmt,
-						np.round(max(expiration_days / 252, 0), 6),
-						symbol,
-						self.option_fmt(es[0].text, 'Strike Price'),
-						self.option_fmt(es[2].text, 'Bid'),
-						self.option_fmt(es[3].text, 'Ask'),
-						self.option_fmt(es[-2].text, 'Volume'),
-						self.option_fmt(es[1].text, 'Option Price'),
-						self.option_fmt(es[-1].text, 'Implied Volatility') / 100,
-						self.option_fmt(es[-3].text, 'Open Interest')
-					])
 
 		def get_page(url):
 
@@ -234,6 +235,25 @@ class Ticker():
 
 			return bs, options
 
+		def append_options(table, expiry_date_fmt, expiration_days, option_type):
+
+			for row in table.find_all("tr")[1:]:
+				es = [e for e in row.find_all("td")[2:]]
+				self.options.append([
+						DATE,
+						self.ticker,
+						expiry_date_fmt,
+						expiration_days,
+						option_type,
+						self.option_fmt(es[0].text, 'Strike Price'),
+						self.option_fmt(es[2].text, 'Bid'),
+						self.option_fmt(es[1].text, 'Option Price'),
+						self.option_fmt(es[3].text, 'Ask'),
+						self.option_fmt(es[-1].text, 'Implied Volatility') / 100,
+						self.option_fmt(es[-2].text, 'Volume'),
+						self.option_fmt(es[-3].text, 'Open Interest')
+					])
+
 		url = OPTIONS.format(ticker = self.ticker)
 		bs, options = get_page(url)
 
@@ -244,11 +264,8 @@ class Ticker():
 			expiry, expiry_date = option.get("value"), option.text
 			self.logger.info(f"{self.ticker},{self.batch_id},Option Expiry,{expiry},{expiry_date.replace(',', '.')}")
 
-			expiry_date_fmt = datetime.strptime(expiry_date, NAMED_DATE_FMT).strftime("%Y-%m-%d")
-			
-			dt = datetime.fromtimestamp(int(expiry)).strftime("%Y-%m-%d")
-			dt_now = datetime.now().strftime("%Y-%m-%d")
-			expiration_days = np.busday_count(dt_now, dt)
+			expiry_date_fmt = datetime.strptime(expiry_date, NAMED_DATE_FMT).strftime("%Y-%m-%d")		
+			expiration_days = (datetime.fromtimestamp(int(expiry)) - datetime.now).days
 
 			page = url+f"&date={str(expiry)}"
 			bs, _ = get_page(page)
@@ -262,26 +279,27 @@ class Ticker():
 			if puts:
 				append_options(puts, expiry_date_fmt, expiration_days, 'P')
 
-		self.options = pd.DataFrame(self.options, columns = ['date_current', 'expiration_date', 'time_to_expiry',
-															 'option_type', 'strike_price', 'bid', 'ask', 'volume',
-															 'option_price', 'implied_volatility', 'open_interest'])
-		self.options = calculate_greeks(self.adj_close, self.div, self.options)
+		self.options = pd.DataFrame(self.options, columns = OPTION_COLS)
+		
+		oid = df.ticker + ' ' + df.expiration_date + ' ' + df.option_type
+		oid += df.strike_price.round(2).astype(str)
+		self.options['option_id'] = oid
 
 		if not self.retries and len(self.options) > 0:
 			
-			self.options.to_csv(f"{DIR}/financial_data/{DATE}/options/{self.ticker}_{DATE}.csv", index=False)
+			self.options.to_csv(f"{DATA}/options/{self.ticker}_{DATE}.csv", index=False)
 
 		elif len(self.options) != 0:
 			
 			try:
-				old = pd.read_csv(f"{DIR}/financial_data/{DATE}/options/{self.ticker}_{DATE}.csv")
+				old = pd.read_csv(f"{DATA}/options/{self.ticker}_{DATE}.csv")
 			except Exception as e:
 				old = pd.DataFrame()
 
 			df = pd.concat([old, self.options]).reset_index(drop=True)
 			df = df.drop_duplicates(subset=['expiration_date', 'strike_price', 'option_type'], keep="last")
 			df = df.sort_values(['expiration_date', 'option_type', 'strike_price'])
-			df.to_csv(f"{DIR}/financial_data/{DATE}/options/{self.ticker}_{DATE}.csv", index=False)
+			df.to_csv(f"{DATA}/options/{self.ticker}_{DATE}.csv", index=False)
 
 			self.fault_dict['options']['new_options'] = len(df)
 			delta = self.fault_dict['options']['new_options'] - self.fault_dict['options']['options']
@@ -292,7 +310,7 @@ class Ticker():
 
 			self.logger.info(f"{self.ticker},{self.batch_id},Options,None Collected,")
 
-	def get_key_stats(self):
+	def get_keystats(self):
 
 		def get_items(bs, text):
 
@@ -327,26 +345,31 @@ class Ticker():
 			])
 
 		df = pd.DataFrame(key_stats, columns = ["feature", "modifier", "value"])
+		df = df.dropna(subset=["value"])
+
 		pkey = ["feature", "modifier"]
 		df.loc[:, pkey] = df[pkey].fillna('')
 
+		df['ticker'] = self.ticker
+		df['date_current'] = DATE
+
 		if not self.retries and len(df) > 0:
 			
-			df.to_csv(f"{DIR}/financial_data/{DATE}/key_stats/{self.ticker}_{DATE}.csv", index=False)
+			df.to_csv(f"{DATA}/keystats/{self.ticker}_{DATE}.csv", index=False)
 
 		elif len(df) != 0:
 			
 			try:
-				old = pd.read_csv(f"{DIR}/financial_data/{DATE}/key_stats/{self.ticker}_{DATE}.csv")
+				old = pd.read_csv(f"{DATA}/keystats/{self.ticker}_{DATE}.csv")
 			except Exception as e:
 				old = pd.DataFrame()
 
 			df = pd.concat([old, df]).reset_index(drop=True)
 			df = self.drop_by_na(pkey, df)
-			df.to_csv(f"{DIR}/financial_data/{DATE}/key_stats/{self.ticker}_{DATE}.csv", index=False)
+			df.to_csv(f"{DATA}/keystats/{self.ticker}_{DATE}.csv", index=False)
 
-			self.fault_dict['key_stats']['new_null_percentage'] = df.value.isnull().sum() / len(df)
-			delta = self.fault_dict['key_stats']['new_null_percentage'] - self.fault_dict['key_stats']['null_percentage']
+			self.fault_dict['keystats']['new_null_percentage'] = df.value.isnull().sum() / len(df)
+			delta = self.fault_dict['keystats']['new_null_percentage'] - self.fault_dict['keystats']['null_percentage']
 			
 			self.logger.info(f"{self.ticker},{self.batch_id},Re-Key Stats,Success,{delta}")
 
@@ -394,25 +417,29 @@ class Ticker():
 			dfs.append(parse_table(table))
 		
 		df = pd.concat(dfs)
+		df = df.dropna(subset=["value"])
 		
 		pkey = ["category", "feature", "feature_two", "modifier"]
 		df.loc[:, pkey] = df[pkey].fillna('')
 
+		df['ticker'] = self.ticker
+		df['date_current'] = DATE
+
 		if not self.retries and len(df) > 0:
 			
-			df.to_csv(f"{DIR}/financial_data/{DATE}/analysis/{self.ticker}_{DATE}.csv", index=False)
+			df.to_csv(f"{DATA}/analysis/{self.ticker}_{DATE}.csv", index=False)
 
 		elif len(df) != 0:
 
 			try:
-				old = pd.read_csv(f"{DIR}/financial_data/{DATE}/analysis/{self.ticker}_{DATE}.csv")
+				old = pd.read_csv(f"{DATA}/analysis/{self.ticker}_{DATE}.csv")
 			except Exception as e:
 				old = pd.DataFrame()
 
 			df = pd.concat([old, df]).reset_index(drop=True)
 			df = self.drop_by_na(pkey, df)
 
-			df.to_csv(f"{DIR}/financial_data/{DATE}/analysis/{self.ticker}_{DATE}.csv", index=False)
+			df.to_csv(f"{DATA}/analysis/{self.ticker}_{DATE}.csv", index=False)
 
 			self.fault_dict['analysis']['new_null_percentage'] = df.value.isnull().sum() / len(df)
 			delta = self.fault_dict['analysis']['new_null_percentage'] - self.fault_dict['analysis']['null_percentage']

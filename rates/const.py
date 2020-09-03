@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 import numpy as np
 import logging
 import socket
@@ -9,6 +10,10 @@ import os
 ###################################################################################################
 
 DIR = os.path.realpath(os.path.dirname(__file__))
+DIR = Path(DIR)
+
+DATE = datetime.today().strftime("%Y-%m-%d")
+DATA = DIR / "rate_data" / DATE
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -24,10 +29,7 @@ logger.addHandler(fh)
 with open(f"{DIR}/../config.json", "r") as file:
 	CONFIG = json.loads(file.read())
 
-date = datetime.today().strftime("%Y-%m-%d")
-with open(f"{DIR}/../config.json", "w") as file:
-	
-	CONFIG['date'] = date
+with open(f"{DIR}/../config.json", "w") as file:	
 
 	if socket.gethostname() == CONFIG['gcp_hostname']:
 		CONFIG['db'] = "compour9_finance"
@@ -61,3 +63,9 @@ t_map = [
     360 * 30
 ]
 t_map = np.array(t_map)
+
+###################################################################################################
+
+sys.path.append("../db")
+from connector import Connector
+_connector = Connector(CONFIG, DATE)

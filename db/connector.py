@@ -4,14 +4,17 @@ import sys, os
 
 class Connector:
 
-	def __init__(self, CONFIG):
+	def __init__(self, CONFIG, date):
 
+		self.db = CONFIG['db']
 		self.db_address = CONFIG['db_address'].replace("finance", "test")
 		self.engine = sql.create_engine(self.db_address,
 								   		pool_size=10,
 								   		max_overflow=0,
 								   		pool_recycle=3600)
+
 		self.max_tries = 10
+		self.date = date
 
 	def transact(self, action, *args):
 
@@ -37,7 +40,7 @@ class Connector:
 		def read(conn, query):
 			return pd.read_sql(query, conn)
 
-		return self.transact(action, query)
+		return self.transact(read, query)
 
 	def write(self, table, df):
 
@@ -56,3 +59,47 @@ class Connector:
 			return conn.execute(statement)
 
 		return self.transact(execute, statement)
+
+	###############################################################################################
+
+	def get_equities_table_count(self):
+
+		return self.read("""
+				SELECT
+				    TABLE_NAME AS tablename,
+				    TABLE_ROWS AS count
+				FROM
+				    information_schema.tables
+				WHERE
+				    TABLE_SCHEMA = "{db}"
+				AND
+				    TABLE_NAME in ("optionsBACK", "ohlcBACK", "analysisBACK", "keystatsBACK")
+			""").format(db=self.db)
+
+	def init_batch_tickers(self, tickers):
+
+		self.execute("""DELETE FROM batchtickers;""")
+		batchtickers = pd.DataFrame(tickers, columns = ['ticker'])
+		self.write("batchtickers", batchtickers)
+
+	def get_equity_tickers(self, N_USD, N_CAD):
+
+		instruments = self.read("""
+				SELECT
+					*
+				FROM
+					instruments
+				WHERE
+					market_cap >= 1_000_000
+				ORDER BY
+					market_cap DESC
+			""")
+
+		usd = df[~df.exchange_code.isin(["TSX"])].iloc[:N_USD, :]
+		cad = df[df.exchange_code.isin(["TSX"])].iloc[:N_CAD, :]
+		tickers = (usd.ticker.values.tolist() + cad.ticker.values.tolist())
+
+		df = df[df.ticker.isin(tickers)]
+		df = df.sort_values('market_cap', ascending=False)
+
+		return tuple(df.ticker)

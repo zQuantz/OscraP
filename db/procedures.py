@@ -1,43 +1,9 @@
-BATCHTICKERS = """
-
-DROP TABLE IF EXISTS batchtickers;
-CREATE TABLE batchtickers (ticker VARCHAR(10) PRIMARY KEY NOT NULL);
-
-INSERT INTO batchtickers
-VALUES {tickers};
-
-"""
-
 INITDATESERIES = """
 
-	DROP TABLE IF EXISTS dateseries;
-	CREATE TABLE dateseries (
-		lag SMALLINT,
-		lag_date DATE,
-		prev_lag_date DATE, 
-		_5 SMALLINT,
-		_10 SMALLINT,
-		_20 SMALLINT,
-		_21 SMALLINT,
-		_42 SMALLINT,
-		_63 SMALLINT,
-		_126 SMALLINT,
-		_189 SMALLINT,
-		_252 SMALLINT,
-		_0d SMALLINT,
-		_1d SMALLINT,
-		_5d SMALLINT,
-		_10d SMALLINT,
-		_20d SMALLINT,
-		_21d SMALLINT,
-		_42d SMALLINT,
-		_63d SMALLINT,
-		_126d SMALLINT,
-		_189d SMALLINT,
-		_252d SMALLINT
-	);
+	DELETE FROM dateseries;
 
 	SET @i = -1;
+
 	INSERT INTO
 		dateseries (
 			lag, 
@@ -314,5 +280,59 @@ INSERTTICKEROIDS = """
 	GROUP BY
 		ticker,
 		option_id;
+
+"""
+
+INSERTOPTIONCOUNTS = """
+	
+	INSERT INTO
+		optioncountsBACK
+	SELECT
+		date_current,
+		ticker,
+		COUNT(ticker)
+	FROM
+		optionsBACK
+	WHERE
+		date_current = @date_current
+	GROUP BY
+		date_current,
+		ticker;
+
+"""
+
+INSERTANALYSISCOUNTS = """
+	
+	INSERT INTO
+		analysiscountsBACK
+	SELECT
+		date_current,
+		ticker,
+		COUNT(ticker)
+	FROM
+		analysisBACK
+	WHERE
+		date_current = @date_current
+	GROUP BY
+		date_current,
+		ticker;
+
+"""
+
+INSERTKEYSTATSCOUNTS = """
+	
+	INSERT INTO
+		keystatscountsBACK
+	SELECT
+		date_current,
+		ticker,
+		COUNT(ticker)
+	FROM
+		keystatsBACK
+	WHERE
+		date_current = @date_current
+	GROUP BY
+		date_current,
+		ticker;
 
 """

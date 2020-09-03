@@ -1,14 +1,8 @@
-from const import DIR, logger, CONFIG
-
+from const import DIR, DATA, DATE, CONFIG, logger, _connector
 from batch import main as batch_main
 from store import main as store
-from datetime import timedelta
-from datetime import datetime
 from ticker import Ticker
 from report import report
-import sqlalchemy as sql
-import pandas as pd
-import numpy as np
 import sys, os
 
 sys.path.append(f"{DIR}/../utils")
@@ -16,7 +10,6 @@ from gcp import send_gcp_metric
 
 ###################################################################################################
 
-DATE = CONFIG['date']
 BATCH_SIZE = 50
 N_USD = 1350
 N_CAD = 150
@@ -26,10 +19,10 @@ N_CAD = 150
 def get_job_success_rates(tickers):
 
 	success = {
-		"options" : len(os.listdir(f'{DIR}/financial_data/{DATE}/options')),
-		"ohlc" : len(os.listdir(f'{DIR}/financial_data/{DATE}/ohlc')),
-		"key_stats" : len(os.listdir(f'{DIR}/financial_data/{DATE}/key_stats')),
-		"analysis" : len(os.listdir(f'{DIR}/financial_data/{DATE}/analysis'))
+		"options" : len(os.listdir(DATA / "options")),
+		"ohlc" : len(os.listdir(DATA / "ohlc")),
+		"keystats" : len(os.listdir(DATA / "keystats")),
+		"analysis" : len(os.listdir(DATA / "analysis"))
 	}
 
 	failure = {
@@ -48,91 +41,20 @@ def send_metrics(success, failure):
 		metric /= success[key] + failure[key]
 		send_gcp_metric(CONFIG, f"oscrap_{key}_sucess", "double_value", metric)
 
-def fetch_tickers():
-
-	engine = sql.create_engine(CONFIG['db_address'])
-	query = f"""
-		SELECT
-			*
-		FROM
-			instruments
-		WHERE
-			market_cap >= {1_000_000}
-		ORDER BY market_cap DESC
-	"""
-
-	conn = engine.connect()
-	df = pd.read_sql(query, conn)
-	conn.close()
-
-	usd = df[~df.exchange_code.isin(["TSX"])].iloc[:N_USD, :]
-	cad = df[df.exchange_code.isin(["TSX"])].iloc[:N_CAD, :]
-	tickers = (usd.ticker.values.tolist() + cad.ticker.values.tolist())
-
-	df = df[df.ticker.isin(tickers)]
-	df = df.sort_values('market_cap', ascending=False)
-
-	return tuple(df.ticker)
-
-def fetch_rates():
-
-	engine = sql.create_engine(CONFIG['db_address'])
-
-	date = datetime.now() - timedelta(days=7)
-	date = date.strftime("%Y-%m-%d")
-
-	query = f"""
-		SELECT
-			*
-		FROM
-			rates
-		WHERE
-			date_current >= "{date}"
-	"""
-	
-	rates = pd.read_sql(query, engine)
-	rates = rates.iloc[-1, :]
-
-	t_map = [
-		0,
-		30,
-		60,
-		90,
-		180,
-		12 * 30,
-		24 * 30,
-		36 * 30,
-		60 * 30,
-		72 * 30,
-		120 * 30,
-		240 * 30,
-		360 * 30
-	]
-	t_map = np.array(t_map) / 360
-	r_map = [0] + list(rates.values[1:] / 100)
-	r_map = np.array(r_map)
-
-	return {
-		"t_map" : t_map,
-		"r_map" : r_map,
-		"rates" : {}
-	}
-
 def init_folders():
 
-	os.mkdir(f'{DIR}/financial_data/{DATE}')
-	os.mkdir(f'{DIR}/financial_data/{DATE}/options')
-	os.mkdir(f'{DIR}/financial_data/{DATE}/ohlc')
-	os.mkdir(f'{DIR}/financial_data/{DATE}/key_stats')
-	os.mkdir(f'{DIR}/financial_data/{DATE}/analysis')
+	DATA.mkdir()
+	(DATA / "options").mkdir()
+	(DATA / "ohlc").mkdir()
+	(DATA / "keystats").mkdir()
+	(DATA / "analysis").mkdir()
 
 def main():
 
 	logger.info(f"SCRAPER,JOB,INITIATED,{DATE},")
 
 	init_folders()
-	tickers = fetch_tickers()
-	CONFIG['rates'] = fetch_rates()
+	tickers = _connector.get_equity_tickers(N_USD, N_CAD)
 
 	checkpoint = len(tickers) / BATCH_SIZE
 	checkpoint = int(checkpoint / 4)

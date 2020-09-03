@@ -1,3 +1,37 @@
+DATESERIES_TABLE = """
+	CREATE TABLE dateseries (
+		lag SMALLINT,
+		lag_date DATE,
+		prev_lag_date DATE, 
+		_5 SMALLINT,
+		_10 SMALLINT,
+		_20 SMALLINT,
+		_21 SMALLINT,
+		_42 SMALLINT,
+		_63 SMALLINT,
+		_126 SMALLINT,
+		_189 SMALLINT,
+		_252 SMALLINT,
+		_0d SMALLINT,
+		_1d SMALLINT,
+		_5d SMALLINT,
+		_10d SMALLINT,
+		_20d SMALLINT,
+		_21d SMALLINT,
+		_42d SMALLINT,
+		_63d SMALLINT,
+		_126d SMALLINT,
+		_189d SMALLINT,
+		_252d SMALLINT
+	)
+"""
+
+BATCHTICKERS_TABLE = """
+	CREATE TABLE batchtickers (
+		ticker VARCHAR(10) PRIMARY KEY NOT NULL
+	)
+"""
+
 OPTIONS_TABLE = """
 	CREATE TABLE optionsBACK (
 		date_current DATE,
@@ -186,6 +220,33 @@ TICKEROIDS_TABLE = """
 		ticker VARCHAR(10),
 		option_id VARCHAR(50),
 		PRIMARY KEY(ticker, option_id)
+	)
+"""
+
+OPTIONCOUNTS_TABLE = """
+	CREATE TABLE optioncountsBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		count MEDIUMINT UNSIGNED,
+		PRIMARY KEY(date_current, ticker) 
+	)
+"""
+
+ANALYSISCOUNTS_TABLE = """
+	CREATE TABLE analysiscountsBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		count MEDIUMINT UNSIGNED,
+		PRIMARY KEY(date_current, ticker) 
+	)
+"""
+
+KEYSTATSCOUNTS_TABLE = """
+	CREATE TABLE keystatscountsBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		count MEDIUMINT UNSIGNED,
+		PRIMARY KEY(date_current, ticker) 
 	)
 """
 

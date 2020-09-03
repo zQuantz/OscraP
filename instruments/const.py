@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 import logging
 import socket
 import json
@@ -18,23 +19,13 @@ COLUMNS = [
 	'market_cap'
 ]
 
-SQL_TABLE = """
-	CREATE TABLE
-		instruments (
-			last_updated date,
-			ticker varchar(10),
-			name varchar(100),
-			exchange_code varchar(10),
-			exchange_name varchar(50),
-			sector varchar(100),
-			industry varchar(100),
-			instrument_type varchar(10),
-			market_cap BIGINT
-		)
-	"""
 ###################################################################################################
 
 DIR = os.path.realpath(os.path.dirname(__file__))
+DIR = Path(DIR)
+
+DATE = datetime.today().strftime("%Y-%m-%d")
+DATA = DIR / "instrument_data" / DATE
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -50,11 +41,8 @@ logger.addHandler(fh)
 with open(f"{DIR}/../config.json", "r") as file:
 	CONFIG = json.loads(file.read())
 
-date = datetime.today().strftime("%Y-%m-%d")
 with open(f"{DIR}/../config.json", "w") as file:
 	
-	CONFIG['date'] = date
-
 	if socket.gethostname() == CONFIG['gcp_hostname']:
 		CONFIG['db'] = "compour9_finance"
 		CONFIG['gcp_bucket_prefix'] = "instruments"
@@ -65,3 +53,7 @@ with open(f"{DIR}/../config.json", "w") as file:
 	file.write(json.dumps(CONFIG))
 
 ###################################################################################################
+
+sys.path.append("../db")
+from connector import Connector
+_connector = Connector(CONFIG, DATE)

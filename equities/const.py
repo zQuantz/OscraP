@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 import logging
 import socket
 import json
@@ -15,6 +16,10 @@ NUMBERS = ''.join([str(i) for i in range(10)])
 ###################################################################################################
 
 DIR = os.path.realpath(os.path.dirname(__file__))
+DIR = Path(DIR)
+
+DATE = datetime.today().strftime("%Y-%m-%d")
+DATA = DIR / "financial_data" / DATE
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -30,10 +35,7 @@ logger.addHandler(fh)
 with open(f"{DIR}/../config.json", "r") as file:
 	CONFIG = json.loads(file.read())
 
-date = datetime.today().strftime("%Y-%m-%d")
 with open(f"{DIR}/../config.json", "w") as file:
-	
-	CONFIG['date'] = date
 
 	if socket.gethostname() == CONFIG['gcp_hostname']:
 		CONFIG['db'] = "compour9_finance"
@@ -51,13 +53,6 @@ with open(f"{DIR}/../config.json", "w") as file:
 
 ###################################################################################################
 
-COUNT_QUERY = """SELECT "{table_name}", COUNT(*) FROM {table_name}"""
-COUNT_QUERY = f"""
-{COUNT_QUERY.format(table_name="options")}
-UNION
-{COUNT_QUERY.format(table_name="ohlc")}
-UNION
-{COUNT_QUERY.format(table_name="analysis")}
-UNION
-{COUNT_QUERY.format(table_name="key_stats")}
-"""
+sys.path.append("../db")
+from connector import Connector
+_connector = Connector(CONFIG, DATE)

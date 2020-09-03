@@ -7,7 +7,7 @@ import numpy as np
 import sys, os
 
 sys.path.append("../equities")
-from precompute import pre_surface
+from calculations import surface
 
 def derive_surface():
 
@@ -119,9 +119,21 @@ def derive_stats():
 	_connector.execute("DROP TABLE IF EXISTS ohlcstatsBACK;")
 	_connector.execute(OHLCSTATS_TABLE)
 
-	print("Initializing Aggregate Option Stats\n")
+	print("Initializing Aggregate Option Stats")
 	_connector.execute("DROP TABLE IF EXISTS aggoptionstatsBACK;")
 	_connector.execute(AGGOPTIONSTATS_TABLE)
+
+	print("Initializing Option Counts")
+	_connector.execute("DROP TABLE IF EXISTS optioncountsBACK;")
+	_connector.execute(OPTIONCOUNTS_TABLE)
+
+	print("Initializing Analysis Counts")
+	_connector.execute("DROP TABLE IF EXISTS analysiscountsBACK;")
+	_connector.execute(ANALYSISCOUNTS_TABLE)
+
+	print("Initializing Keystats Counts")
+	_connector.execute("DROP TABLE IF EXISTS keystatscountsBACK;")
+	_connector.execute(KEYSTATSCOUNTS_TABLE)
 
 	for date in sorted(os.listdir(NEW['equity'])):
 
@@ -142,6 +154,15 @@ def derive_stats():
 
 		print("Inserting Options Stats")
 		_connector.execute(INSERTOPTIONSTATS)
+
+		print("Inserting Options Counts")
+		_connector.execute(INSERTOPTIONCOUNTS)
+
+		print("Inserting Analysis Counts")
+		_connector.execute(INSERTANALYSISCOUNTS)
+
+		print("Inserting Keystats Counts")
+		_connector.execute(INSERTKEYSTATSCOUNTS)
 
 		print("\n----------\n")
 
@@ -170,9 +191,9 @@ def derive_tickermaps():
 
 def derive():
 
-	derive_tickermaps()
-	derive_treasuryratemap()
-	derive_surface()
+	# derive_tickermaps()
+	# derive_treasuryratemap()
+	# derive_surface()
 	derive_stats()
 
 if __name__ == '__main__':

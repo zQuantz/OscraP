@@ -1,13 +1,9 @@
-from const import CONFIG, DIR
+from const import CONFIG, DIR, DATE
 import pandas as pd
 import sys, os
 
 sys.path.append(f"{DIR}/../utils")
 from send_email import send_email
-
-###################################################################################################
-
-DATE = CONFIG['date']
 
 ###################################################################################################
 

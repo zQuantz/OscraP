@@ -1,6 +1,5 @@
-from const import DIR, CONFIG, logger, t_map
+from const import DIR, DATA, DATE, CONFIG, logger, t_map, _connector
 
-import sqlalchemy as sql
 import tarfile as tar
 import pandas as pd
 import numpy as np
@@ -18,15 +17,14 @@ URL = "https://www.treasury.gov/resource-center/data-chart-center/interest-rates
 
 BUCKET_PREFIX = CONFIG['gcp_bucket_prefix']
 BUCKET_NAME = CONFIG['gcp_bucket_name']
-DATE = CONFIG['date']
 
 ###################################################################################################
 
 def store():
 
-	with tar.open(f"{DIR}/rate_data/{DATE}.tar.xz", "x:xz") as tar_file:
+	with tar.open(f"{DATA}.tar.xz", "x:xz") as tar_file:
 
-		filename = f"{DIR}/rate_data/{DATE}.csv"
+		filename = f"{DATA}.csv"
 		tar_file.add(filename, os.path.basename(filename))
 
 	send_to_bucket(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz", f"{DIR}/rate_data/", logger=logger)
@@ -70,10 +68,8 @@ def collect():
 	if len(df) == 0:
 		raise Exception("Data not up to date.")
 
-	engine = sql.create_engine(CONFIG['db_address'])
-
-	df.to_sql("rates", engine, if_exists='append', index=False, chunksize=10_000)
-	df.to_csv(f"{DIR}/rate_data/{DATE}.csv", index=False)
+	_connector.write("treasuryrates", df)
+	df.to_csv(f"{DATA}.csv", index=False)
 
 	###############################################################################################
 
@@ -105,7 +101,7 @@ def collect():
 	rm_df['rate'] = rm_df.time_to_expiry.apply(get_rate)
 	rm_df['date_current'] = DATE
 
-	rm_df.to_sql("ratemap", engine, if_exists="append", index=False, chunksize=10_000)
+	_connector.write("treasuryratemap", rm_df)
 
 	return df
 

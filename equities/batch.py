@@ -1,4 +1,4 @@
-from const import CONFIG, DIR, logger
+from const import logger
 
 from unit_tests import check_number_of_options, check_null_percentage, check_ohlc
 from ticker import Ticker
@@ -9,7 +9,7 @@ import time
 
 ###################################################################################################
 
-DATE = CONFIG['date']
+SLEEP = 2.5
 
 ###################################################################################################
 
@@ -19,7 +19,9 @@ def collect_data(batch_id, tickers):
 		
 		try:
 
-			Ticker(ticker, logger, batch_id) ; time.sleep(5)
+			Ticker(ticker, logger, batch_id)
+			time.sleep(SLEEP)
+			
 			logger.info(f"{ticker},{batch_id},Ticker,Success,")
 
 		except Exception as e:
@@ -43,7 +45,7 @@ def collect_data_again(batch_id, faults):
 
 			ticker_obj = Ticker(ticker, logger, batch_id, retries, faults[ticker])
 			faults[ticker] = ticker_obj.fault_dict
-			time.sleep(5)
+			time.sleep(SLEEP)
 
 			logger.info(f"{ticker},{batch_id},Re-Ticker,Success,")
 

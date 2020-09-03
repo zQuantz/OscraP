@@ -1,4 +1,4 @@
-from const import COLUMNS, DIR, CONFIG, logger
+from const import COLUMNS, CONFIG, DIR, DATA, DATE, logger
 
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -30,7 +30,6 @@ for key in CONVERTER.copy():
 
 BUCKET_PREFIX = CONFIG['gcp_bucket_prefix']
 BUCKET_NAME = CONFIG['gcp_bucket_name']
-DATE = CONFIG['date']
 
 EXCHANGES = [
 	"American Stock Exchange",
@@ -182,14 +181,14 @@ def scrape(exchange_code, exchange_name, modifier=''):
 			time.sleep(SLEEP)
 
 	df = pd.DataFrame(stats, columns = COLUMNS)
-	df.to_csv(f'{DIR}/instrument_data/{DATE}/{exchange_code}_tickers.csv', index=False)
+	df.to_csv(f'{DATA}/{exchange_code}_tickers.csv', index=False)
 
 def main():
 
 	logger.info("Job Initiated.")
 
 	logger.info("Creating Directory.")
-	os.mkdir(f"{DIR}/instrument_data/{DATE}")
+	DATA.mkdir()
 
 	for exchange_code, exchange_name in get_exchanges():
 		modifier = '.TO' if exchange_code == 'TSX' else ''
@@ -206,24 +205,22 @@ def main():
 	logger.info("Storing.")
 	try:
 
-		df.to_csv(f"{DIR}/instrument_data/{DATE}/{DATE}.csv", index=False)
+		df.to_csv(f"{DATA}/{DATE}.csv", index=False)
 
-		with tar.open(f"{DIR}/instrument_data/{DATE}.tar.xz", "x:xz") as tar_file:
-			for file in os.listdir(f"{DIR}/instrument_data/{DATE}"):
-				tar_file.add(f"{DIR}/instrument_data/{DATE}/{file}", arcname=file)
+		with tar.open(f"{DATA}.tar.xz", "x:xz") as tar_file:
+			for file in DATA.iterdir():
+				tar_file.add(file, arcname=file.name)
 			tar_file.add(f"{DIR}/err.log", arcname="err.log")
 		
 		send_to_bucket(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz", f"{DIR}/instrument_data/")
 
-		for folder in os.listdir(f"{DIR}/instrument_data"):
-			if os.path.isdir(f"{DIR}/instrument_data/{folder}"):
-				shutil.rmtree(f"{DIR}/instrument_data/{folder}")
+		for folder in (DIR / instrument_data).iterdir():
+			if folder.is_dir():
+				shutil.rmtree(folder)
 
 	except Exception as e:
 
 		logger.info(f"Storage Error - {e}")
-
-	###############################################################################################
 
 	logger.info("Job Terminated.")
 
