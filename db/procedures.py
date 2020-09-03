@@ -45,7 +45,7 @@ INITDATESERIES = """
 		)
 	SELECT
 		(@i:=@i+1) AS lag,
-		date_current AS lag_date,
+		date_current AS lag_date
 	FROM
 		(SELECT
 			DISTINCT date_current

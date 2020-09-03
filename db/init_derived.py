@@ -32,6 +32,8 @@ def derive_surface():
 		options = pd.read_csv(file)
 		surface.append(pre_surface(options, ohlc, folder.name))
 
+		break
+
 	print("Indexing IV Surface")
 	surface = pd.concat(surface)
 	_connector.write("surfaceBACK", surface)
@@ -168,10 +170,10 @@ def derive_tickermaps():
 
 def derive():
 
-	# derive_surface()
-	# derive_treasuryratemap()
-	# derive_stats()
 	derive_tickermaps()
+	derive_treasuryratemap()
+	derive_surface()
+	derive_stats()
 
 if __name__ == '__main__':
 

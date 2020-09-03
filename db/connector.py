@@ -1,4 +1,5 @@
 import sqlalchemy as sql
+import pandas as pd
 import sys, os
 
 class Connector:
@@ -12,7 +13,7 @@ class Connector:
 								   		pool_recycle=3600)
 		self.max_tries = 10
 
-	def read(self, query):
+	def transact(self, action, *args):
 
 		tries = 0
 		while tries < self.max_tries:
@@ -20,9 +21,7 @@ class Connector:
 			try:
 
 				with self.engine.connect() as conn:
-					data = pd.read_sql(query, conn)
-
-				return data
+					return action(conn, *args)
 
 			except Exception as e:
 
@@ -32,47 +31,28 @@ class Connector:
 
 		if tries >= self.max_tries:
 			raise Exception("Too Many SQL Errors.")
+
+	def read(self, query):
+
+		def read(conn, query):
+			return pd.read_sql(query, conn)
+
+		return self.transact(action, query)
 
 	def write(self, table, df):
 
-		tries = 0
-		while tries < self.max_tries:
+		def write(conn, table, df):
+			return df.to_sql(table,
+							 conn,
+							 if_exists='append',
+							 index=False,
+							 chunksize=100_000)
 
-			try:
-
-				with self.engine.connect() as conn:
-					df.to_sql(table,
-							  conn,
-							  if_exists='append',
-							  index=False,
-							  chunksize=100_000)
-				break
-
-			except Exception as e:
-
-				print(e)
-
-			tries += 1
-
-		if tries >= self.max_tries:
-			raise Exception("Too Many SQL Errors.")
+		return self.transact(write, table, df)
 
 	def execute(self, statement):
 
-		tries = 0
-		while tries < self.max_tries:
+		def execute(conn, statement):
+			return conn.execute(statement)
 
-			try:
-
-				with self.engine.connect() as conn:
-					conn.execute(statement)
-				break
-
-			except Exception as e:
-
-				print(e)
-
-			tries += 1
-
-		if tries >= self.max_tries:
-			raise Exception("Too Many SQL Errors.")
+		return self.transact(execute, statement)

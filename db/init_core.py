@@ -337,10 +337,10 @@ def init_options():
 	options = []
 	for folder in sorted((NEWDIR / "equities").iterdir()):
 
-		print("Processing Folder:", folder)
+		print("Processing Folder:", folder.name)
 
 		file = folder / "options.csv"
-		if file.exists():
+		if not file.exists():
 			continue
 
 		options.append(pd.read_csv(file))
@@ -368,7 +368,7 @@ def main():
 	download_data()
 	transform()
 	init()
-	# compress_data()
+	compress_data()
 
 if __name__ == "__main__":
 
