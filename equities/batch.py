@@ -1,6 +1,6 @@
 from const import logger
 
-from unit_tests import check_number_of_options, check_null_percentage, check_ohlc
+from unit_tests import check_count_quantiles, check_ohlc
 from ticker import Ticker
 from index import index
 import numpy as np
@@ -105,9 +105,9 @@ def fix_faults(batch_id, tickers):
 
 		try:
 
-			analysis_faults = check_null_percentage(tickers, "analysis")
-			key_stats_faults = check_null_percentage(tickers, "key_stats")
-			options_faults = check_number_of_options(tickers)
+			analysis_faults = check_count_quantiles(tickers, "analysis")
+			key_stats_faults = check_count_quantiles(tickers, "keystats")
+			options_faults = check_count_quantiles(tickers, "options")
 			ohlc_faults = check_ohlc(tickers)
 
 			logger.info(f"SCRAPER,{batch_id},FAULTS,SUCCESS,{query_attempts}")

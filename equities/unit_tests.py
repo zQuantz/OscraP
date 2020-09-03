@@ -1,166 +1,54 @@
 from const import DIR, DATE, DATA, CONFIG, logger, _connector
-from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 import sys, os
 
 ###################################################################################################
 
-def check_number_of_options(tickers):
+def check_count_quantiles(tickers, product):
 
-	dt = datetime.now() - timedelta(days=60)
-	query = sql.text(f"""
-		SELECT
-			ticker,
-			COUNT(date_current) as count
-		FROM
-			options
-		WHERE
-			date_current >= {dt.strftime("%Y-%m-%d")}
-		AND
-			ticker in {tickers}
-		GROUP BY
-			ticker, date_current
-		ORDER BY
-			date_current
-		"""
-	)
-	query = query.bindparams()
-
-	conn = engine.connect()
-	df = pd.read_sql(query, conn)
-	conn.close()
-
-	quantiles = df.groupby('ticker').apply(lambda x: np.quantile(x['count'].values, 0.25))
+	df = _connector.get_data_counts(f"{product}counts")
+	quantiles = df.groupby('ticker').apply(
+			lambda x: np.quantile(x['count'].values, 0.25)
+		)
 	quantiles = quantiles.astype(int).to_dict()
 
-	for ticker in quantiles:
-		if ticker in quantiles:
-			continue
-		quantiles[ticker] = 0
-
-	unhealthy_options = {}
-	for ticker in quantiles:
-
-		try:
-			
-			df = pd.read_csv(f"{DATA}/options/{ticker}_{DATE}.csv")
-			if len(df) <= quantiles[ticker]:
-				unhealthy_options[ticker] = {
-					'quantile' : quantiles[ticker],
-					'options' : len(df),
-					'new_options' : 0
-				}
-
-		except FileNotFoundError as file_not_found:
-
-			logger.warning(f"{ticker},Unit Test - Number of Options,Failure,File Not Found")
-			unhealthy_options[ticker] = {
-					'quantile' : quantiles[ticker],
-					'options' : 0,
-					'new_options' : 0
-				}
-
-		except Exception as e:
-			
-			logger.warning(f"{ticker},Unit Test - Number of Options,Failure,{e}")
-
-	return unhealthy_options
-
-def check_null_percentage(tickers, data):
-
-	label = data.replace('_', ' ').split()
-	label = ' '.join(map(str.capitalize, label))
-	
-	dt = datetime.now() - timedelta(days=60)
-	query = sql.text(f"""
-		SELECT
-			ticker,
-			SUM(ISNULL(value)) / COUNT(*) as null_percentage
-		FROM
-			{data}
-		WHERE
-			date_current >= {dt.strftime("%Y-%m-%d")}
-		AND
-			ticker in {tickers}
-		GROUP BY
-			ticker, date_current
-		"""
-	)
-	query = query.bindparams()
-
-	conn = engine.connect()
-	df = pd.read_sql(query, conn)
-	conn.close()
-
-	quantiles = df.groupby('ticker').apply(lambda x: x.null_percentage.quantile(0.25).round(4))
-	quantiles = quantiles.to_dict()
-
 	for ticker in tickers:
-		if ticker in quantiles:
-			continue
-		quantiles[ticker] = 0
+		if ticker not in quantiles:
+			quantiles[ticker] = 0
 
-	unhealthy_tickers = {}
+	unhealthy = {}
 	for ticker in quantiles:
 
-		try:
+		file = (DATA / product / f"{ticker}_{DATE}.csv")
 
-			df = pd.read_csv(f"{DATA}/{data}/{ticker}_{DATE}.csv")
-			null_percentage = df.value.isnull().sum() / len(df)
-			null_percentage = np.round(null_percentage, 4)
+		if not file.exists() or len(pd.read_csv(file)) <= quantiles[ticker]:
 
-			if null_percentage > quantiles[ticker]:
-				unhealthy_tickers[ticker] = {
-					'quantile' : quantiles[ticker],
-					'null_percentage' : null_percentage,
-					'new_null_percentage' : 0
-				}
+			unhealthy[ticker] = {
+				'quantile' : quantiles[ticker],
+				'old' : len(df),
+				'new' : 0
+			}
 
-		except FileNotFoundError as file_not_found:
-
-			logger.warning(f"{ticker},Unit Test - {label} Null Percentage,Failure,File Not Found")
-			unhealthy_tickers[ticker] = {
-					'quantile' : quantiles[ticker],
-					'null_percentage' : 0,
-					'new_null_percentage' : 0
-				}
-
-		except Exception as e:
-
-			logger.warning(f"{ticker},Unit Test - {label} Null Percentage,Failure,{e}")
-
-	return unhealthy_tickers
+	return unhealthy
 
 def check_ohlc(tickers):
 
-	dt = datetime.now() - timedelta(days=60)
-	query = sql.text(f"""
-		SELECT
-			DISTINCT(ticker) as tickers
-		FROM
-			ohlc
-		WHERE
-			date_current >= {dt.strftime("%Y-%m-%d")}
-		AND
-			ticker in {tickers}
-	""")
-	query = query.bindparams()
+	tickers = _connector.get_distinct_ohlc_tickers().ticker
 
-	conn = engine.connect()
-	tickers = pd.read_sql(query, conn).tickers.tolist() + list(tickers)
-	tickers = tuple(set(tickers))
-	conn.close()
+	collected = [
+		ticker.split("_")[0]
+		for ticker in os.listdir(f"{DATA}/ohlc")
+	]
 
-	collected_tickers = os.listdir(f"{DATA}/ohlc")
-	collected_tickers = [ticker.split("_")[0] for ticker in collected_tickers]
-
-	unhealthy_ohlc = {}
+	unhealthy = {}
 	for ticker in tickers:
-		if ticker not in collected_tickers:
-			unhealthy_ohlc[ticker] = {
+		
+		if ticker not in collected:
+
+			unhealthy[ticker] = {
 				"status" : 0,
 				"new_status" : 0
 			}
 
-	return unhealthy_ohlc
+	return unhealthy

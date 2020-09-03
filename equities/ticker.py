@@ -302,7 +302,7 @@ class Ticker():
 			df.to_csv(f"{DATA}/options/{self.ticker}_{DATE}.csv", index=False)
 
 			self.fault_dict['options']['new_options'] = len(df)
-			delta = self.fault_dict['options']['new_options'] - self.fault_dict['options']['options']
+			delta = self.fault_dict['options']['new'] - self.fault_dict['options']['old']
 
 			self.logger.info(f"{self.ticker},{self.batch_id},Re-Options,Success,{delta}")
 
@@ -368,8 +368,8 @@ class Ticker():
 			df = self.drop_by_na(pkey, df)
 			df.to_csv(f"{DATA}/keystats/{self.ticker}_{DATE}.csv", index=False)
 
-			self.fault_dict['keystats']['new_null_percentage'] = df.value.isnull().sum() / len(df)
-			delta = self.fault_dict['keystats']['new_null_percentage'] - self.fault_dict['keystats']['null_percentage']
+			self.fault_dict['keystats']['new'] = len(df)
+			delta = self.fault_dict['keystats']['new'] - self.fault_dict['keystats']['old']
 			
 			self.logger.info(f"{self.ticker},{self.batch_id},Re-Key Stats,Success,{delta}")
 
@@ -441,8 +441,8 @@ class Ticker():
 
 			df.to_csv(f"{DATA}/analysis/{self.ticker}_{DATE}.csv", index=False)
 
-			self.fault_dict['analysis']['new_null_percentage'] = df.value.isnull().sum() / len(df)
-			delta = self.fault_dict['analysis']['new_null_percentage'] - self.fault_dict['analysis']['null_percentage']
+			self.fault_dict['analysis']['new'] = len(df)
+			delta = self.fault_dict['analysis']['new'] - self.fault_dict['analysis']['old']
 			
 			self.logger.info(f"{self.ticker},{self.batch_id},Re-Analysis,Success,{delta}")
 

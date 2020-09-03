@@ -1,7 +1,6 @@
-from const import DIR, CONFIG, logger
+from const import DIR, DATE, DATA, CONFIG, logger
 
 from google.cloud import storage
-from hashlib import sha256
 import tarfile as tar
 import pandas as pd
 import sys, os
@@ -14,61 +13,41 @@ from gcp import send_to_bucket
 
 BUCKET_PREFIX = CONFIG['gcp_bucket_prefix']
 BUCKET_NAME = CONFIG['gcp_bucket_name']
-DATE = CONFIG['date']
 
 ###################################################################################################
 
 def aggregate():
 
 	data = {}
-	for folder in os.listdir(f"{DIR}/financial_data/{DATE}"):
+	for folder in DATA.iterdir():
 
-		data[folder] = []
+		data[folder.name] = []
 
-		for file in os.listdir(f"{DIR}/financial_data/{DATE}/{folder}"):
+		for file in folder.iterdir():
 
-			df = pd.read_csv(f"{DIR}/financial_data/{DATE}/{folder}/{file}")
-			df['date_current'] = DATE
-			df['ticker'] = file.split('_')[0]
+			data[folder.name].append(pd.read_csv(file))
 
-			if folder == "options":
-				df['option_id'] = (df.ticker + ' ' + df.expiration_date + ' ' + df.option_type
-							  	   + df.strike_price.round(2).astype(str))
-
-			data[folder].append(df)
-
-		if len(data[folder]) == 0:
+		if len(data[folder.name]) == 0:
 			continue
 
-		df = pd.concat(data[folder]).reset_index(drop=True)
-
-		first_cols = ["ticker", "date_current"]
-		if folder == "options":
-			first_cols += ["option_id"]
-		next_cols = [col for col in df.columns if col not in first_cols]
-
-		df = df[first_cols + next_cols]
-		data[folder] = df
-
-		data[folder].to_csv(f"{DIR}/financial_data/{DATE}/{folder}.csv", index=False)
+		df = pd.concat(data[folder.name])
+		df.to_csv(f"{DATA}/{folder}.csv", index=False)
 
 def compress():
 
-	with tar.open(f"{DIR}/financial_data/{DATE}.tar.xz", "x:xz") as tar_file:
+	with tar.open(f"{DATA}.tar.xz", "x:xz") as tar_file:
 
-		for file in os.listdir(f"{DIR}/financial_data/{DATE}"):
+		for file in DATA.iterdir():
 
-			if '.csv' not in file:
+			if '.csv' not in file.name:
 				continue
 
-			filename = f"{DIR}/financial_data/{DATE}/{file}"
-			tar_file.add(filename, os.path.basename(filename))
+			tar_file.add(file, file.name)
 
 def remove():
 
-	for folder in os.listdir(f"{DIR}/financial_data/"):
-		folder = f"{DIR}/financial_data/{folder}"
-		if os.path.isdir(folder):
+	for folder in (DIR / "financial_data").iterdir():
+		if folder.is_dir():
 			shutil.rmtree(folder)
 
 def main():

@@ -1,4 +1,4 @@
-from const import DIR, DATE, DATA, CONFIG, _connector
+from const import DATE, DATA, CONFIG, _connector
 from calculations import surface
 import pandas as pd
 import os

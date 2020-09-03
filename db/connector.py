@@ -103,3 +103,34 @@ class Connector:
 		df = df.sort_values('market_cap', ascending=False)
 
 		return tuple(df.ticker)
+
+	def get_data_counts(self, tablename):
+
+		return self.read("""
+				SELECT
+					ticker,
+					count
+				FROM
+					{}
+				WHERE
+					date_current >= DATE_SUB(CURDATE(), INTERVAL 61 DAY)
+				AND
+					ticker in (SELECT ticker FROM batchtickers)
+				GROUP BY
+					ticker,
+					date_current
+				ORDER BY
+					date_current DESC
+			""".format(tablename))
+
+	def get_distinct_ohlc_tickers(self):
+
+		return self.read("""
+				SELECT
+					DISTINCT ticker
+				FROM
+					ohlc
+				WHERE
+					date_current >= DATE_SUB(CURDATE(), INTERVAL 61 DAY)
+				AND ticker in (SELECT ticker FROM batchtickers)
+			""")
