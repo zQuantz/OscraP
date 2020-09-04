@@ -32,8 +32,6 @@ def derive_surface():
 		options = pd.read_csv(file)
 		surface.append(pre_surface(options, ohlc, folder.name))
 
-		break
-
 	print("Indexing IV Surface")
 	surface = pd.concat(surface)
 	_connector.write("surfaceBACK", surface)
@@ -140,29 +138,29 @@ def derive_stats():
 		print(f"Creating dateseries table for date {date}.")
 		_connector.execute(f"""SET @date_current = "{date}";""")
 
-		for statement in INITDATESERIES.split(";")[:-1]:
+		for statement in INIT_DATE_SERIES:
 			_connector.execute(statement)
 
 		print("Inserting OHLC Stats")
-		_connector.execute(INSERTOHLCSTATS)
+		_connector.execute(INSERT_OHLC_STATS)
 
 		print("Inserting Agg Option Stats")
-		_connector.execute(INSERTAGGOPTIONSTATS)
+		_connector.execute(INSERT_AGG_OPTION_STATS)
 
 		print("Updating Agg Option Stats")
-		_connector.execute(UPDATEAGGOPTIONSTATS)
+		_connector.execute(UPDATE_AGG_OPTION_STATS)
 
 		print("Inserting Options Stats")
-		_connector.execute(INSERTOPTIONSTATS)
+		_connector.execute(INSERT_OPTION_STATS)
 
 		print("Inserting Options Counts")
-		_connector.execute(INSERTOPTIONCOUNTS)
+		_connector.execute(INSERT_OPTION_COUNTS)
 
 		print("Inserting Analysis Counts")
-		_connector.execute(INSERTANALYSISCOUNTS)
+		_connector.execute(INSERT_ANALYSIS_COUNTS)
 
 		print("Inserting Keystats Counts")
-		_connector.execute(INSERTKEYSTATSCOUNTS)
+		_connector.execute(INSERT_KEYSTATS_COUNTS)
 
 		print("\n----------\n")
 
@@ -182,19 +180,27 @@ def derive_tickermaps():
 		_connector.execute(f"""SET @date_current = "{date}";""")
 
 		print("Inserting Ticker-Dates")
-		_connector.execute(INSERTTICKERDATES)
+		_connector.execute(INSERT_TICKER_DATES)
 
 		print("Inserting Ticker-Option IDs")
-		_connector.execute(INSERTTICKEROIDS)
+		_connector.execute(INSERT_TICKER_OIDS)
 
 		print("\n----------\n")
+
+def register_derived_procedure():
+
+	print("Registering Derived Procedure")
+	for statement in DERIVED_PROCEDURE:
+		_connector.execute(statement)
 
 def derive():
 
 	# derive_tickermaps()
 	# derive_treasuryratemap()
 	# derive_surface()
-	derive_stats()
+	# derive_stats()
+
+	register_derived_procedure()
 
 if __name__ == '__main__':
 
