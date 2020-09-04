@@ -74,7 +74,7 @@ class Connector:
 				    TABLE_SCHEMA = "{db}"
 				AND
 				    TABLE_NAME in ("optionsBACK", "ohlcBACK", "analysisBACK", "keystatsBACK")
-			""").format(db=self.db)
+			""".format(db=self.db))
 
 	def init_batch_tickers(self, tickers):
 
@@ -84,16 +84,16 @@ class Connector:
 
 	def get_equity_tickers(self, N_USD, N_CAD):
 
-		instruments = self.read("""
+		df = self.read("""
 				SELECT
 					*
 				FROM
-					instruments
+					instrumentsBACK
 				WHERE
-					market_cap >= 1_000_000
+					market_cap >= {}
 				ORDER BY
 					market_cap DESC
-			""")
+			""".format(1_000_000))
 
 		usd = df[~df.exchange_code.isin(["TSX"])].iloc[:N_USD, :]
 		cad = df[df.exchange_code.isin(["TSX"])].iloc[:N_CAD, :]
@@ -113,7 +113,7 @@ class Connector:
 				FROM
 					{}
 				WHERE
-					date_current >= DATE_SUB(CURDATE(), INTERVAL 61 DAY)
+					date_current >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
 				AND
 					ticker in (SELECT ticker FROM batchtickers)
 				GROUP BY
@@ -129,8 +129,8 @@ class Connector:
 				SELECT
 					DISTINCT ticker
 				FROM
-					ohlc
+					ohlcBACK
 				WHERE
-					date_current >= DATE_SUB(CURDATE(), INTERVAL 61 DAY)
+					date_current >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
 				AND ticker in (SELECT ticker FROM batchtickers)
 			""")
