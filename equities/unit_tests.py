@@ -7,7 +7,7 @@ import sys, os
 
 def check_count_quantiles(tickers, product):
 
-	df = _connector.get_data_counts(f"{product}counts")
+	df = _connector.get_data_counts(f"{product}countsBACK")
 	quantiles = df.groupby('ticker').apply(
 			lambda x: np.quantile(x['count'].values, 0.25)
 		)

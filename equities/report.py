@@ -1,4 +1,4 @@
-from const import DIR, CONFIG, logger
+from const import DIR, DATE, CONFIG, logger
 import pandas as pd
 import shutil
 import sys
@@ -9,36 +9,21 @@ from send_email import send_email
 
 ###################################################################################################
 
-DATE = CONFIG['date']
-
-###################################################################################################
-
 def report(title_modifier, successful, failures, faults_summary, db_flags, db_stats, indexing_faults):
 
-	###############################################################################################
+	def write_str(product):
 
-	option_faults_str = ""
-	if len(faults_summary['options']) > 0:
-		df = pd.DataFrame(faults_summary['options']).T
-		df['delta'] = df.new_options - df.options
-		df.columns = ['Quantile (25%)', 'First Count', 'Second Count', 'Delta']
-		option_faults_str = df.to_html()
+		if len(faults_summary['options']) > 0:
 
-	analysis_faults_str = ""
-	if len(faults_summary['analysis']) > 0:
+			df = pd.DataFrame(faults_summary[product]).T
+			df.columns = ['Quantile (25%)', 'First Count', 'Second Count', 'Delta']
+			return df.to_html()
 
-		df = pd.DataFrame(faults_summary['analysis']).T
-		df['delta'] = df.new_null_percentage - df.null_percentage
-		df.columns = ['Quantile (25%)', 'First Null %', 'Second Null %', 'Delta']
-		analysis_faults_str = df.to_html()
+		return ""
 
-	key_stats_faults_str = ""
-	if len(faults_summary['key_stats']) > 0:
-		
-		df = pd.DataFrame(faults_summary['key_stats']).T
-		df['delta'] = df.new_null_percentage - df.null_percentage
-		df.columns = ['Quantile (25%)', 'First Null %', 'Second Null %', 'Delta']
-		key_stats_faults_str = df.to_html()
+	options_fault_str = write_str("options")
+	analysis_faults_str = write_str("analysis")
+	keystats_faults_str = write_str("keystats")
 
 	ohlc_faults_str = ""
 	if len(faults_summary['ohlc']) > 0:
@@ -58,7 +43,7 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 	ends = [end[1] for end in db_stats[-1]]
 
 	counts = list(zip(starts, ends))
-	options_counts, ohlc_counts, analysis_counts, key_stats_counts = counts
+	options_counts, ohlc_counts, analysis_counts, keystats_counts = counts
 
 	adds = [
 		[item[1] - item[0] for item in batch]
@@ -106,15 +91,15 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		<br>
 
 		Key Statistics Summary<br>
-		Successful Tickers: {successful['key_stats']}, {round(successful['key_stats'] / total * 100, 2)}%<br>
-		Failed Tickers: {failures['key_stats']}, {round(failures['key_stats'] / total * 100, 2)}%<br>
-		Starting Row Count: {key_stats_counts[0]}<br>
-		Ending Row Count: {key_stats_counts[1]}<br>
-		New Rows Added: {key_stats_counts[1] - key_stats_counts[0]}<br>
+		Successful Tickers: {successful['keystats']}, {round(successful['keystats'] / total * 100, 2)}%<br>
+		Failed Tickers: {failures['keystats']}, {round(failures['keystats'] / total * 100, 2)}%<br>
+		Starting Row Count: {keystats_counts[0]}<br>
+		Ending Row Count: {keystats_counts[1]}<br>
+		New Rows Added: {keystats_counts[1] - keystats_counts[0]}<br>
 		<br>
 
 		Options Fault Summary<br>
-		{option_faults_str}<br>
+		{options_fault_str}<br>
 		<br>
 
 		OHLC Fault Summary<br>
@@ -126,7 +111,7 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 		<br>
 
 		Key Statistics Fault Summary<br>
-		{key_stats_faults_str}<br>
+		{keystats_faults_str}<br>
 		<br>
 
 		See attached for the log file and the collected data.<br>

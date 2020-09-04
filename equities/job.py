@@ -3,6 +3,7 @@ from batch import main as batch_main
 from store import main as store
 from ticker import Ticker
 from report import report
+import traceback
 import sys, os
 
 sys.path.append(f"{DIR}/../utils")
@@ -10,7 +11,7 @@ from gcp import send_gcp_metric
 
 ###################################################################################################
 
-BATCH_SIZE = 50
+BATCH_SIZE = 1
 N_USD = 1350
 N_CAD = 150
 
@@ -28,7 +29,7 @@ def get_job_success_rates(tickers):
 	failure = {
 		"options" : len(tickers) - success['options'],
 		"ohlc" : len(tickers) - success['ohlc'],
-		"key_stats" : len(tickers) - success['key_stats'],
+		"keystats" : len(tickers) - success['keystats'],
 		"analysis" : len(tickers) - success['analysis']
 	}
 
@@ -62,7 +63,7 @@ def main():
 	faults_summary = {
 		"options" : {},
 		"analysis" : {},
-		"key_stats" : {},
+		"keystats" : {},
 		"ohlc" : {}
 	}
 
@@ -74,6 +75,7 @@ def main():
 	for batch_id, batch in enumerate(range(BATCH_SIZE, len(tickers) + BATCH_SIZE, BATCH_SIZE)):
 
 		ticker_batch = tickers[batch - BATCH_SIZE : batch]
+		_connector.init_batch_tickers(ticker_batch)
 
 		results = batch_main(batch_id, ticker_batch)
 		b_fault_summary, b_db_flag, b_db_stats, b_indexing_attempt = results
@@ -107,3 +109,4 @@ if __name__ == '__main__':
 		main()
 	except Exception as e:
 		logger.warning(f"SCRAPER,JOB,MAIN ERROR,{e},")
+		logger.warning(f"SCRAPER,JOB,MAIN STACKTRACE,{traceback.print_exc()}")

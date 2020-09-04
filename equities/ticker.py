@@ -79,7 +79,7 @@ class Ticker():
 					raise Exception("Stale ticker. Data not up-to-date.")
 			self.sleep()
 
-		if not retries or retries['key_stats']:
+		if not retries or retries['keystats']:
 			try:
 				self.get_keystats()
 				self.logger.info(f"{ticker},{batch_id},Key Stats,Success,")
@@ -264,8 +264,9 @@ class Ticker():
 			expiry, expiry_date = option.get("value"), option.text
 			self.logger.info(f"{self.ticker},{self.batch_id},Option Expiry,{expiry},{expiry_date.replace(',', '.')}")
 
-			expiry_date_fmt = datetime.strptime(expiry_date, NAMED_DATE_FMT).strftime("%Y-%m-%d")		
-			expiration_days = (datetime.fromtimestamp(int(expiry)) - datetime.now).days
+			expiry_date = datetime.strptime(expiry_date, NAMED_DATE_FMT)
+			expiry_date_fmt = expiry_date.strftime("%Y-%m-%d")
+			expiration_days = (expiry_date - datetime.now()).days
 
 			page = url+f"&date={str(expiry)}"
 			bs, _ = get_page(page)
@@ -279,31 +280,31 @@ class Ticker():
 			if puts:
 				append_options(puts, expiry_date_fmt, expiration_days, 'P')
 
-		self.options = pd.DataFrame(self.options, columns = OPTION_COLS)
-		
+		df = pd.DataFrame(self.options, columns = OPTION_COLS)
 		oid = df.ticker + ' ' + df.expiration_date + ' ' + df.option_type
 		oid += df.strike_price.round(2).astype(str)
-		self.options['option_id'] = oid
+		df['option_id'] = oid
 
-		if not self.retries and len(self.options) > 0:
+		if not self.retries and len(df) > 0:
 			
-			self.options.to_csv(f"{DATA}/options/{self.ticker}_{DATE}.csv", index=False)
+			df.to_csv(f"{DATA}/options/{self.ticker}_{DATE}.csv", index=False)
 
-		elif len(self.options) != 0:
+		elif len(df) != 0:
 			
 			try:
 				old = pd.read_csv(f"{DATA}/options/{self.ticker}_{DATE}.csv")
 			except Exception as e:
 				old = pd.DataFrame()
 
-			df = pd.concat([old, self.options]).reset_index(drop=True)
+			df = pd.concat([old, df]).reset_index(drop=True)
 			df = df.drop_duplicates(subset=['expiration_date', 'strike_price', 'option_type'], keep="last")
 			df = df.sort_values(['expiration_date', 'option_type', 'strike_price'])
 			df.to_csv(f"{DATA}/options/{self.ticker}_{DATE}.csv", index=False)
 
-			self.fault_dict['options']['new_options'] = len(df)
+			self.fault_dict['options']['new'] = len(df)
 			delta = self.fault_dict['options']['new'] - self.fault_dict['options']['old']
 
+			self.fault_dict['options']['delta'] = delta
 			self.logger.info(f"{self.ticker},{self.batch_id},Re-Options,Success,{delta}")
 
 		else:
@@ -336,15 +337,15 @@ class Ticker():
 		items.extend(get_items(bs, "Trading Information"))
 		items.extend(get_items(bs, "Valuation Measures"))
 
-		key_stats = []
+		keystats = []
 		for feature_name, feature in items:
 			key = self.feature_conversion(feature_name)
-			key_stats.append([
+			keystats.append([
 				*key,
 				self.fmt(feature, metric = key[0])
 			])
 
-		df = pd.DataFrame(key_stats, columns = ["feature", "modifier", "value"])
+		df = pd.DataFrame(keystats, columns = ["feature", "modifier", "value"])
 		df = df.dropna(subset=["value"])
 
 		pkey = ["feature", "modifier"]
@@ -371,6 +372,7 @@ class Ticker():
 			self.fault_dict['keystats']['new'] = len(df)
 			delta = self.fault_dict['keystats']['new'] - self.fault_dict['keystats']['old']
 			
+			self.fault_dict['keystats']['delta'] = delta
 			self.logger.info(f"{self.ticker},{self.batch_id},Re-Key Stats,Success,{delta}")
 
 		else:
@@ -444,6 +446,7 @@ class Ticker():
 			self.fault_dict['analysis']['new'] = len(df)
 			delta = self.fault_dict['analysis']['new'] - self.fault_dict['analysis']['old']
 			
+			self.fault_dict['analysis']['delta'] = delta
 			self.logger.info(f"{self.ticker},{self.batch_id},Re-Analysis,Success,{delta}")
 
 		else:

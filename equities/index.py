@@ -46,10 +46,12 @@ def index(tickers):
 	count_df.columns = ['table', 'pre']
 
 	if len(options) > 0:
-		_connector.write("optionsBACK", pd.concat(options))
+		options = pd.concat(options)
+		_connector.write("optionsBACK", options)
 
 	if len(ohlc) > 0:
-		_connector.write("ohlcBACK", pd.concat(ohlc))
+		ohlc = pd.concat(ohlc)
+		_connector.write("ohlcBACK", ohlc)
 
 	if len(analysis) > 0:
 		_connector.write("analysisBACK", pd.concat(analysis))

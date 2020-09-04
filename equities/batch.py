@@ -40,7 +40,7 @@ def collect_data_again(batch_id, faults):
 
 			retries = {
 				key : key in faults[ticker]
-				for key in ['analysis', 'key_stats', 'ohlc', 'options']
+				for key in ['analysis', 'keystats', 'ohlc', 'options']
 			}
 
 			ticker_obj = Ticker(ticker, logger, batch_id, retries, faults[ticker])
@@ -106,7 +106,7 @@ def fix_faults(batch_id, tickers):
 		try:
 
 			analysis_faults = check_count_quantiles(tickers, "analysis")
-			key_stats_faults = check_count_quantiles(tickers, "keystats")
+			keystats_faults = check_count_quantiles(tickers, "keystats")
 			options_faults = check_count_quantiles(tickers, "options")
 			ohlc_faults = check_ohlc(tickers)
 
@@ -121,7 +121,7 @@ def fix_faults(batch_id, tickers):
 		query_attempts += 1
 
 	faults = add_to_faults("analysis", analysis_faults, {})
-	faults = add_to_faults("key_stats", key_stats_faults, faults)
+	faults = add_to_faults("keystats", keystats_faults, faults)
 	faults = add_to_faults("options", options_faults, faults)
 	faults = add_to_faults("ohlc", ohlc_faults, faults)
 
@@ -129,7 +129,7 @@ def fix_faults(batch_id, tickers):
 
 	faults_summary = {
 	    key : {}
-	    for key in ["analysis", "key_stats", "ohlc", "options"]
+	    for key in ["analysis", "keystats", "ohlc", "options"]
 	}
 	for ticker in faults:
 	    for key in faults[ticker]:
