@@ -5,6 +5,7 @@ tmp/
 
 db/data
 db/tmp
+db/test.py
 
 equities/utils/tmp
 equities/utils/tformed

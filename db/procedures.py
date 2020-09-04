@@ -348,64 +348,19 @@ INSERT_KEYSTATS_COUNTS = """
 
 ###################################################################################################
 
-CREATE_DERIVED PROCEDURE = """
-
-	DELIMITER //
-
-	DROP PROCEDURE IF EXISTS compour9_test.derive //
-	
-	CREATE PROCEDURE compour9_test.derive()
-	BEGIN
-		
-		SET @i = -1;
-
-		DELETE FROM dateseries;
-		INSERT INTO
-			dateseries (
-				lag, 
-				lag_date
-			)
-		SELECT
-			(@i:=@i+1) AS lag,
-			date_current AS lag_date
-		FROM
-			(SELECT
-				DISTINCT date_current
-			FROM
-				ohlcBACK
-			WHERE
-				date_current <= @date_current
-			GROUP BY 
-				date_current DESC) AS t1;
-			
-		UPDATE
-			dateseries AS d1
-		INNER JOIN
-			dateseries AS d2
-			ON d1.lag = (d2.lag - 1)
-		SET
-			d1.prev_lag_date = d2.lag_date,
-			d1._5 = IF(d1.lag < 5, 1, 0),
-			d1._10 = IF(d1.lag < 10, 1, 0),
-			d1._20 = IF(d1.lag < 20, 1, 0),
-			d1._21 = IF(d1.lag < 21, 1, 0),
-			d1._42 = IF(d1.lag < 42, 1, 0),
-			d1._63 = IF(d1.lag < 63, 1, 0),
-			d1._126 = IF(d1.lag < 126, 1, 0),
-			d1._189 = IF(d1.lag < 189, 1, 0),
-			d1._252 = IF(d1.lag < 252, 1, 0),
-			d1._0d = IF(d1.lag = 0, 1, 0),
-			d1._1d = IF(d1.lag = 1, 1, 0),
-			d1._5d = IF(d1.lag = 5, 1, 0),
-			d1._10d = IF(d1.lag = 10, 1, 0),
-			d1._20d = IF(d1.lag = 20, 1, 0),
-			d1._21d = IF(d1.lag = 21, 1, 0),
-			d1._42d = IF(d1.lag = 42, 1, 0),
-			d1._63d = IF(d1.lag = 63, 1, 0),
-			d1._126d = IF(d1.lag = 126, 1, 0),
-			d1._189d = IF(d1.lag = 189, 1, 0),
-			d1._252d = IF(d1.lag = 252, 1, 0);
-		
+DERIVED_PROCEDURE_NAMES = [
+	"Agg. Option Stats",
+	"OHLC Stats",
+	"Agg. Option Stats Update",
+	"Option Stats",
+	"Ticker-Dates Map",
+	"Ticker-OptionID Map",
+	"Option Counts",
+	"Analysis Counts",
+	"Key Stats Counts"
+]
+DERIVED_PROCEDURES = [
+	"""
 		INSERT INTO
 			aggoptionstatsBACK (
 				date_current, 
@@ -447,7 +402,8 @@ CREATE_DERIVED PROCEDURE = """
 				ticker ASC,
 				date_current DESC
 			) AS t1;
-		
+	""",
+	"""
 		INSERT INTO
 			ohlcstatsBACK
 		SELECT
@@ -516,7 +472,8 @@ CREATE_DERIVED PROCEDURE = """
 			) as t2
 		WHERE
 			date_current = @date_current;
-		
+	""",
+	"""
 		UPDATE
 			aggoptionstatsBACK
 		INNER JOIN
@@ -573,7 +530,8 @@ CREATE_DERIVED PROCEDURE = """
 			aggoptionstatsBACK.rcpvs5 = t2.rcpvs5,
 			aggoptionstatsBACK.rcpvs10 = t2.rcpvs10,
 			aggoptionstatsBACK.rcpvs20 = t2.rcpvs20;
-		
+	""",
+	"""
 		INSERT INTO
 			optionstatsBACK
 		SELECT
@@ -622,7 +580,8 @@ CREATE_DERIVED PROCEDURE = """
 			) as t1
 		WHERE
 			date_current = @date_current;
-		
+	""",
+	"""
 		INSERT INTO
 			tickerdatesBACK
 		SELECT
@@ -643,7 +602,8 @@ CREATE_DERIVED PROCEDURE = """
 		ORDER BY
 			ticker ASC,
 			date_current DESC;
-		
+	""",
+	"""
 		INSERT IGNORE INTO
 			tickeroidsBACK
 		SELECT
@@ -662,7 +622,8 @@ CREATE_DERIVED PROCEDURE = """
 		GROUP BY
 			ticker,
 			option_id;
-		
+	""",
+	"""
 		INSERT INTO
 			optionscountsBACK
 		SELECT
@@ -682,7 +643,8 @@ CREATE_DERIVED PROCEDURE = """
 		GROUP BY
 			date_current,
 			ticker;
-		
+	""",
+	"""
 		INSERT INTO
 			analysiscountsBACK
 		SELECT
@@ -702,7 +664,8 @@ CREATE_DERIVED PROCEDURE = """
 		GROUP BY
 			date_current,
 			ticker;
-		
+	""",
+	"""
 		INSERT INTO
 			keystatscountsBACK
 		SELECT
@@ -722,9 +685,11 @@ CREATE_DERIVED PROCEDURE = """
 		GROUP BY
 			date_current,
 			ticker;
-			
-	END //
+	"""
+]
 
-	DELIMITER ;
-
-"""
+DERIVED_PROCEDURES = {
+	name : procedure
+	for name, procedure
+	in zip(DERIVED_PROCEDURE_NAMES, DERIVED_PROCEDURES)
+}

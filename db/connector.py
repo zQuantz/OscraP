@@ -1,3 +1,5 @@
+from procedures import DERIVED_PROCEDURES
+from threading import Thread
 import sqlalchemy as sql
 import pandas as pd
 import sys, os
@@ -113,7 +115,7 @@ class Connector:
 				FROM
 					{}
 				WHERE
-					date_current >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+					date_current >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
 				AND
 					ticker in (SELECT ticker FROM batchtickers)
 				GROUP BY
@@ -131,6 +133,21 @@ class Connector:
 				FROM
 					ohlcBACK
 				WHERE
-					date_current >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+					date_current >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
 				AND ticker in (SELECT ticker FROM batchtickers)
 			""")
+
+	def launch_derived_engine(self, tickers):
+
+		def derived_engine():
+
+			self.execute("""DELETE FROM batchtickers;""")
+			self.write("batchtickers", pd.DataFrame(tickers, columns = ['ticker']))
+			self.execute(f"""SET @date_current = "2020-07-10";""")
+
+			for name, procedure in DERIVED_PROCEDURES.items():
+				print("Executing Procedure:", name)
+				self.execute(procedure)
+
+		thread = Thread(target = derived_engine)
+		thread.start()

@@ -75,7 +75,6 @@ def main():
 	for batch_id, batch in enumerate(range(BATCH_SIZE, len(tickers) + BATCH_SIZE, BATCH_SIZE)):
 
 		ticker_batch = tickers[batch - BATCH_SIZE : batch]
-		_connector.init_batch_tickers(ticker_batch)
 
 		results = batch_main(batch_id, ticker_batch)
 		b_fault_summary, b_db_flag, b_db_stats, b_indexing_attempt = results
