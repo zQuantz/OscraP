@@ -27,7 +27,12 @@ def store():
 		filename = f"{DATA}.csv"
 		tar_file.add(filename, os.path.basename(filename))
 
-	send_to_bucket(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz", f"{DIR}/rate_data/", logger=logger)
+	send_to_bucket(BUCKET_PREFIX,
+				   BUCKET_NAME,
+				   f"{DATE}.tar.xz",
+				   f"{DIR}/rate_data",
+				   logger=logger)
+
 	os.remove(filename)
 
 def collect():
@@ -68,7 +73,7 @@ def collect():
 	if len(df) == 0:
 		raise Exception("Data not up to date.")
 
-	_connector.write("treasuryrates", df)
+	_connector.write("treasuryratesBACK", df)
 	df.to_csv(f"{DATA}.csv", index=False)
 
 	###############################################################################################
@@ -97,41 +102,28 @@ def collect():
 		return interpolated_rate + r1
 
 	rm_df = pd.DataFrame()
-	rm_df['time_to_expiry'] = np.arange(0, 365 * 10 + 1).astype(int)
-	rm_df['rate'] = rm_df.time_to_expiry.apply(get_rate)
+	rm_df['days_to_expiry'] = np.arange(0, 365 * 10 + 1).astype(int)
+	rm_df['rate'] = rm_df.days_to_expiry.apply(get_rate)
 	rm_df['date_current'] = DATE
 
-	_connector.write("treasuryratemap", rm_df)
+	_connector.write("treasuryratemapBACK", rm_df)
 
 	return df
 
 if __name__ == '__main__':
 
-	max_attempts = 5
-	collection_attempts = 0
+	try:
 
-	while collection_attempts < max_attempts:
+		df = collect()
+		store()
+		send_email(CONFIG, "Interest Rate Summary", df.to_html(), [], logger)
+		metric = 1
 
-		try:
+	except Exception as e:
 
-			df = collect()
-			store()
-
-			metric = 1
-			df['Attempts'] = metric
-
-			send_email(CONFIG, "Interest Rate Summary", df.to_html(), [], logger)
-			break
-
-		except Exception as e:
-
-			logger.info(e)
-			metric = 0
-
-		collection_attempts += 1
-
-	if collection_attempts >= max_attempts:
-		body = f"<p>Too many attempts ({collection_attempts}). Process Failed.</p>"
+		logger.warning(e)
+		body = f"<p>Process Failed. {e}</p>"
 		send_email(CONFIG, "Interest Rate Summary - FAILED", body, [], logger)
+		metric = 0
 
 	send_gcp_metric(CONFIG, "rates_success_indicator", "int64_value", metric)

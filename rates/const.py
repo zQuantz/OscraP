@@ -13,6 +13,7 @@ DIR = os.path.realpath(os.path.dirname(__file__))
 DIR = Path(DIR)
 
 DATE = datetime.today().strftime("%Y-%m-%d")
+DATE = "2020-09-04"
 DATA = DIR / "rate_data" / DATE
 
 logger = logging.getLogger(__name__)
@@ -68,4 +69,4 @@ t_map = np.array(t_map)
 
 sys.path.append("../db")
 from connector import Connector
-_connector = Connector(CONFIG, DATE)
+_connector = Connector(CONFIG, DATE, logger)
