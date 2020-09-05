@@ -139,28 +139,28 @@ def derive_stats():
 		_connector.execute(f"""SET @date_current = "{date}";""")
 
 		for statement in INIT_DATE_SERIES:
-			_connector.execute(statement)
+			_connector.execute(statement.format(modifier="BACK", subset=""))
 
 		print("Inserting OHLC Stats")
-		_connector.execute(INSERT_OHLC_STATS)
+		_connector.execute(INSERT_OHLC_STATS.format(modifier="BACK", subset=""))
 
 		print("Inserting Agg Option Stats")
-		_connector.execute(INSERT_AGG_OPTION_STATS)
+		_connector.execute(INSERT_AGG_OPTION_STATS.format(modifier="BACK", subset=""))
 
 		print("Updating Agg Option Stats")
-		_connector.execute(UPDATE_AGG_OPTION_STATS)
+		_connector.execute(UPDATE_AGG_OPTION_STATS.format(modifier="BACK", subset=""))
 
 		print("Inserting Options Stats")
-		_connector.execute(INSERT_OPTION_STATS)
+		_connector.execute(INSERT_OPTION_STATS.format(modifier="BACK", subset=""))
 
 		print("Inserting Options Counts")
-		_connector.execute(INSERT_OPTION_COUNTS)
+		_connector.execute(INSERT_OPTION_COUNTS.format(modifier="BACK", subset=""))
 
 		print("Inserting Analysis Counts")
-		_connector.execute(INSERT_ANALYSIS_COUNTS)
+		_connector.execute(INSERT_ANALYSIS_COUNTS.format(modifier="BACK", subset=""))
 
 		print("Inserting Keystats Counts")
-		_connector.execute(INSERT_KEYSTATS_COUNTS)
+		_connector.execute(INSERT_KEYSTATS_COUNTS.format(modifier="BACK", subset=""))
 
 		print("\n----------\n")
 
@@ -180,18 +180,12 @@ def derive_tickermaps():
 		_connector.execute(f"""SET @date_current = "{date}";""")
 
 		print("Inserting Ticker-Dates")
-		_connector.execute(INSERT_TICKER_DATES)
+		_connector.execute(INSERT_TICKER_DATES.format(modifier="BACK", subset=""))
 
 		print("Inserting Ticker-Option IDs")
-		_connector.execute(INSERT_TICKER_OIDS)
+		_connector.execute(INSERT_TICKER_OIDS.format(modifier="BACK", subset=""))
 
 		print("\n----------\n")
-
-def register_derived_procedure():
-
-	print("Registering Derived Procedure")
-	for statement in DERIVED_PROCEDURE:
-		_connector.execute(statement)
 
 def derive():
 
@@ -199,8 +193,6 @@ def derive():
 	# derive_treasuryratemap()
 	# derive_surface()
 	# derive_stats()
-
-	register_derived_procedure()
 
 if __name__ == '__main__':
 

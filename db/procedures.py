@@ -14,7 +14,7 @@ INIT_DATE_SERIES = [
 			(SELECT
 				DISTINCT date_current
 			FROM
-				ohlcBACK
+				ohlc{modifier}
 			WHERE
 				date_current <= @date_current
 			GROUP BY 
@@ -53,7 +53,7 @@ INIT_DATE_SERIES = [
 INSERT_AGG_OPTION_STATS = """
 
 	INSERT INTO
-		aggoptionstatsBACK (
+		aggoptionstats{modifier} (
 			date_current, 
 			ticker, 
 			call_volume, 
@@ -77,9 +77,10 @@ INSERT_AGG_OPTION_STATS = """
 			SUM(IF(option_type = "P", volume, 0)) AS put_volume,
 			SUM(volume) AS total_volume
 		FROM
-			optionsBACK
+			options{modifier}
 		WHERE
 			date_current = @date_current
+		{subset}
 		GROUP BY
 			ticker,
 			date_current
@@ -93,7 +94,7 @@ INSERT_AGG_OPTION_STATS = """
 INSERT_OHLC_STATS = """
 
 	INSERT INTO
-		ohlcstatsBACK
+		ohlcstats{modifier}
 	SELECT
 		*
 	FROM
@@ -137,14 +138,15 @@ INSERT_OHLC_STATS = """
 						(o1.adjclose_price / o2.adjclose_price - 1) AS pct_change,
 						d1.*
 					FROM
-						ohlcBACK AS o1
+						ohlc{modifier} AS o1
 					INNER JOIN
 						dateseries AS d1
 						ON o1.date_current = d1.lag_date
 						INNER JOIN
-							ohlcBACK AS o2
+							ohlc{modifier} AS o2
 							ON o2.date_current = d1.prev_lag_date 
 							AND o2.ticker = o1.ticker
+					{subset}
 				) AS t1
 			GROUP BY
 				ticker
@@ -159,7 +161,7 @@ INSERT_OHLC_STATS = """
 UPDATE_AGG_OPTION_STATS = """
 
 	UPDATE
-		aggoptionstatsBACK
+		aggoptionstats{modifier}
 	INNER JOIN
 		(
 			SELECT
@@ -182,10 +184,11 @@ UPDATE_AGG_OPTION_STATS = """
 						SUM(_0d * cpv_spread) / (SUM(cpv_spread * _10) / 10) AS rcpvs10,
 						SUM(_0d * cpv_spread) / (SUM(cpv_spread * _20) / 20) AS rcpvs20
 					FROM
-						aggoptionstatsBACK AS o
+						aggoptionstats{modifier} AS o
 					INNER JOIN
 						dateseries d
 						ON o.date_current = d.lag_date
+					{subset}
 					GROUP BY
 						ticker
 				) AS t1
@@ -195,25 +198,25 @@ UPDATE_AGG_OPTION_STATS = """
 	USING
 		(ticker, date_current)
 	SET
-		aggoptionstatsBACK.rcv5 = t2.rcv5
-		aggoptionstatsBACK.rpv5 = t2.rpv5
-		aggoptionstatsBACK.rtv5 = t2.rtv5
-		aggoptionstatsBACK.rcv10 = t2.rcv10
-		aggoptionstatsBACK.rpv10 = t2.rpv10
-		aggoptionstatsBACK.rtv10 = t2.rtv10
-		aggoptionstatsBACK.rcv20 = t2.rcv20
-		aggoptionstatsBACK.rpv20 = t2.rpv20
-		aggoptionstatsBACK.rtv20 = t2.rtv20
-		aggoptionstatsBACK.rcpvs5 = t2.rcpvs5
-		aggoptionstatsBACK.rcpvs10 = t2.rcpvs10
-		aggoptionstatsBACK.rcpvs20 = t2.rcpvs20;
+		aggoptionstats{modifier}.rcv5 = t2.rcv5,
+		aggoptionstats{modifier}.rpv5 = t2.rpv5,
+		aggoptionstats{modifier}.rtv5 = t2.rtv5,
+		aggoptionstats{modifier}.rcv10 = t2.rcv10,
+		aggoptionstats{modifier}.rpv10 = t2.rpv10,
+		aggoptionstats{modifier}.rtv10 = t2.rtv10,
+		aggoptionstats{modifier}.rcv20 = t2.rcv20,
+		aggoptionstats{modifier}.rpv20 = t2.rpv20,
+		aggoptionstats{modifier}.rtv20 = t2.rtv20,
+		aggoptionstats{modifier}.rcpvs5 = t2.rcpvs5,
+		aggoptionstats{modifier}.rcpvs10 = t2.rcpvs10,
+		aggoptionstats{modifier}.rcpvs20 = t2.rcpvs20;
 
 """
 
 INSERT_OPTION_STATS = """
 
 	INSERT INTO
-		optionstatsBACK
+		optionstats{modifier}
 	SELECT
 		*
 	FROM
@@ -233,7 +236,7 @@ INSERT_OPTION_STATS = """
 				SUM(_0d * volume) / (SUM(_10 * volume) / 10) AS relvolume10,
 				SUM(_0d * volume) / (SUM(_20 * volume) / 20) AS relvolume20
 			FROM
-				optionsBACK AS o
+				options{modifier} AS o
 			INNER JOIN
 				(
 					SELECT
@@ -245,6 +248,7 @@ INSERT_OPTION_STATS = """
 				) AS d
 				ON
 					o.date_current = d.lag_date
+			{subset}
 			GROUP BY
 				option_id
 			ORDER BY
@@ -259,14 +263,15 @@ INSERT_OPTION_STATS = """
 INSERT_TICKER_DATES = """
 
 	INSERT INTO
-		tickerdatesBACK
+		tickerdates{modifier}
 	SELECT
 		ticker,
 		date_current
 	FROM
-		optionsBACK
+		options{modifier}
 	WHERE
 		date_current = @date_current
+	{subset}
 	GROUP BY
 		ticker, date_current
 	ORDER BY
@@ -278,14 +283,15 @@ INSERT_TICKER_DATES = """
 INSERT_TICKER_OIDS = """
 
 	INSERT IGNORE INTO
-		tickeroidsBACK
+		tickeroids{modifier}
 	SELECT
 		ticker,
 		option_id
 	FROM
-		optionsBACK
+		options{modifier}
 	WHERE
 		date_current = @date_current
+	{subset}
 	GROUP BY
 		ticker,
 		option_id;
@@ -295,15 +301,16 @@ INSERT_TICKER_OIDS = """
 INSERT_OPTION_COUNTS = """
 	
 	INSERT INTO
-		optionscountsBACK
+		optionscounts{modifier}
 	SELECT
 		date_current,
 		ticker,
 		COUNT(ticker)
 	FROM
-		optionsBACK
+		options{modifier}
 	WHERE
 		date_current = @date_current
+	{subset}
 	GROUP BY
 		date_current,
 		ticker;
@@ -313,15 +320,16 @@ INSERT_OPTION_COUNTS = """
 INSERT_ANALYSIS_COUNTS = """
 	
 	INSERT INTO
-		analysiscountsBACK
+		analysiscounts{modifier}
 	SELECT
 		date_current,
 		ticker,
 		COUNT(ticker)
 	FROM
-		analysisBACK
+		analysis{modifier}
 	WHERE
 		date_current = @date_current
+	{subset}
 	GROUP BY
 		date_current,
 		ticker;
@@ -331,15 +339,16 @@ INSERT_ANALYSIS_COUNTS = """
 INSERT_KEYSTATS_COUNTS = """
 	
 	INSERT INTO
-		keystatscountsBACK
+		keystatscounts{modifier}
 	SELECT
 		date_current,
 		ticker,
 		COUNT(ticker)
 	FROM
-		keystatsBACK
+		keystats{modifier}
 	WHERE
 		date_current = @date_current
+	{subset}
 	GROUP BY
 		date_current,
 		ticker;
@@ -347,6 +356,16 @@ INSERT_KEYSTATS_COUNTS = """
 """
 
 ###################################################################################################
+
+MODIFIER = "BACK"
+SUBSET = """
+	 ticker IN (
+		SELECT
+			ticker
+		FROM
+			batchtickers
+	)
+"""
 
 DERIVED_PROCEDURE_NAMES = [
 	"Agg. Option Stats",
@@ -359,333 +378,18 @@ DERIVED_PROCEDURE_NAMES = [
 	"Analysis Counts",
 	"Key Stats Counts"
 ]
+
+
 DERIVED_PROCEDURES = [
-	"""
-		INSERT INTO
-			aggoptionstatsBACK (
-				date_current, 
-				ticker, 
-				call_volume, 
-				put_volume, 
-				cpv_spread, 
-				total_volume
-			)
-		SELECT
-			date_current,
-			ticker,
-			call_volume,
-			put_volume,
-			call_volume - put_volume AS cpv_spread,
-			total_volume
-		FROM
-			(
-			SELECT
-				date_current,
-				ticker,
-				SUM(IF(option_type = "C", volume, 0)) AS call_volume,
-				SUM(IF(option_type = "P", volume, 0)) AS put_volume,
-				SUM(volume) AS total_volume
-			FROM
-				optionsBACK
-			WHERE
-				date_current = @date_current
-			AND ticker IN (
-				SELECT
-					ticker
-				FROM
-					batchtickers
-			)
-			GROUP BY
-				ticker,
-				date_current
-			ORDER BY
-				ticker ASC,
-				date_current DESC
-			) AS t1;
-	""",
-	"""
-		INSERT INTO
-			ohlcstatsBACK
-		SELECT
-			*
-		FROM
-			(
-				SELECT
-					date_current,
-					ticker,
-					SQRT(((SUM(POWER(pct_change, 2) * _21) - (POWER(SUM(_21 * pct_change), 2) / 21)) / 20) * 252 ) * 100 AS hvol1m,
-					SQRT(((SUM(POWER(pct_change, 2) * _42) - (POWER(SUM(_42 * pct_change), 2) / 42)) / 41) * 252 ) * 100 AS hvol2m,
-					SQRT(((SUM(POWER(pct_change, 2) * _63) - (POWER(SUM(_63 * pct_change), 2) / 63)) / 62) * 252 ) * 100 AS hvol3m,
-					SQRT(((SUM(POWER(pct_change, 2) * _126) - (POWER(SUM(_126 * pct_change), 2) / 126)) / 125) * 252 ) * 100 AS hvol6m,
-					SQRT(((SUM(POWER(pct_change, 2) * _189) - (POWER(SUM(_189 * pct_change), 2) / 189)) / 188) * 252 ) * 100 AS hvol9m,
-					SQRT(((SUM(POWER(pct_change, 2) * _252) - (POWER(SUM(_252 * pct_change), 2) / 252)) / 251) * 252 ) * 100 AS hvol12m,
-					SUM(volume * _10) / 10 AS avgvolume10,
-					SUM(volume * _21) / 21 AS avgvolume21,
-					SUM(volume * _42) / 42 AS avgvolume42,
-					SUM(volume * _63) / 63 AS avgvolume63,
-					SUM(volume * _126) / 126 AS avgvolume126,
-					SUM(volume * _189) / 189 AS avgvolume189,
-					SUM(volume * _252) / 252 AS avgvolume252,
-					SUM(volume * _0d) / (SUM(volume * _10) / 10) AS relvolume10,
-					SUM(volume * _0d) / (SUM(volume * _21) / 21) AS relvolume21,
-					SUM(volume * _0d) / (SUM(volume * _42) / 42) AS relvolume42,
-					SUM(volume * _0d) / (SUM(volume * _63) / 63) AS relvolume63,
-					SUM(volume * _0d) / (SUM(volume * _126) / 126) AS relvolume126,
-					SUM(volume * _0d) / (SUM(volume * _189) / 189) AS relvolume189,
-					SUM(volume * _0d) / (SUM(volume * _252) / 252) AS relvolume252,
-					pct_change AS pctchange1d,
-					100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _5d) - 1) AS pctchange5d,
-					100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _10d) - 1) AS pctchange10d,
-					100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _21d) - 1) AS pctchange21d,
-					100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _42d) - 1) AS pctchange42d,
-					100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _63d) - 1) AS pctchange63d
-				FROM
-					(
-						SELECT
-							o1.date_current,
-							o1.ticker,
-							o1.volume,
-							o1.adjclose_price,
-							(o1.adjclose_price / o2.adjclose_price - 1) AS pct_change,
-							d1.*
-						FROM
-							ohlcBACK AS o1
-						INNER JOIN
-							dateseries AS d1
-							ON o1.date_current = d1.lag_date
-							INNER JOIN
-								ohlcBACK AS o2
-								ON o2.date_current = d1.prev_lag_date 
-								AND o2.ticker = o1.ticker
-						WHERE
-							o1.ticker IN (
-								SELECT
-									ticker
-								FROM
-									batchtickers
-							)
-					) AS t1
-				GROUP BY
-					ticker
-				ORDER BY
-					date_current DESC
-			) as t2
-		WHERE
-			date_current = @date_current;
-	""",
-	"""
-		UPDATE
-			aggoptionstatsBACK
-		INNER JOIN
-			(
-				SELECT
-					*
-				FROM
-					(
-						SELECT
-							ticker,
-							date_current,
-							SUM(_0d * call_volume) / (SUM(call_volume * _5) / 5) AS rcv5,
-							SUM(_0d * put_volume) / (SUM(put_volume * _5) / 5) AS rpv5,
-							SUM(_0d * total_volume) / (SUM(total_volume * _5) / 5) AS rtv5,
-							SUM(_0d * call_volume) / (SUM(call_volume * _10) / 10) AS rcv10,
-							SUM(_0d * put_volume) / (SUM(put_volume * _10) / 10) AS rpv10,
-							SUM(_0d * total_volume) / (SUM(total_volume * _10) / 10) AS rtv10,
-							SUM(_0d * call_volume) / (SUM(call_volume * _20) / 20) AS rcv20,
-							SUM(_0d * put_volume) / (SUM(put_volume * _20) / 20) AS rpv20,
-							SUM(_0d * total_volume) / (SUM(total_volume * _20) / 20) AS rtv20,
-							SUM(_0d * cpv_spread) / (SUM(cpv_spread * _5) / 5) AS rcpvs5,
-							SUM(_0d * cpv_spread) / (SUM(cpv_spread * _10) / 10) AS rcpvs10,
-							SUM(_0d * cpv_spread) / (SUM(cpv_spread * _20) / 20) AS rcpvs20
-						FROM
-							aggoptionstatsBACK AS o
-						INNER JOIN
-							dateseries d
-							ON o.date_current = d.lag_date
-						WHERE
-							ticker IN (
-								SELECT
-									ticker
-								FROM
-									batchtickers
-							)
-						GROUP BY
-							ticker
-					) AS t1
-				WHERE
-					date_current = @date_current
-			) as t2
-		USING
-			(ticker, date_current)
-		SET
-			aggoptionstatsBACK.rcv5 = t2.rcv5,
-			aggoptionstatsBACK.rpv5 = t2.rpv5,
-			aggoptionstatsBACK.rtv5 = t2.rtv5,
-			aggoptionstatsBACK.rcv10 = t2.rcv10,
-			aggoptionstatsBACK.rpv10 = t2.rpv10,
-			aggoptionstatsBACK.rtv10 = t2.rtv10,
-			aggoptionstatsBACK.rcv20 = t2.rcv20,
-			aggoptionstatsBACK.rpv20 = t2.rpv20,
-			aggoptionstatsBACK.rtv20 = t2.rtv20,
-			aggoptionstatsBACK.rcpvs5 = t2.rcpvs5,
-			aggoptionstatsBACK.rcpvs10 = t2.rcpvs10,
-			aggoptionstatsBACK.rcpvs20 = t2.rcpvs20;
-	""",
-	"""
-		INSERT INTO
-			optionstatsBACK
-		SELECT
-			*
-		FROM
-			(
-				SELECT
-					date_current,
-					option_id,
-					100 * ((SUM(_0d * option_price) / SUM(_1d * option_price)) - 1) AS pctchange1d,
-					100 * ((SUM(_0d * option_price) / SUM(_5d * option_price)) - 1) AS pctchange5d,
-					100 * ((SUM(_0d * option_price) / SUM(_10d * option_price)) - 1) AS pctchange10d,
-					100 * ((SUM(_0d * option_price) / SUM(_20d * option_price)) - 1) AS pctchange20d,
-					100 * (SUM(_0d * implied_volatility) - SUM(_1d * implied_volatility)) AS ivchange1d,
-					100 * (SUM(_0d * implied_volatility) - SUM(_5d * implied_volatility)) AS ivchange5d,
-					100 * (SUM(_0d * implied_volatility) - SUM(_10d * implied_volatility)) AS ivchange10d,
-					100 * (SUM(_0d * implied_volatility) - SUM(_20d * implied_volatility)) AS ivchange20d,
-					SUM(_0d * volume) / (SUM(_5 * volume) / 5) AS relvolume5,
-					SUM(_0d * volume) / (SUM(_10 * volume) / 10) AS relvolume10,
-					SUM(_0d * volume) / (SUM(_20 * volume) / 20) AS relvolume20
-				FROM
-					optionsBACK AS o
-				INNER JOIN
-					(
-						SELECT
-							*
-						FROM
-							dateseries
-						WHERE
-							lag < 20
-					) AS d
-					ON
-						o.date_current = d.lag_date
-				WHERE
-					ticker IN (
-						SELECT	
-							ticker
-						FROM
-							batchtickers
-					)
-				GROUP BY
-					option_id
-				ORDER BY
-					date_current DESC,
-					option_id ASC
-			) as t1
-		WHERE
-			date_current = @date_current;
-	""",
-	"""
-		INSERT INTO
-			tickerdatesBACK
-		SELECT
-			ticker,
-			date_current
-		FROM
-			optionsBACK
-		WHERE
-			date_current = @date_current
-		AND ticker IN (
-			SELECT
-				ticker
-			FROM
-				batchtickers
-		)
-		GROUP BY
-			ticker, date_current
-		ORDER BY
-			ticker ASC,
-			date_current DESC;
-	""",
-	"""
-		INSERT IGNORE INTO
-			tickeroidsBACK
-		SELECT
-			ticker,
-			option_id
-		FROM
-			optionsBACK
-		WHERE
-			date_current = @date_current
-		AND ticker IN (
-			SELECT
-				ticker
-			FROM
-				batchtickers
-		)
-		GROUP BY
-			ticker,
-			option_id;
-	""",
-	"""
-		INSERT INTO
-			optionscountsBACK
-		SELECT
-			date_current,
-			ticker,
-			COUNT(ticker)
-		FROM
-			optionsBACK
-		WHERE
-			date_current = @date_current
-		AND ticker IN (
-			SELECT
-				ticker
-			FROM
-				batchtickers
-		)
-		GROUP BY
-			date_current,
-			ticker;
-	""",
-	"""
-		INSERT INTO
-			analysiscountsBACK
-		SELECT
-			date_current,
-			ticker,
-			COUNT(ticker)
-		FROM
-			analysisBACK
-		WHERE
-			date_current = @date_current
-		AND ticker IN (
-			SELECT
-				ticker
-			FROM
-				batchtickers
-		)
-		GROUP BY
-			date_current,
-			ticker;
-	""",
-	"""
-		INSERT INTO
-			keystatscountsBACK
-		SELECT
-			date_current,
-			ticker,
-			COUNT(ticker)
-		FROM
-			keystatsBACK
-		WHERE
-			date_current = @date_current
-		AND ticker IN (
-			SELECT
-				ticker
-			FROM
-				batchtickers
-		)
-		GROUP BY
-			date_current,
-			ticker;
-	"""
+	INSERT_AGG_OPTION_STATS.format(modifier=MODIFIER, subset="AND" + SUBSET),
+	INSERT_OHLC_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET.replace("ticker IN", "o1.ticker IN")),
+	UPDATE_AGG_OPTION_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET),
+	INSERT_OPTION_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET),
+	INSERT_TICKER_DATES.format(modifier=MODIFIER, subset="AND" + SUBSET),
+	INSERT_TICKER_OIDS.format(modifier=MODIFIER, subset="AND" + SUBSET),
+	INSERT_OPTION_COUNTS.format(modifier=MODIFIER, subset="AND" + SUBSET),
+	INSERT_ANALYSIS_COUNTS.format(modifier=MODIFIER, subset="AND" + SUBSET),
+	INSERT_KEYSTATS_COUNTS.format(modifier=MODIFIER, subset="AND" + SUBSET)
 ]
 
 DERIVED_PROCEDURES = {

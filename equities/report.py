@@ -9,14 +9,14 @@ from send_email import send_email
 
 ###################################################################################################
 
-def report(title_modifier, successful, failures, faults_summary, db_flags, db_stats, indexing_faults):
+def report(title_modifier, successful, failures, faults_summary, db_flags, db_stats):
 
 	def write_str(product):
 
 		if len(faults_summary['options']) > 0:
 
 			df = pd.DataFrame(faults_summary[product]).T
-			df.columns = ['Quantile (25%)', 'First Count', 'Second Count', 'Delta']
+			df.columns = ['Lower Bound', 'First Count', 'Second Count', 'Delta']
 			return df.to_html()
 
 		return ""
@@ -36,26 +36,24 @@ def report(title_modifier, successful, failures, faults_summary, db_flags, db_st
 
 	total = successful['options'] + failures['options']
 
-	db_flag_names = ["Failure", "Successful"]
-	db_flags = [db_flag_names[flag] for flag in db_flags]
-
-	starts = [start[0] for start in db_stats[0]]
-	ends = [end[1] for end in db_stats[-1]]
+	starts = db_stats[0][0]
+	ends = db_stats[-1][1]
 
 	counts = list(zip(starts, ends))
-	options_counts, ohlc_counts, analysis_counts, keystats_counts = counts
+	analysis_counts, keystats_counts, ohlc_counts, options_counts = counts
 
 	adds = [
-		[item[1] - item[0] for item in batch]
+		[x2 - x1 for x1, x2 in zip(*batch)]
 		for batch in db_stats
 	]
 	
 	df = pd.DataFrame(adds)
-	df.columns = ['Option Adds', 'OHLC Adds', 'Analysis Adds', 'Key Stats Adds']
+	df.columns = ['Analysis Adds', 'Key Stats Adds', 'OHLC Adds', 'Option Adds']
 	df = df.set_index([[f"Batch #{i+1}" for i in range(len(df))]])
 
+	db_flag_names = ["Failure", "Successful"]
+	db_flags = [db_flag_names[flag] for flag in db_flags]
 	df['Indexing Flags'] = db_flags
-	df['Indexing Faults'] = indexing_faults
 	
 	ingestion_str = df.to_html()
 

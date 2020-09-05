@@ -189,7 +189,7 @@ class Ticker():
 			div = div.text.split(' ')[1][1:-1]
 			div = div.replace('N/A', '')
 
-		return self.option_fmt(div, 'Dividend') / 100
+		return self.option_fmt(div, 'Dividend')
 
 	def get_ohlc(self):
 
@@ -249,7 +249,7 @@ class Ticker():
 						self.option_fmt(es[2].text, 'Bid'),
 						self.option_fmt(es[1].text, 'Option Price'),
 						self.option_fmt(es[3].text, 'Ask'),
-						self.option_fmt(es[-1].text, 'Implied Volatility') / 100,
+						self.option_fmt(es[-1].text, 'Implied Volatility'),
 						self.option_fmt(es[-2].text, 'Volume'),
 						self.option_fmt(es[-3].text, 'Open Interest')
 					])

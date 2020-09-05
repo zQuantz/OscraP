@@ -24,14 +24,13 @@ def aggregate():
 		data[folder.name] = []
 
 		for file in folder.iterdir():
-
 			data[folder.name].append(pd.read_csv(file))
 
 		if len(data[folder.name]) == 0:
 			continue
 
 		df = pd.concat(data[folder.name])
-		df.to_csv(f"{DATA}/{folder}.csv", index=False)
+		df.to_csv(f"{DATA}/{folder.name}.csv", index=False)
 
 def compress():
 

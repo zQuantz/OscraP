@@ -19,6 +19,7 @@ DIR = os.path.realpath(os.path.dirname(__file__))
 DIR = Path(DIR)
 
 DATE = datetime.today().strftime("%Y-%m-%d")
+DATE = "2020-09-04"
 DATA = DIR / "financial_data" / DATE
 
 logger = logging.getLogger(__name__)
@@ -55,4 +56,4 @@ with open(f"{DIR}/../config.json", "w") as file:
 
 sys.path.append("../db")
 from connector import Connector
-_connector = Connector(CONFIG, DATE)
+_connector = Connector(CONFIG, DATE, logger)

@@ -1,12 +1,16 @@
-from procedures import DERIVED_PROCEDURES
+from procedures import DERIVED_PROCEDURES, INIT_DATE_SERIES
 from threading import Thread
 import sqlalchemy as sql
+from const import DIR
 import pandas as pd
 import sys, os
 
+sys.path.append(f"{DIR}/..")
+from utils.dummy_logger import DummyLogger
+
 class Connector:
 
-	def __init__(self, CONFIG, date):
+	def __init__(self, CONFIG, date, logger=None):
 
 		self.db = CONFIG['db']
 		self.db_address = CONFIG['db_address'].replace("finance", "test")
@@ -17,6 +21,10 @@ class Connector:
 
 		self.max_tries = 10
 		self.date = date
+
+		self.logger = logger
+		if not logger:
+			self.logger = DummyLogger()
 
 	def transact(self, action, *args):
 
@@ -30,7 +38,8 @@ class Connector:
 
 			except Exception as e:
 
-				print(e)
+				name = action.__name__.capitalize()
+				self.logger.warning(f"Connector Error,{name},{e}")
 
 			tries += 1
 
@@ -69,7 +78,7 @@ class Connector:
 		return self.read("""
 				SELECT
 				    TABLE_NAME AS tablename,
-				    TABLE_ROWS AS count
+				    TABLE_ROWS AS row_count
 				FROM
 				    information_schema.tables
 				WHERE
@@ -78,11 +87,23 @@ class Connector:
 				    TABLE_NAME in ("optionsBACK", "ohlcBACK", "analysisBACK", "keystatsBACK")
 			""".format(db=self.db))
 
-	def init_batch_tickers(self, tickers):
 
-		self.execute("""DELETE FROM batchtickers;""")
+	def init_batch_tickers(self, batch_id, tickers):
+
+		self.execute(f"""DROP TABLE IF EXISTS batchtickers{batch_id};""")
+		self.execute(f"""CREATE TABLE batchtickers{batch_id} (ticker VARCHAR(10) PRIMARY KEY NOT NULL);""")
 		batchtickers = pd.DataFrame(tickers, columns = ['ticker'])
-		self.write("batchtickers", batchtickers)
+		self.write(f"batchtickers{batch_id}", batchtickers)
+
+	def set_date_current(self):
+		
+		self.execute(f"""SET @date_current = "{self.date}";""")
+
+	def init_date_series(self):
+
+		self.set_date_current()
+		for statement in INIT_DATE_SERIES:
+			self.execute(statement.format(modifier="BACK"))
 
 	def get_equity_tickers(self, N_USD, N_CAD):
 
@@ -106,26 +127,23 @@ class Connector:
 
 		return tuple(df.ticker)
 
-	def get_data_counts(self, tablename):
+	def get_lower_bounds(self, tablename, batch_id):
 
 		return self.read("""
 				SELECT
 					ticker,
-					count
+					AVG(count) * 0.95 as lower_bound
 				FROM
 					{}
 				WHERE
-					date_current >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+					date_current >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
 				AND
-					ticker in (SELECT ticker FROM batchtickers)
+					ticker in (SELECT ticker FROM batchtickers{})
 				GROUP BY
-					ticker,
-					date_current
-				ORDER BY
-					date_current DESC
-			""".format(tablename))
+					ticker
+			""".format(tablename, batch_id))
 
-	def get_distinct_ohlc_tickers(self):
+	def get_distinct_ohlc_tickers(self, batch_id):
 
 		return self.read("""
 				SELECT
@@ -133,21 +151,19 @@ class Connector:
 				FROM
 					ohlcBACK
 				WHERE
-					date_current >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
-				AND ticker in (SELECT ticker FROM batchtickers)
-			""")
+					date_current >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+				AND ticker in (SELECT ticker FROM batchtickers{})
+			""".format(batch_id))
 
-	def launch_derived_engine(self, tickers):
+	def launch_derived_engine(self, batch_id):
 
 		def derived_engine():
 
-			self.execute("""DELETE FROM batchtickers;""")
-			self.write("batchtickers", pd.DataFrame(tickers, columns = ['ticker']))
-			self.execute(f"""SET @date_current = "2020-07-10";""")
+			self.set_date_current()
 
 			for name, procedure in DERIVED_PROCEDURES.items():
-				print("Executing Procedure:", name)
-				self.execute(procedure)
+				self.logger.info(f"Derived Engine,{batch_id},Executing Procedure,{name}")
+				self.execute(procedure.replace("batchtickers", f"batchtickers{batch_id}"))
 
 		thread = Thread(target = derived_engine)
 		thread.start()

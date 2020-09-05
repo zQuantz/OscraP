@@ -80,7 +80,6 @@ def collect():
 
 	r_map = df.iloc[-1, 1:].values
 	r_map = np.array([0] + r_map.tolist())
-	r_map /= 100
 
 	def get_rate(t):
 		

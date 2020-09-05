@@ -1,8 +1,8 @@
-from const import logger
+from const import DIR, DATE, DATA, CONFIG, _connector, logger
 
-from unit_tests import check_count_quantiles, check_ohlc
+from calculations import surface
 from ticker import Ticker
-from index import index
+import pandas as pd
 import numpy as np
 import sys, os
 import time
@@ -59,33 +59,6 @@ def collect_data_again(batch_id, faults):
 
 	return faults
 
-def index_data(batch_id, tickers):
-
-	max_tries = 5
-	indexing_attempts = 0
-
-	while indexing_attempts < max_tries:
-		
-		try:
-			
-			db_stats = index(tickers)
-			db_flag = 1
-			
-			logger.info(f"SCRAPER,{batch_id},INDEXING,SUCCESS,{indexing_attempts}")
-			
-			break
-
-		except Exception as e:
-
-			logger.warning(f"SCRAPER,{batch_id},INDEXING,FAILURE,{e}")
-			
-			db_stats = [(0,0), (0,0), (0,0), (0,0)]
-			db_flag = 0
-
-		indexing_attempts += 1
-
-	return db_flag, db_stats, indexing_attempts
-
 def fix_faults(batch_id, tickers):
 
 	def add_to_faults(key, obj, faults):
@@ -98,54 +71,179 @@ def fix_faults(batch_id, tickers):
 	            }
 	    return faults
 
-	max_tries = 5
-	query_attempts = 0
+	def check_lower_bounds(tickers, product):
 
-	while query_attempts < max_tries:
+		lower_bounds = _connector.get_lower_bounds(f"{product}countsBACK", batch_id)
+		lower_bounds = lower_bounds.set_index("ticker")
+		lower_bounds = lower_bounds.astype(int).to_dict()['lower_bound']
 
-		try:
+		unhealthy = {}
+		for ticker in tickers:
 
-			analysis_faults = check_count_quantiles(tickers, "analysis")
-			keystats_faults = check_count_quantiles(tickers, "keystats")
-			options_faults = check_count_quantiles(tickers, "options")
-			ohlc_faults = check_ohlc(tickers)
+			if ticker not in lower_bounds:
+				continue
 
-			logger.info(f"SCRAPER,{batch_id},FAULTS,SUCCESS,{query_attempts}")
+			file = (DATA / product / f"{ticker}_{DATE}.csv")
+			if file.exists():
+				
+				df = pd.read_csv(file)
+				if len(df) <= lower_bounds[ticker]:
 
-			break
+					unhealthy[ticker] = {
+						"lower_bound" : lower_bounds[ticker],
+						"old" : len(df),
+						"new" : 0
+					}
 
-		except Exception as e:
+			else:
 
-			logger.info(f"SCRAPER,{batch_id},FAULTS,FAILURE,{e}")
+				unhealthy[ticker] = {
+					"lower_bound" : lower_bounds[ticker],
+					"old" : 0,
+					"new" : 0
+				}
 
-		query_attempts += 1
+		return unhealthy
+
+	def check_ohlc(tickers):
+
+		tickers = _connector.get_distinct_ohlc_tickers(batch_id).ticker
+
+		collected = [
+			ticker.split("_")[0]
+			for ticker in os.listdir(f"{DATA}/ohlc")
+		]
+
+		unhealthy = {}
+		for ticker in tickers:
+			
+			if ticker not in collected:
+
+				unhealthy[ticker] = {
+					"status" : 0,
+					"new_status" : 0
+				}
+
+		return unhealthy
+
+	try:
+
+		analysis_faults = check_lower_bounds(tickers, "analysis")
+		keystats_faults = check_lower_bounds(tickers, "keystats")
+		options_faults = check_lower_bounds(tickers, "options")
+		ohlc_faults = check_ohlc(tickers)
+
+		logger.info(f"SCRAPER,{batch_id},FAULTS,SUCCESS,")
+
+	except Exception as e:
+
+		logger.info(f"SCRAPER,{batch_id},FAULTS,FAILURE,{e}")
 
 	faults = add_to_faults("analysis", analysis_faults, {})
 	faults = add_to_faults("keystats", keystats_faults, faults)
 	faults = add_to_faults("options", options_faults, faults)
 	faults = add_to_faults("ohlc", ohlc_faults, faults)
-
 	faults = collect_data_again(batch_id, faults)
 
 	faults_summary = {
 	    key : {}
 	    for key in ["analysis", "keystats", "ohlc", "options"]
 	}
+
 	for ticker in faults:
 	    for key in faults[ticker]:
 	        faults_summary[key][ticker] = faults[ticker][key]
 
 	return faults_summary
 
+def index_data(batch_id, tickers):
+
+	try:
+
+		options, ohlc = [], []
+		analysis, keystats = [], []
+
+		for file in (DATA/"options").iterdir():
+
+			ticker = file.name.split('_')[0]
+			if ticker not in tickers:
+				continue
+
+			options.append(pd.read_csv(file))
+
+		for file in (DATA/"ohlc").iterdir():
+
+			ticker = file.name.split('_')[0]
+			if ticker not in tickers:
+				continue
+
+			ohlc.append(pd.read_csv(file).iloc[:1, :])
+
+		for file in (DATA/"analysis").iterdir():
+
+			ticker = file.name.split('_')[0]
+			if ticker not in tickers:
+				continue
+
+			analysis.append(pd.read_csv(file))
+
+		for file in (DATA / "keystats").iterdir():
+
+			ticker = file.name.split('_')[0]
+			if ticker not in tickers:
+				continue
+				
+			keystats.append(pd.read_csv(file))
+
+		pre = _connector.get_equities_table_count().row_count
+
+		if len(options) > 0:
+			options = pd.concat(options)
+			_connector.write("optionsBACK", options)
+
+		if len(ohlc) > 0:
+			ohlc = pd.concat(ohlc)
+			_connector.write("ohlcBACK", ohlc)
+
+		if len(analysis) > 0:
+			_connector.write("analysisBACK", pd.concat(analysis))
+
+		if len(keystats) > 0:
+			_connector.write("keystatsBACK", pd.concat(keystats))
+
+		if len(options) > 0 and len(ohlc) > 0:
+			_connector.write("surfaceBACK", surface(options, ohlc, DATE))
+
+		post = _connector.get_equities_table_count().row_count
+
+		db_stats = (pre.tolist(), post.tolist())
+		db_flag = 1
+		
+		logger.info(f"SCRAPER,{batch_id},INDEXING,SUCCESS,")
+
+	except Exception as e:
+
+		logger.warning(f"SCRAPER,{batch_id},INDEXING,FAILURE,{e}")
+		
+		db_stats = ([0]*4, [0]*4)
+		db_flag = 0
+
+	return db_flag, db_stats
+
 def main(batch_id, tickers):
 
 	logger.info(f"SCRAPER,{batch_id},INITIATED,,")
 
 	collect_data(batch_id, tickers)
+
+	_connector.init_batch_tickers(batch_id, tickers)
+
 	faults_summary = fix_faults(batch_id, tickers)
 
-	db_flag, db_stats, indexing_attempts = index_data(batch_id, tickers)
+	db_flag, db_stats = index_data(batch_id, tickers)
+
+	_connector.launch_derived_engine(batch_id)
 
 	logger.info(f"SCRAPER,{batch_id},TERMINATED,,")
 
-	return faults_summary, db_flag, db_stats, indexing_attempts
+	return faults_summary, db_flag, db_stats

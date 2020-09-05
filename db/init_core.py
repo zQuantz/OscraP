@@ -167,6 +167,8 @@ def transform_ohlc():
 		rename['adj_close'] = 'adjclose_price'
 		ohlc = ohlc.rename(rename, axis=1)
 
+		ohlc['dividend_yield'] *= 100
+
 		return ohlc
 
 	for folder in sorted(OLD['equity'].iterdir()):
@@ -188,6 +190,9 @@ def transform_rates():
 
 		if rates.shape[1] == 14:
 			rates = rates.iloc[:, 1:]
+		
+		rates.loc[:, rates.columns[1:]] *= 100
+
 		return rates
 
 	for file in sorted(OLD['rates'].iterdir()):

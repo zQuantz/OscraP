@@ -1,5 +1,8 @@
-line=$(eval "grep -nr SCRAPER,JOB,INITIATED ~/OscraP/equities/scraper.log | cut -d : -f 1 | tail -1")
-total_lines=$(eval "wc -l ~/OscraP/equities/scraper.log | cut -d ' ' -f 1")
+dir=`dirname $0`
+dir=`dirname $dir`
+
+line=$(eval "grep -nr SCRAPER,JOB,INITIATED $dir/scraper.log | cut -d : -f 1 | tail -1")
+total_lines=$(eval "wc -l $dir/scraper.log | cut -d ' ' -f 1")
 tail="$(($total_lines - $line + 1))"
-rm ~/Quant/OscraP/equities/log.log
-tail -$tail ~/OscraP/equities/scraper.log > ~/OscraP/equities/log.log
+rm $dir/log.log
+tail -$tail $dir/scraper.log > $dir/log.log
