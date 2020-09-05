@@ -1,9 +1,7 @@
-from const import COLUMNS, CONFIG, DIR, DATA, DATE, logger
+from const import COLUMNS, CONFIG, DIR, DATA, DATE, _connector, logger
 
-from datetime import datetime
 from bs4 import BeautifulSoup
-from report import report
-from index import index
+from sqlalchemy import text
 
 import tarfile as tar
 import pandas as pd
@@ -14,6 +12,7 @@ import shutil
 import time
 
 sys.path.append(f"{DIR}/../utils")
+from send_email import send_email
 from gcp import send_to_bucket
 from request import request
 
@@ -183,6 +182,82 @@ def scrape(exchange_code, exchange_name, modifier=''):
 	df = pd.DataFrame(stats, columns = COLUMNS)
 	df.to_csv(f'{DATA}/{exchange_code}_tickers.csv', index=False)
 
+def index():
+
+	dfs = []
+	for file in DATA.iterdir():
+		if '.log' in file.name:
+			continue
+		dfs.append(pd.read_csv(file))
+
+	df = pd.concat(dfs, sort=False).dropna()
+	df = df.sort_values('market_cap', ascending=False)
+	df = df[df.market_cap >= 1_000]
+
+	ticker_codes = df.ticker + ' ' + df.exchange_code
+	ticker_codes = ticker_codes.values.tolist()
+
+	query = text(f"""
+		DELETE FROM
+			instrumentsBACK
+		WHERE
+			CONCAT(ticker, " ", exchange_code) in :ticker_codes
+		"""
+	)
+	query = query.bindparams(ticker_codes=ticker_codes)
+	_connector.execute(query)
+
+	df['last_updated'] = DATE
+	_connector.write("instrumentsBACK", df)
+
+	df = _connector.read("SELECT * FROM instrumentsBACK;")
+	df = df.sort_values('market_cap', ascending=False)
+	df = df.reset_index(drop=True)
+
+	return df
+
+def store(df):
+
+	try:
+
+		df.to_csv(f"{DATA}/{DATE}.csv", index=False)
+
+		with tar.open(f"{DATA}.tar.xz", "x:xz") as tar_file:
+			for file in DATA.iterdir():
+				tar_file.add(file, arcname=file.name)
+			tar_file.add(f"{DIR}/log.log", arcname="log.log")
+		
+		send_to_bucket(BUCKET_PREFIX,
+					   BUCKET_NAME,
+					   f"{DATE}.tar.xz",
+					   f"{DIR}/instrument_data",
+					   logger)
+
+		for folder in (DIR / "instrument_data").iterdir():
+			if folder.is_dir():
+				shutil.rmtree(folder)
+
+	except Exception as e:
+
+		logger.info(f"Storage Error - {e}")
+
+def report(df):
+
+	os.system(f"bash {DIR}/utils/truncate_log_file.sh")
+	attachments = [
+		{
+			"ContentType" : "plain/text",
+			"filename" : "instruments.log",
+			"filepath" : f"{DIR}"
+		}
+	]
+
+	send_email(config=CONFIG,
+			   subject="Instrument Table Summary",
+			   body=df.to_html(),
+			   attachments=attachments,
+			   logger=logger)
+
 def main():
 
 	logger.info("Job Initiated.")
@@ -200,27 +275,8 @@ def main():
 	logger.info("Emailing.")
 	report(df)
 
-	###############################################################################################
-
 	logger.info("Storing.")
-	try:
-
-		df.to_csv(f"{DATA}/{DATE}.csv", index=False)
-
-		with tar.open(f"{DATA}.tar.xz", "x:xz") as tar_file:
-			for file in DATA.iterdir():
-				tar_file.add(file, arcname=file.name)
-			tar_file.add(f"{DIR}/err.log", arcname="err.log")
-		
-		send_to_bucket(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz", f"{DIR}/instrument_data/")
-
-		for folder in (DIR / instrument_data).iterdir():
-			if folder.is_dir():
-				shutil.rmtree(folder)
-
-	except Exception as e:
-
-		logger.info(f"Storage Error - {e}")
+	store(df)
 
 	logger.info("Job Terminated.")
 
