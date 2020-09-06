@@ -7,6 +7,13 @@ import sys, os
 
 ###################################################################################################
 
+SURFACE_COLS = []
+for e in [1,3,6,9,12,18,24]:
+	for m in range(80,125,5):
+		SURFACE_COLS.append(f"m{e}m{m}")
+
+###################################################################################################
+
 def greeks(options):
 
 	o = options.copy()
@@ -111,7 +118,7 @@ def greeks(options):
 
 	return options
 
-def surface(options, ohlc, date):
+def closest_surface(options, ohlc, date):
 
 	def by_ticker(df):
 
@@ -214,3 +221,95 @@ def surface(options, ohlc, date):
 	surface['date_current'] = date
 	
 	return surface
+
+def synth_surface(options, ohlc, date):
+
+	def brackets(reference, target, values):
+	
+		reference = reference.repeat(len(target), axis=0)
+		
+		diff = np.subtract(reference, target)
+		sign = np.sign(diff)
+		diffsign = np.diff(sign, axis=1)
+
+		idc = np.argwhere(diffsign)
+		midc = idc[:, 0]
+
+		sidc = idc[:, 1]
+		sidc = np.stack([sidc, sidc+1], axis=1).reshape(-1, )
+
+		vm = values[sidc].reshape(-1, 2)
+		vw = diff[midc.repeat(2), sidc].reshape(-1, 2)
+
+		vw[vw == 0] = 1e-6
+		vw = 1 / abs(vw)
+		vw = vw / vw.sum(axis=1, keepdims=True)
+		
+		return vm, vw, midc, sidc
+
+	def by_ticker(df):
+
+		def by_expiration(e):
+
+			moneynesses = np.arange(0.8, 1.25, 0.05)
+			moneynesses = moneynesses.reshape(-1, 1)
+
+			e = e.sort_values("moneyness")
+			ivs = e.implied_volatility.values
+			m = e.moneyness.values.reshape(1, -1)
+			
+			vm, vw, midc, sidc = brackets(m, moneynesses, ivs)
+			
+			surface_ivs = np.array([np.nan]*9)
+			surface_ivs[midc] = (vm * vw).sum(axis=1)
+
+			cols = [f"m{int(v * 100)}" for v in moneynesses]
+			return pd.DataFrame([surface_ivs], columns = cols)
+
+		mivs = df.groupby("expiration_date", as_index=False).apply(by_expiration).values
+
+		expirations = np.array([1,3,6,9,12,18,24]) / 12
+		expirations = expirations.reshape(1, -1)
+
+		T = df.days_to_expiry
+		T = (T.unique() / 365).reshape(-1, 1)
+		
+		vm, vw, midc, sidc = brackets(T.T, expirations.T, df.days_to_expiry.values)
+
+		tivs = mivs[sidc] * vw.reshape(-1, 1)
+		tivs = tivs.reshape(-1, 2, 9).round(2).sum(axis=1)
+
+		surfacem = np.ones((7, 9))
+		surfacem[:, :] = np.nan
+		surfacem[midc, :] = tivs
+		surfacem = surfacem.reshape(-1, )
+		
+		return pd.DataFrame(surfacem).T
+
+	###############################################################################################
+
+	start = date
+	end = f"{int(start[:4]) + 4}-{start[4:]}"
+
+	fridays = pd.date_range(start, end, freq="WOM-3FRI").astype(str)
+	thursdays = pd.date_range(start, end, freq="WOM-3THU").astype(str)
+	regulars = list(fridays) + list(thursdays)
+
+	ohlc = ohlc[['date_current', 'ticker', 'adjclose_price']]
+	options = options.merge(ohlc, on=['date_current', 'ticker'], how="inner")
+	options['years'] = options.days_to_expiry / 365
+	
+	options['moneyness'] = options.strike_price / options.adjclose_price
+	options['otm'] = options.adjclose_price - options.strike_price
+	options['otm'] = options.otm * options.option_type.map({"C" : 1, "P" : -1})
+
+	options = options[options.otm < 0]
+	options = options[options.expiration_date.astype(str).isin(regulars)]
+
+	cols = ["date_current", "ticker"]
+	surface_df = options.groupby(cols).apply(by_ticker)
+	surface_df = surface_df.reset_index().drop("level_2", axis=1)
+	surface_df.columns = cols + SURFACE_COLS
+	
+	return surface_df
+	
