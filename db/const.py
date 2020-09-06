@@ -1,4 +1,3 @@
-from connector import Connector
 from datetime import datetime
 from pathlib import Path
 import sqlalchemy as sql
@@ -13,6 +12,7 @@ DATE = datetime.today().strftime("%Y-%m-%d")
 with open("../config.json", "r") as file:
 	CONFIG = json.loads(file.read())
 
+from connector import Connector
 _connector = Connector(CONFIG, DATE)
 
 ###################################################################################################

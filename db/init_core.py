@@ -101,6 +101,7 @@ def transform_options():
 				"ask" : "ask_price"
 			}
 		options = options.rename(renames, axis=1)
+		options.implied_volatility *= 100
 		
 		return options
 
@@ -373,7 +374,7 @@ def main():
 	download_data()
 	transform()
 	init()
-	compress_data()
+	# compress_data()
 
 if __name__ == "__main__":
 

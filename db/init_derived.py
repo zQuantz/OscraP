@@ -7,7 +7,7 @@ import numpy as np
 import sys, os
 
 sys.path.append("../equities")
-from calculations import surface
+from calculations import synth_surface
 
 def derive_surface():
 
@@ -21,7 +21,7 @@ def derive_surface():
 	ohlc = pd.concat(ohlcs)
 	ohlc = ohlc[['ticker', 'date_current', 'adjclose_price']]
 
-	surface = []
+	surfaces = []
 	for folder in sorted(NEW['equity'].iterdir()):
 
 		file = folder / "options.csv"
@@ -30,11 +30,12 @@ def derive_surface():
 
 		print("Processing Surface", folder.name)
 		options = pd.read_csv(file)
-		surface.append(pre_surface(options, ohlc, folder.name))
-
+		surfaces.append(synth_surface(options, ohlc, folder.name))
+		print(surfaces[-1])
+	
 	print("Indexing IV Surface")
-	surface = pd.concat(surface)
-	_connector.write("surfaceBACK", surface)
+	surfaces = pd.concat(surfaces)
+	_connector.write("surfaceBACK", surfaces)
 
 def derive_treasuryratemap():
 
@@ -189,10 +190,10 @@ def derive_tickermaps():
 
 def derive():
 
-	# derive_tickermaps()
-	# derive_treasuryratemap()
-	# derive_surface()
-	# derive_stats()
+	derive_tickermaps()
+	derive_treasuryratemap()
+	derive_surface()
+	derive_stats()
 
 if __name__ == '__main__':
 
