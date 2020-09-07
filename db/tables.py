@@ -224,7 +224,7 @@ TICKEROIDS_TABLE = """
 """
 
 OPTIONCOUNTS_TABLE = """
-	CREATE TABLE optioncountsBACK (
+	CREATE TABLE optionscountsBACK (
 		date_current DATE,
 		ticker VARCHAR(10),
 		count MEDIUMINT UNSIGNED,

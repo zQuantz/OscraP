@@ -336,6 +336,7 @@ def init_equities():
 
 def init_options():
 
+
 	print("Initializing Options")
 	_connector.execute("DROP TABLE IF EXISTS optionsBACK;")
 	_connector.execute(OPTIONS_TABLE)
@@ -374,7 +375,7 @@ def main():
 	download_data()
 	transform()
 	init()
-	# compress_data()
+	compress_data()
 
 if __name__ == "__main__":
 

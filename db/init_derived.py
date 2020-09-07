@@ -123,7 +123,7 @@ def derive_stats():
 	_connector.execute(AGGOPTIONSTATS_TABLE)
 
 	print("Initializing Option Counts")
-	_connector.execute("DROP TABLE IF EXISTS optioncountsBACK;")
+	_connector.execute("DROP TABLE IF EXISTS optionscountsBACK;")
 	_connector.execute(OPTIONCOUNTS_TABLE)
 
 	print("Initializing Analysis Counts")
@@ -140,7 +140,7 @@ def derive_stats():
 		_connector.execute(f"""SET @date_current = "{date}";""")
 
 		for statement in INIT_DATE_SERIES:
-			_connector.execute(statement.format(modifier="BACK", subset=""))
+			_connector.execute(statement.format(modifier="BACK"))
 
 		print("Inserting OHLC Stats")
 		_connector.execute(INSERT_OHLC_STATS.format(modifier="BACK", subset=""))
