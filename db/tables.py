@@ -70,6 +70,63 @@ OPTIONSTATS_TABLE = """
 	)
 """
 
+SURFACESKEW_TABLE = """
+	CREATE TABLE surfaceskewBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		m1fskew FLOAT(4),
+		m1dskew FLOAT(4),
+		m1uskew FLOAT(4),
+		m3fskew FLOAT(4),
+		m3dskew FLOAT(4),
+		m3uskew FLOAT(4),
+		m6fskew FLOAT(4),
+		m6dskew FLOAT(4),
+		m6uskew FLOAT(4),
+		m9fskew FLOAT(4),
+		m9dskew FLOAT(4),
+		m9uskew FLOAT(4),
+		m12fskew FLOAT(4),
+		m12dskew FLOAT(4),
+		m12uskew FLOAT(4),
+		m18fskew FLOAT(4),
+		m18dskew FLOAT(4),
+		m18uskew FLOAT(4),
+		m24fskew FLOAT(4),
+		m24dskew FLOAT(4),
+		m24uskew FLOAT(4),
+		PRIMARY KEY(date_current, ticker)
+	)
+"""
+
+###################################################################################################
+
+expirations = [1,3,6,12,18,24]
+moneys = list(range(80, 125, 5))
+lags = ["_63", "_126", "_252"]
+lag_names = ["3", "6", "12"]
+
+columns = ""
+for lag, lag_name in zip(lags, lag_names):
+	for e in expirations:
+		for m in moneys:
+			columns += f"m{e}m{m}w{lag_name}min FLOAT(4), \n"
+			columns += f"m{e}m{m}w{lag_name}max FLOAT(4), \n"
+			columns += f"m{e}m{m}w{lag_name}mean FLOAT(4), \n"
+			columns += f"m{e}m{m}w{lag_name}rank FLOAT(4), \n"
+			columns += f"m{e}m{m}w{lag_name}zscore FLOAT(4), \n"
+
+SURFACESTATS_TABLE = """
+	CREATE TABLE surfacestatsBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		{columns}
+		PRIMARY KEY(date_current, ticker)
+	)
+""".format(columns = columns)
+
+###################################################################################################
+
 AGGOPTIONSTATS_TABLE = """
 	CREATE TABLE aggoptionstatsBACK (
 		date_current DATE,

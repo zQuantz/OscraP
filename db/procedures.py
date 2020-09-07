@@ -260,6 +260,100 @@ INSERT_OPTION_STATS = """
 
 """
 
+INSERT_SURFACE_SKEW = """
+	INSERT INTO
+		surfaceskew{modifier}
+	SELECT
+		date_current,
+		ticker,
+		m1m90 - m1m110 as m1fskew,
+		m1m90 - m1m100 as m1dskew,
+		m1m100 - m1m110 as m1uskew,
+		m3m90 - m3m110 as m3fskew,
+		m3m90 - m3m100 as m3dskew,
+		m3m100 - m3m110 as m3uskew,
+		m6m90 - m6m110 as m6fskew,
+		m6m90 - m6m100 as m6dskew,
+		m6m100 - m6m110 as m6uskew,
+		m9m90 - m9m110 as m9fskew,
+		m9m90 - m9m100 as m9dskew,
+		m9m100 - m9m110 as m9uskew,
+		m12m90 - m12m110 as m12fskew,
+		m12m90 - m12m100 as m12dskew,
+		m12m100 - m12m110 as m12uskew,
+		m18m90 - m18m110 as m18fskew,
+		m18m90 - m18m100 as m18dskew,
+		m18m100 - m18m110 as m18uskew,
+		m24m90 - m24m110 as m24fskew,
+		m24m90 - m24m100 as m24dskew,
+		m24m100 - m24m110 as m24uskew
+	FROM
+		surface{modifier}
+	WHERE
+		date_current = @date_current
+	{subset}
+"""
+
+###################################################################################################
+
+expirations = [1,3,6,12,18,24]
+moneys = list(range(80, 125, 5))
+lags = ["_63", "_126", "_252"]
+lag_names = ["3", "6", "12"]
+
+ops = ""
+for e in expirations:
+	for m in moneys:
+		ops += f"IF(m{e}m{m} * LAG_SERIES = 0, NULL, m{e}m{m} * LAG_SERIES) AS m{e}m{m}wLAG_NAME, \n"
+
+first_ops = ""
+for lag, lag_name in zip(lags, lag_names):
+	_ops = ops.replace("LAG_SERIES", lag)
+	_ops = _ops.replace("LAG_NAME", lag_name)
+	first_ops += _ops
+first_ops = first_ops[:-3]
+
+second_ops = ""
+for lag, lag_name in zip(lags, lag_names):
+	for e in expirations:
+		for m in moneys:
+			label = f"m{e}m{m}w{lag_name}"
+			second_ops += f"MIN({label}) AS {label}min, \n"
+			second_ops += f"MAX({label}) AS {label}max, \n"
+			second_ops += f"AVG({label}) AS {label}mean, \n"
+			second_ops += f"100 * ({label} - MIN({label})) / (MAX({label}) - MIN({label})) AS {label}rank, \n"
+			second_ops += f"({label} - AVG({label})) / STDDEV({label}) AS {label}zscore, \n"
+second_ops = second_ops[:-3]
+
+INSERT_SURFACE_STATS = ("""
+		INSERT INTO
+			surfacestats{modifier}
+		SELECT
+	""" + f"""
+			date_current,
+			ticker,
+			{second_ops}
+		FROM
+			(
+				SELECT
+					date_current,
+					ticker,
+					{first_ops}
+	""" + """
+				FROM
+					surface{modifier}
+				INNER JOIN
+					dateseries
+					on lag_date = date_current
+				{subset}
+			) as t1
+		WHERE
+			@date_current = date_current;
+""")
+
+###################################################################################################
+
+
 INSERT_TICKER_DATES = """
 
 	INSERT INTO
@@ -372,6 +466,8 @@ DERIVED_PROCEDURE_NAMES = [
 	"OHLC Stats",
 	"Agg. Option Stats Update",
 	"Option Stats",
+	"Surface Stats",
+	"Surface Skew",
 	"Ticker-Dates Map",
 	"Ticker-OptionID Map",
 	"Option Counts",
@@ -379,12 +475,13 @@ DERIVED_PROCEDURE_NAMES = [
 	"Key Stats Counts"
 ]
 
-
 DERIVED_PROCEDURES = [
 	INSERT_AGG_OPTION_STATS.format(modifier=MODIFIER, subset="AND" + SUBSET),
 	INSERT_OHLC_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET.replace("ticker IN", "o1.ticker IN")),
 	UPDATE_AGG_OPTION_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET),
 	INSERT_OPTION_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET),
+	INSERT_SURFACE_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET),
+	INSERT_SURFACE_SKEW.format(modifier=MODIFIER, subset="AND" + SUBSET),
 	INSERT_TICKER_DATES.format(modifier=MODIFIER, subset="AND" + SUBSET),
 	INSERT_TICKER_OIDS.format(modifier=MODIFIER, subset="AND" + SUBSET),
 	INSERT_OPTION_COUNTS.format(modifier=MODIFIER, subset="AND" + SUBSET),
