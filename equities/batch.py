@@ -1,6 +1,6 @@
 from const import DIR, DATE, DATA, CONFIG, _connector, logger
 
-from calculations import surface
+from calculations import synth_surface
 from ticker import Ticker
 import pandas as pd
 import numpy as np
@@ -212,7 +212,7 @@ def index_data(batch_id, tickers):
 			_connector.write("keystatsBACK", pd.concat(keystats))
 
 		if len(options) > 0 and len(ohlc) > 0:
-			_connector.write("surfaceBACK", surface(options, ohlc, DATE))
+			_connector.write("surfaceBACK", synth_surface(options, ohlc, DATE))
 
 		post = _connector.get_equities_table_count().row_count
 

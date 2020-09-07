@@ -19,7 +19,6 @@ DIR = os.path.realpath(os.path.dirname(__file__))
 DIR = Path(DIR)
 
 DATE = datetime.today().strftime("%Y-%m-%d")
-DATE = "2020-09-04"
 DATA = DIR / "financial_data" / DATE
 
 logger = logging.getLogger(__name__)

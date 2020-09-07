@@ -110,9 +110,9 @@ def derive_treasuryratemap():
 
 def derive_stats():
 
-	# print("Initializing Option Stats")
-	# _connector.execute("DROP TABLE IF EXISTS optionstatsBACK;")
-	# _connector.execute(OPTIONSTATS_TABLE)
+	print("Initializing Option Stats")
+	_connector.execute("DROP TABLE IF EXISTS optionstatsBACK;")
+	_connector.execute(OPTIONSTATS_TABLE)
 
 	print("Initializing Surface Skew")
 	_connector.execute("DROP TABLE IF EXISTS surfaceskewBACK;")
@@ -122,25 +122,25 @@ def derive_stats():
 	_connector.execute("DROP TABLE IF EXISTS surfacestatsBACK;")
 	_connector.execute(SURFACESTATS_TABLE)
 
-	# print("Initializing OHLC Stats")
-	# _connector.execute("DROP TABLE IF EXISTS ohlcstatsBACK;")
-	# _connector.execute(OHLCSTATS_TABLE)
+	print("Initializing OHLC Stats")
+	_connector.execute("DROP TABLE IF EXISTS ohlcstatsBACK;")
+	_connector.execute(OHLCSTATS_TABLE)
 
-	# print("Initializing Aggregate Option Stats")
-	# _connector.execute("DROP TABLE IF EXISTS aggoptionstatsBACK;")
-	# _connector.execute(AGGOPTIONSTATS_TABLE)
+	print("Initializing Aggregate Option Stats")
+	_connector.execute("DROP TABLE IF EXISTS aggoptionstatsBACK;")
+	_connector.execute(AGGOPTIONSTATS_TABLE)
 
-	# print("Initializing Option Counts")
-	# _connector.execute("DROP TABLE IF EXISTS optionscountsBACK;")
-	# _connector.execute(OPTIONCOUNTS_TABLE)
+	print("Initializing Option Counts")
+	_connector.execute("DROP TABLE IF EXISTS optionscountsBACK;")
+	_connector.execute(OPTIONCOUNTS_TABLE)
 
-	# print("Initializing Analysis Counts")
-	# _connector.execute("DROP TABLE IF EXISTS analysiscountsBACK;")
-	# _connector.execute(ANALYSISCOUNTS_TABLE)
+	print("Initializing Analysis Counts")
+	_connector.execute("DROP TABLE IF EXISTS analysiscountsBACK;")
+	_connector.execute(ANALYSISCOUNTS_TABLE)
 
-	# print("Initializing Keystats Counts")
-	# _connector.execute("DROP TABLE IF EXISTS keystatscountsBACK;")
-	# _connector.execute(KEYSTATSCOUNTS_TABLE)
+	print("Initializing Keystats Counts")
+	_connector.execute("DROP TABLE IF EXISTS keystatscountsBACK;")
+	_connector.execute(KEYSTATSCOUNTS_TABLE)
 
 	for date in sorted(os.listdir(NEW['equity'])):
 
@@ -150,17 +150,17 @@ def derive_stats():
 		for statement in INIT_DATE_SERIES:
 			_connector.execute(statement.format(modifier="BACK"))
 
-		# print("Inserting OHLC Stats")
-		# _connector.execute(INSERT_OHLC_STATS.format(modifier="BACK", subset=""))
+		print("Inserting OHLC Stats")
+		_connector.execute(INSERT_OHLC_STATS.format(modifier="BACK", subset=""))
 
-		# print("Inserting Agg Option Stats")
-		# _connector.execute(INSERT_AGG_OPTION_STATS.format(modifier="BACK", subset=""))
+		print("Inserting Agg Option Stats")
+		_connector.execute(INSERT_AGG_OPTION_STATS.format(modifier="BACK", subset=""))
 
-		# print("Updating Agg Option Stats")
-		# _connector.execute(UPDATE_AGG_OPTION_STATS.format(modifier="BACK", subset=""))
+		print("Updating Agg Option Stats")
+		_connector.execute(UPDATE_AGG_OPTION_STATS.format(modifier="BACK", subset=""))
 
-		# print("Inserting Options Stats")
-		# _connector.execute(INSERT_OPTION_STATS.format(modifier="BACK", subset=""))
+		print("Inserting Options Stats")
+		_connector.execute(INSERT_OPTION_STATS.format(modifier="BACK", subset=""))
 
 		print("Inserting Surface Skew")
 		_connector.execute(INSERT_SURFACE_SKEW.format(modifier="BACK", subset=""))
@@ -168,14 +168,14 @@ def derive_stats():
 		print("Inserting Surface Stats")
 		_connector.execute(INSERT_SURFACE_STATS.format(modifier="BACK", subset=""))
 
-		# print("Inserting Options Counts")
-		# _connector.execute(INSERT_OPTION_COUNTS.format(modifier="BACK", subset=""))
+		print("Inserting Options Counts")
+		_connector.execute(INSERT_OPTION_COUNTS.format(modifier="BACK", subset=""))
 
-		# print("Inserting Analysis Counts")
-		# _connector.execute(INSERT_ANALYSIS_COUNTS.format(modifier="BACK", subset=""))
+		print("Inserting Analysis Counts")
+		_connector.execute(INSERT_ANALYSIS_COUNTS.format(modifier="BACK", subset=""))
 
-		# print("Inserting Keystats Counts")
-		# _connector.execute(INSERT_KEYSTATS_COUNTS.format(modifier="BACK", subset=""))
+		print("Inserting Keystats Counts")
+		_connector.execute(INSERT_KEYSTATS_COUNTS.format(modifier="BACK", subset=""))
 
 		print("\n----------\n")
 
@@ -204,9 +204,9 @@ def derive_tickermaps():
 
 def derive():
 
-	# derive_tickermaps()
-	# derive_treasuryratemap()
-	# derive_surface()
+	derive_tickermaps()
+	derive_treasuryratemap()
+	derive_surface()
 	derive_stats()
 
 if __name__ == '__main__':

@@ -58,7 +58,7 @@ def main():
 		aggregate() ; compress()
 
 		send_to_bucket(BUCKET_PREFIX, BUCKET_NAME, f"{DATE}.tar.xz",
-				    f"{DIR}/financial_data/", logger=logger)
+				    f"{DIR}/financial_data", logger=logger)
 		
 		remove()
 		
