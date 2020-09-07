@@ -100,7 +100,7 @@ INSERT_OHLC_STATS = """
 	FROM
 		(
 			SELECT
-				date_current,
+				MAX(date_current) AS date_current,
 				ticker,
 				SQRT(((SUM(POWER(pct_change, 2) * _21) - (POWER(SUM(_21 * pct_change), 2) / 21)) / 20) * 252 ) * 100 AS hvol1m,
 				SQRT(((SUM(POWER(pct_change, 2) * _42) - (POWER(SUM(_42 * pct_change), 2) / 42)) / 41) * 252 ) * 100 AS hvol2m,
@@ -169,8 +169,8 @@ UPDATE_AGG_OPTION_STATS = """
 			FROM
 				(
 					SELECT
+						MAX(date_current) as date_current,
 						ticker,
-						date_current,
 						SUM(_0d * call_volume) / (SUM(call_volume * _5) / 5) AS rcv5,
 						SUM(_0d * put_volume) / (SUM(put_volume * _5) / 5) AS rpv5,
 						SUM(_0d * total_volume) / (SUM(total_volume * _5) / 5) AS rtv5,
@@ -222,7 +222,7 @@ INSERT_OPTION_STATS = """
 	FROM
 		(
 			SELECT
-				date_current,
+				MAX(date_current) as date_current,
 				option_id,
 				100 * ((SUM(_0d * option_price) / SUM(_1d * option_price)) - 1) AS pctchange1d,
 				100 * ((SUM(_0d * option_price) / SUM(_5d * option_price)) - 1) AS pctchange5d,
@@ -321,34 +321,45 @@ for lag, lag_name in zip(lags, lag_names):
 			second_ops += f"MIN({label}) AS {label}min, \n"
 			second_ops += f"MAX({label}) AS {label}max, \n"
 			second_ops += f"AVG({label}) AS {label}mean, \n"
-			second_ops += f"100 * ({label} - MIN({label})) / (MAX({label}) - MIN({label})) AS {label}rank, \n"
-			second_ops += f"({label} - AVG({label})) / STDDEV({label}) AS {label}zscore, \n"
+			second_ops += f"100 * (SUM({label} * _0d) - MIN({label})) / (MAX({label}) - MIN({label})) AS {label}rank, \n"
+			second_ops += f"(SUM({label} * _0d) - AVG({label})) / STDDEV({label}) AS {label}zscore, \n"
 second_ops = second_ops[:-3]
 
 INSERT_SURFACE_STATS = ("""
 		INSERT INTO
 			surfacestats{modifier}
 		SELECT
-	""" + f"""
-			date_current,
-			ticker,
-			{second_ops}
+			*
 		FROM
 			(
 				SELECT
-					date_current,
+		""" + f"""
+					MAX(date_current) as date_current,
 					ticker,
-					{first_ops}
-	""" + """
+					{second_ops}
 				FROM
-					surface{modifier}
-				INNER JOIN
-					dateseries
-					on lag_date = date_current
-				{subset}
-			) as t1
+					(
+						SELECT
+							date_current,
+							ticker,
+							_0d,
+							{first_ops}
+			""" + """		
+						FROM
+							surface{modifier}
+						INNER JOIN
+							dateseries
+							on lag_date = date_current
+						{subset}
+					) as t1
+				GROUP BY
+					ticker
+				ORDER BY
+					ticker ASC,
+					date_current DESC
+			) as t2
 		WHERE
-			@date_current = date_current;
+			date_current = @date_current;
 """)
 
 ###################################################################################################

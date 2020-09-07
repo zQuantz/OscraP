@@ -204,9 +204,9 @@ def derive_tickermaps():
 
 def derive():
 
-	derive_tickermaps()
-	derive_treasuryratemap()
-	derive_surface()
+	# derive_tickermaps()
+	# derive_treasuryratemap()
+	# derive_surface()
 	derive_stats()
 
 if __name__ == '__main__':
