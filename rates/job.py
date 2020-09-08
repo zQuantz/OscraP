@@ -73,7 +73,7 @@ def collect():
 	if len(df) == 0:
 		raise Exception("Data not up to date.")
 
-	_connector.write("treasuryratesBACK", df)
+	_connector.write("treasuryrates", df)
 	df.to_csv(f"{DATA}.csv", index=False)
 
 	###############################################################################################
@@ -105,7 +105,7 @@ def collect():
 	rm_df['rate'] = rm_df.days_to_expiry.apply(get_rate)
 	rm_df['date_current'] = DATE
 
-	_connector.write("treasuryratemapBACK", rm_df)
+	_connector.write("treasuryratemap", rm_df)
 
 	return df
 

@@ -462,7 +462,7 @@ INSERT_KEYSTATS_COUNTS = """
 
 ###################################################################################################
 
-MODIFIER = "BACK"
+MODIFIER = ""
 SUBSET = """
 	 ticker IN (
 		SELECT

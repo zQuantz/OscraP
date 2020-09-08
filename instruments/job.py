@@ -199,7 +199,7 @@ def index():
 
 	query = text(f"""
 		DELETE FROM
-			instrumentsBACK
+			instruments
 		WHERE
 			CONCAT(ticker, " ", exchange_code) in :ticker_codes
 		"""
@@ -208,9 +208,9 @@ def index():
 	_connector.execute(query)
 
 	df['last_updated'] = DATE
-	_connector.write("instrumentsBACK", df)
+	_connector.write("instruments", df)
 
-	df = _connector.read("SELECT * FROM instrumentsBACK;")
+	df = _connector.read("SELECT * FROM instruments;")
 	df = df.sort_values('market_cap', ascending=False)
 	df = df.reset_index(drop=True)
 

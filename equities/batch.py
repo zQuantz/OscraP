@@ -73,7 +73,7 @@ def fix_faults(batch_id, tickers):
 
 	def check_lower_bounds(tickers, product):
 
-		lower_bounds = _connector.get_lower_bounds(f"{product}countsBACK", batch_id)
+		lower_bounds = _connector.get_lower_bounds(f"{product}counts", batch_id)
 		lower_bounds = lower_bounds.set_index("ticker")
 		lower_bounds = lower_bounds.astype(int).to_dict()['lower_bound']
 
@@ -199,20 +199,20 @@ def index_data(batch_id, tickers):
 
 		if len(options) > 0:
 			options = pd.concat(options)
-			_connector.write("optionsBACK", options)
+			_connector.write("options", options)
 
 		if len(ohlc) > 0:
 			ohlc = pd.concat(ohlc)
-			_connector.write("ohlcBACK", ohlc)
+			_connector.write("ohlc", ohlc)
 
 		if len(analysis) > 0:
-			_connector.write("analysisBACK", pd.concat(analysis))
+			_connector.write("analysis", pd.concat(analysis))
 
 		if len(keystats) > 0:
-			_connector.write("keystatsBACK", pd.concat(keystats))
+			_connector.write("keystats", pd.concat(keystats))
 
 		if len(options) > 0 and len(ohlc) > 0:
-			_connector.write("surfaceBACK", synth_surface(options, ohlc, DATE))
+			_connector.write("surface", synth_surface(options, ohlc, DATE))
 
 		post = _connector.get_equities_table_count().row_count
 

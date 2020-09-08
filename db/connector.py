@@ -84,7 +84,7 @@ class Connector:
 				WHERE
 				    TABLE_SCHEMA = "{db}"
 				AND
-				    TABLE_NAME in ("optionsBACK", "ohlcBACK", "analysisBACK", "keystatsBACK")
+				    TABLE_NAME in ("options", "ohlc", "analysis", "keystats")
 			""".format(db=self.db))
 
 
@@ -103,7 +103,7 @@ class Connector:
 
 		self.set_date_current()
 		for statement in INIT_DATE_SERIES:
-			self.execute(statement.format(modifier="BACK"))
+			self.execute(statement.format(modifier=""))
 
 	def get_equity_tickers(self, N_USD, N_CAD):
 
@@ -111,7 +111,7 @@ class Connector:
 				SELECT
 					*
 				FROM
-					instrumentsBACK
+					instruments
 				WHERE
 					market_cap >= {}
 				ORDER BY
@@ -136,7 +136,7 @@ class Connector:
 				FROM
 					{}
 				WHERE
-					date_current >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+					date_current >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
 				AND
 					ticker in (SELECT ticker FROM batchtickers{})
 				GROUP BY
@@ -149,9 +149,9 @@ class Connector:
 				SELECT
 					DISTINCT ticker
 				FROM
-					ohlcBACK
+					ohlc
 				WHERE
-					date_current >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+					date_current >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
 				AND ticker in (SELECT ticker FROM batchtickers{})
 			""".format(batch_id))
 
