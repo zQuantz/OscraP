@@ -54,6 +54,6 @@ with open(f"{DIR}/../config.json", "w") as file:
 
 ###################################################################################################
 
-sys.path.append("../db")
+sys.path.append(f"{DIR}/../db")
 from connector import Connector
 _connector = Connector(CONFIG, DATE, logger)

@@ -66,6 +66,6 @@ t_map = np.array(t_map)
 
 ###################################################################################################
 
-sys.path.append("../db")
+sys.path.append(f"{DIR}/../db")
 from connector import Connector
 _connector = Connector(CONFIG, DATE, logger)
