@@ -194,6 +194,10 @@ def index():
 	df = df.sort_values('market_cap', ascending=False)
 	df = df[df.market_cap >= 1_000]
 
+	cols = ["ticker", "exchange_code"]
+	df = df.drop_duplicates(subset=cols, keep="first")
+	df['last_updated'] = DATE
+
 	ticker_codes = df.ticker + ' ' + df.exchange_code
 	ticker_codes = ticker_codes.values.tolist()
 
@@ -206,8 +210,6 @@ def index():
 	)
 	query = query.bindparams(ticker_codes=ticker_codes)
 	_connector.execute(query)
-
-	df['last_updated'] = DATE
 	_connector.write("instruments", df)
 
 	df = _connector.read("SELECT * FROM instruments;")

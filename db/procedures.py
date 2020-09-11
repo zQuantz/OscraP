@@ -1,54 +1,52 @@
-INIT_DATE_SERIES = [
-	"DELETE FROM dateseries;",
-	"SET @i = -1;",
-	"""
-		INSERT INTO
-			dateseries (
-				lag, 
-				lag_date
-			)
-		SELECT
-			(@i:=@i+1) AS lag,
-			date_current AS lag_date
+INIT_DATE_SERIES = """
+	INSERT INTO
+		dateseries (
+			lag, 
+			lag_date
+		)
+	SELECT
+		(@i:=@i+1) AS lag,
+		date_current AS lag_date
+	FROM
+		(SELECT
+			DISTINCT date_current
 		FROM
-			(SELECT
-				DISTINCT date_current
-			FROM
-				ohlc{modifier}
-			WHERE
-				date_current <= @date_current
-			GROUP BY 
-				date_current DESC) AS t1;
-			
-		UPDATE
-			dateseries AS d1
-		INNER JOIN
-			dateseries AS d2
-			ON d1.lag = (d2.lag - 1)
-		SET
-			d1.prev_lag_date = d2.lag_date,
-			d1._5 = IF(d1.lag < 5, 1, 0),
-			d1._10 = IF(d1.lag < 10, 1, 0),
-			d1._20 = IF(d1.lag < 20, 1, 0),
-			d1._21 = IF(d1.lag < 21, 1, 0),
-			d1._42 = IF(d1.lag < 42, 1, 0),
-			d1._63 = IF(d1.lag < 63, 1, 0),
-			d1._126 = IF(d1.lag < 126, 1, 0),
-			d1._189 = IF(d1.lag < 189, 1, 0),
-			d1._252 = IF(d1.lag < 252, 1, 0),
-			d1._0d = IF(d1.lag = 0, 1, 0),
-			d1._1d = IF(d1.lag = 1, 1, 0),
-			d1._5d = IF(d1.lag = 5, 1, 0),
-			d1._10d = IF(d1.lag = 10, 1, 0),
-			d1._20d = IF(d1.lag = 20, 1, 0),
-			d1._21d = IF(d1.lag = 21, 1, 0),
-			d1._42d = IF(d1.lag = 42, 1, 0),
-			d1._63d = IF(d1.lag = 63, 1, 0),
-			d1._126d = IF(d1.lag = 126, 1, 0),
-			d1._189d = IF(d1.lag = 189, 1, 0),
-			d1._252d = IF(d1.lag = 252, 1, 0);
-	"""
-]
+			ohlc{modifier}
+		WHERE
+			date_current <= @date_current
+		GROUP BY 
+			date_current DESC) AS t1;
+"""
+
+UPDATE_DATE_SERIES = """
+	UPDATE
+		dateseries AS d1
+	INNER JOIN
+		dateseries AS d2
+		ON d1.lag = (d2.lag - 1)
+	SET
+		d1.prev_lag_date = d2.lag_date,
+		d1._5 = IF(d1.lag < 5, 1, 0),
+		d1._10 = IF(d1.lag < 10, 1, 0),
+		d1._20 = IF(d1.lag < 20, 1, 0),
+		d1._21 = IF(d1.lag < 21, 1, 0),
+		d1._42 = IF(d1.lag < 42, 1, 0),
+		d1._63 = IF(d1.lag < 63, 1, 0),
+		d1._126 = IF(d1.lag < 126, 1, 0),
+		d1._189 = IF(d1.lag < 189, 1, 0),
+		d1._252 = IF(d1.lag < 252, 1, 0),
+		d1._0d = IF(d1.lag = 0, 1, 0),
+		d1._1d = IF(d1.lag = 1, 1, 0),
+		d1._5d = IF(d1.lag = 5, 1, 0),
+		d1._10d = IF(d1.lag = 10, 1, 0),
+		d1._20d = IF(d1.lag = 20, 1, 0),
+		d1._21d = IF(d1.lag = 21, 1, 0),
+		d1._42d = IF(d1.lag = 42, 1, 0),
+		d1._63d = IF(d1.lag = 63, 1, 0),
+		d1._126d = IF(d1.lag = 126, 1, 0),
+		d1._189d = IF(d1.lag = 189, 1, 0),
+		d1._252d = IF(d1.lag = 252, 1, 0);
+"""
 
 INSERT_AGG_OPTION_STATS = """
 
@@ -59,7 +57,13 @@ INSERT_AGG_OPTION_STATS = """
 			call_volume, 
 			put_volume, 
 			cpv_spread, 
-			total_volume
+			total_volume,
+			call_open_interest,
+			put_open_interest,
+			total_open_interest,
+			call_v2oi,
+			put_v2oi,
+			total_v2oi
 		)
 	SELECT
 		date_current,
@@ -67,7 +71,13 @@ INSERT_AGG_OPTION_STATS = """
 		call_volume,
 		put_volume,
 		call_volume - put_volume AS cpv_spread,
-		total_volume
+		total_volume,
+		call_open_interest,
+		put_open_interest,
+		total_open_interest,
+		call_volume / call_open_interest AS call_v2oi,
+		put_volume / put_open_interest AS put_v2oi,
+		total_volume / total_open_interest AS total_v2oi
 	FROM
 		(
 		SELECT
@@ -75,7 +85,10 @@ INSERT_AGG_OPTION_STATS = """
 			ticker,
 			SUM(IF(option_type = "C", volume, 0)) AS call_volume,
 			SUM(IF(option_type = "P", volume, 0)) AS put_volume,
-			SUM(volume) AS total_volume
+			SUM(volume) AS total_volume,
+			SUM(IF(option_type = "C", open_interest, 0)) AS call_open_interest,
+			SUM(IF(option_type = "P", open_interest, 0)) AS put_open_interest,
+			SUM(open_interest) AS total_open_interest
 		FROM
 			options{modifier}
 		WHERE

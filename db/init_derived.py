@@ -147,6 +147,11 @@ def derive_stats():
 		print(f"Creating dateseries table for date {date}.")
 		_connector.execute(f"""SET @date_current = "{date}";""")
 
+		_connector.execute("DELETE FROM dateseries;")
+		_connector.execute("SET @i = -1;")
+		_connector.execute(INIT_DATE_SERIES.format(modifier="BACK"))
+		_connector.execute(UPDATE_DATE_SERIES)
+
 		for statement in INIT_DATE_SERIES:
 			_connector.execute(statement.format(modifier="BACK"))
 

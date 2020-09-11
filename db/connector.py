@@ -1,4 +1,4 @@
-from procedures import DERIVED_PROCEDURES, INIT_DATE_SERIES
+from procedures import DERIVED_PROCEDURES, INIT_DATE_SERIES, UPDATE_DATE_SERIES
 from threading import Thread
 import sqlalchemy as sql
 from const import DIR
@@ -102,8 +102,19 @@ class Connector:
 	def init_date_series(self):
 
 		self.set_date_current()
-		for statement in INIT_DATE_SERIES:
-			self.execute(statement.format(modifier=""))
+		self.execute("DELETE FROM dateseries;")
+		self.execute("""
+				INSERT INTO 
+					dateseries (
+						lag,
+						lag_date
+					)
+				VALUES
+					(0, "{DATE}");
+			""".format(DATE=self.date))
+		self.execute("SET @i = 0;")
+		self.execute(INIT_DATE_SERIES.format(modifier=""))
+		self.execute(UPDATE_DATE_SERIES.format(modifier=""))
 
 	def get_equity_tickers(self, N_USD, N_CAD):
 
@@ -120,10 +131,12 @@ class Connector:
 
 		usd = df[~df.exchange_code.isin(["TSX"])].iloc[:N_USD, :]
 		cad = df[df.exchange_code.isin(["TSX"])].iloc[:N_CAD, :]
+		
 		tickers = (usd.ticker.values.tolist() + cad.ticker.values.tolist())
 
 		df = df[df.ticker.isin(tickers)]
 		df = df.sort_values('market_cap', ascending=False)
+		df = df.drop_duplicates(subset=["ticker"], keep="first")
 
 		return tuple(df.ticker)
 
