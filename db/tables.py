@@ -66,6 +66,9 @@ OPTIONSTATS_TABLE = """
 		relvolume5 FLOAT(4),
 		relvolume10 FLOAT(4),
 		relvolume20 FLOAT(4),
+		relvolume2oi5 FLOAT(4),
+		relvolume2oi10 FLOAT(4),
+		relvolume2oi20 FLOAT(4),
 		PRIMARY KEY(date_current, option_id)
 	)
 """
@@ -153,6 +156,15 @@ AGGOPTIONSTATS_TABLE = """
 		rcpvs5 FLOAT(4),
 		rcpvs10 FLOAT(4),
 		rcpvs20 FLOAT(4),
+		rcv2oi5 FLOAT(4),
+		rcv2oi10 FLOAT(4),
+		rcv2oi20 FLOAT(4),
+		rpv2oi5 FLOAT(4),
+		rpv2oi10 FLOAT(4),
+		rpv2oi20 FLOAT(4),
+		rtv2oi5 FLOAT(4),
+		rtv2oi10 FLOAT(4),
+		rtv2oi20 FLOAT(4),
 		PRIMARY KEY(date_current, ticker)
 	)
 """
@@ -182,13 +194,6 @@ OHLCSTATS_TABLE = """
 		hvol6m FLOAT(4),
 		hvol9m FLOAT(4),
 		hvol12m FLOAT(4),
-		avgvolume10 BIGINT,
-		avgvolume21 BIGINT,
-		avgvolume42 BIGINT,
-		avgvolume63 BIGINT,
-		avgvolume126 BIGINT,
-		avgvolume189 BIGINT,
-		avgvolume252 BIGINT,
 		relvolume10 FLOAT(4),
 		relvolume21 FLOAT(4),
 		relvolume42 FLOAT(4),
@@ -202,6 +207,9 @@ OHLCSTATS_TABLE = """
 		pctchange21d FLOAT(4),
 		pctchange42d FLOAT(4),
 		pctchange63d FLOAT(4),
+		pctchange126d FLOAT(4),
+		pctchange189d FLOAT(4),
+		pctchange252d FLOAT(4),
 		PRIMARY KEY(date_current, ticker)
 	)
 """

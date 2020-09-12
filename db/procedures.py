@@ -26,26 +26,26 @@ UPDATE_DATE_SERIES = """
 		ON d1.lag = (d2.lag - 1)
 	SET
 		d1.prev_lag_date = d2.lag_date,
-		d1._5 = IF(d1.lag < 5, 1, 0),
-		d1._10 = IF(d1.lag < 10, 1, 0),
-		d1._20 = IF(d1.lag < 20, 1, 0),
-		d1._21 = IF(d1.lag < 21, 1, 0),
-		d1._42 = IF(d1.lag < 42, 1, 0),
-		d1._63 = IF(d1.lag < 63, 1, 0),
-		d1._126 = IF(d1.lag < 126, 1, 0),
-		d1._189 = IF(d1.lag < 189, 1, 0),
-		d1._252 = IF(d1.lag < 252, 1, 0),
-		d1._0d = IF(d1.lag = 0, 1, 0),
-		d1._1d = IF(d1.lag = 1, 1, 0),
-		d1._5d = IF(d1.lag = 5, 1, 0),
-		d1._10d = IF(d1.lag = 10, 1, 0),
-		d1._20d = IF(d1.lag = 20, 1, 0),
-		d1._21d = IF(d1.lag = 21, 1, 0),
-		d1._42d = IF(d1.lag = 42, 1, 0),
-		d1._63d = IF(d1.lag = 63, 1, 0),
-		d1._126d = IF(d1.lag = 126, 1, 0),
-		d1._189d = IF(d1.lag = 189, 1, 0),
-		d1._252d = IF(d1.lag = 252, 1, 0);
+		d1._5 = IF(d1.lag < 5, 1, NULL),
+		d1._10 = IF(d1.lag < 10, 1, NULL),
+		d1._20 = IF(d1.lag < 20, 1, NULL),
+		d1._21 = IF(d1.lag < 21, 1, NULL),
+		d1._42 = IF(d1.lag < 42, 1, NULL),
+		d1._63 = IF(d1.lag < 63, 1, NULL),
+		d1._126 = IF(d1.lag < 126, 1, NULL),
+		d1._189 = IF(d1.lag < 189, 1, NULL),
+		d1._252 = IF(d1.lag < 252, 1, NULL),
+		d1._0d = IF(d1.lag = 0, 1, NULL),
+		d1._1d = IF(d1.lag = 1, 1, NULL),
+		d1._5d = IF(d1.lag = 5, 1, NULL),
+		d1._10d = IF(d1.lag = 10, 1, NULL),
+		d1._20d = IF(d1.lag = 20, 1, NULL),
+		d1._21d = IF(d1.lag = 21, 1, NULL),
+		d1._42d = IF(d1.lag = 42, 1, NULL),
+		d1._63d = IF(d1.lag = 63, 1, NULL),
+		d1._126d = IF(d1.lag = 126, 1, NULL),
+		d1._189d = IF(d1.lag = 189, 1, NULL),
+		d1._252d = IF(d1.lag = 252, 1, NULL);
 """
 
 INSERT_AGG_OPTION_STATS = """
@@ -115,32 +115,28 @@ INSERT_OHLC_STATS = """
 			SELECT
 				MAX(date_current) AS date_current,
 				ticker,
-				SQRT(((SUM(POWER(pct_change, 2) * _21) - (POWER(SUM(_21 * pct_change), 2) / 21)) / 20) * 252 ) * 100 AS hvol1m,
-				SQRT(((SUM(POWER(pct_change, 2) * _42) - (POWER(SUM(_42 * pct_change), 2) / 42)) / 41) * 252 ) * 100 AS hvol2m,
-				SQRT(((SUM(POWER(pct_change, 2) * _63) - (POWER(SUM(_63 * pct_change), 2) / 63)) / 62) * 252 ) * 100 AS hvol3m,
-				SQRT(((SUM(POWER(pct_change, 2) * _126) - (POWER(SUM(_126 * pct_change), 2) / 126)) / 125) * 252 ) * 100 AS hvol6m,
-				SQRT(((SUM(POWER(pct_change, 2) * _189) - (POWER(SUM(_189 * pct_change), 2) / 189)) / 188) * 252 ) * 100 AS hvol9m,
-				SQRT(((SUM(POWER(pct_change, 2) * _252) - (POWER(SUM(_252 * pct_change), 2) / 252)) / 251) * 252 ) * 100 AS hvol12m,
-				SUM(volume * _10) / 10 AS avgvolume10,
-				SUM(volume * _21) / 21 AS avgvolume21,
-				SUM(volume * _42) / 42 AS avgvolume42,
-				SUM(volume * _63) / 63 AS avgvolume63,
-				SUM(volume * _126) / 126 AS avgvolume126,
-				SUM(volume * _189) / 189 AS avgvolume189,
-				SUM(volume * _252) / 252 AS avgvolume252,
-				SUM(volume * _0d) / (SUM(volume * _10) / 10) AS relvolume10,
-				SUM(volume * _0d) / (SUM(volume * _21) / 21) AS relvolume21,
-				SUM(volume * _0d) / (SUM(volume * _42) / 42) AS relvolume42,
-				SUM(volume * _0d) / (SUM(volume * _63) / 63) AS relvolume63,
-				SUM(volume * _0d) / (SUM(volume * _126) / 126) AS relvolume126,
-				SUM(volume * _0d) / (SUM(volume * _189) / 189) AS relvolume189,
-				SUM(volume * _0d) / (SUM(volume * _252) / 252) AS relvolume252,
+				STDDEV(pct_change * _21) * SQRT(252) * 100 AS hvol1m,
+				STDDEV(pct_change * _43) * SQRT(252) * 100 AS hvol2m,
+				STDDEV(pct_change * _63) * SQRT(252) * 100 AS hvol3m,
+				STDDEV(pct_change * _126) * SQRT(252) * 100 AS hvol6m,
+				STDDEV(pct_change * _189) * SQRT(252) * 100 AS hvol9m,
+				STDDEV(pct_change * _252) * SQRT(252) * 100 AS hvol12m,
+				SUM(volume * _0d) / AVG(volume * _10) AS relvolume10,
+				SUM(volume * _0d) / AVG(volume * _21) AS relvolume21,
+				SUM(volume * _0d) / AVG(volume * _42) AS relvolume42,
+				SUM(volume * _0d) / AVG(volume * _63) AS relvolume63,
+				SUM(volume * _0d) / AVG(volume * _126) AS relvolume126,
+				SUM(volume * _0d) / AVG(volume * _189) AS relvolume189,
+				SUM(volume * _0d) / AVG(volume * _252) AS relvolume252,
 				pct_change AS pctchange1d,
 				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _5d) - 1) AS pctchange5d,
 				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _10d) - 1) AS pctchange10d,
 				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _21d) - 1) AS pctchange21d,
 				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _42d) - 1) AS pctchange42d,
-				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _63d) - 1) AS pctchange63d
+				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _63d) - 1) AS pctchange63d,
+				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _126d) - 1) AS pctchange126d,
+				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _189d) - 1) AS pctchange189d,
+				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _252d) - 1) AS pctchange252d
 			FROM
 				(
 					SELECT
@@ -184,18 +180,27 @@ UPDATE_AGG_OPTION_STATS = """
 					SELECT
 						MAX(date_current) as date_current,
 						ticker,
-						SUM(_0d * call_volume) / (SUM(call_volume * _5) / 5) AS rcv5,
-						SUM(_0d * put_volume) / (SUM(put_volume * _5) / 5) AS rpv5,
-						SUM(_0d * total_volume) / (SUM(total_volume * _5) / 5) AS rtv5,
-						SUM(_0d * call_volume) / (SUM(call_volume * _10) / 10) AS rcv10,
-						SUM(_0d * put_volume) / (SUM(put_volume * _10) / 10) AS rpv10,
-						SUM(_0d * total_volume) / (SUM(total_volume * _10) / 10) AS rtv10,
-						SUM(_0d * call_volume) / (SUM(call_volume * _20) / 20) AS rcv20,
-						SUM(_0d * put_volume) / (SUM(put_volume * _20) / 20) AS rpv20,
-						SUM(_0d * total_volume) / (SUM(total_volume * _20) / 20) AS rtv20,
-						SUM(_0d * cpv_spread) / (SUM(cpv_spread * _5) / 5) AS rcpvs5,
-						SUM(_0d * cpv_spread) / (SUM(cpv_spread * _10) / 10) AS rcpvs10,
-						SUM(_0d * cpv_spread) / (SUM(cpv_spread * _20) / 20) AS rcpvs20
+						SUM(_0d * call_volume) / AVG(call_volume * _5) AS rcv5,
+						SUM(_0d * put_volume) / AVG(put_volume * _5) AS rpv5,
+						SUM(_0d * total_volume) / AVG(total_volume * _5) AS rtv5,
+						SUM(_0d * call_volume) / AVG(call_volume * _10) AS rcv10,
+						SUM(_0d * put_volume) / AVG(put_volume * _10) AS rpv10,
+						SUM(_0d * total_volume) / AVG(total_volume * _10) AS rtv10,
+						SUM(_0d * call_volume) / AVG(call_volume * _20) AS rcv20,
+						SUM(_0d * put_volume) / AVG(put_volume * _20) AS rpv20,
+						SUM(_0d * total_volume) / AVG(total_volume * _20) AS rtv20,
+						SUM(_0d * cpv_spread) / AVG(cpv_spread * _5) AS rcpvs5,
+						SUM(_0d * cpv_spread) / AVG(cpv_spread * _10) AS rcpvs10,
+						SUM(_0d * cpv_spread) / AVG(cpv_spread * _20) AS rcpvs20
+						SUM(_0d * call_v2oi) / AVG(call_v2oi * _5) AS rcv2oi5,
+						SUM(_0d * call_v2oi) / AVG(call_v2oi * _10) AS rcv2oi10,
+						SUM(_0d * call_v2oi) / AVG(call_v2oi * _20) AS rcv2oi20
+						SUM(_0d * put_v2oi) / AVG(put_v2oi * _5) AS rpv2oi5,
+						SUM(_0d * put_v2oi) / AVG(put_v2oi * _10) AS rpv2oi10,
+						SUM(_0d * put_v2oi) / AVG(put_v2oi * _20) AS rpv2oi20
+						SUM(_0d * total_v2oi) / AVG(total_v2oi * _5) AS rtv2oi5,
+						SUM(_0d * total_v2oi) / AVG(total_v2oi * _10) AS rtv2oi10,
+						SUM(_0d * total_v2oi) / AVG(total_v2oi * _20) AS rtv2oi20
 					FROM
 						aggoptionstats{modifier} AS o
 					INNER JOIN
@@ -223,6 +228,15 @@ UPDATE_AGG_OPTION_STATS = """
 		aggoptionstats{modifier}.rcpvs5 = t2.rcpvs5,
 		aggoptionstats{modifier}.rcpvs10 = t2.rcpvs10,
 		aggoptionstats{modifier}.rcpvs20 = t2.rcpvs20;
+		aggoptionstats{modifier}.rcv2oi5 = t2.rcv2oi5,
+		aggoptionstats{modifier}.rcv2oi10 = t2.rcv2oi10,
+		aggoptionstats{modifier}.rcv2oi20 = t2.rcv2oi20;
+		aggoptionstats{modifier}.rpv2oi5 = t2.rpv2oi5,
+		aggoptionstats{modifier}.rpv2oi10 = t2.rpv2oi10,
+		aggoptionstats{modifier}.rpv2oi20 = t2.rpv2oi20;
+		aggoptionstats{modifier}.rtv2oi5 = t2.rtv2oi5,
+		aggoptionstats{modifier}.rtv2oi10 = t2.rtv2oi10,
+		aggoptionstats{modifier}.rtv2oi20 = t2.rtv2oi20;
 
 """
 
@@ -245,9 +259,12 @@ INSERT_OPTION_STATS = """
 				100 * (SUM(_0d * implied_volatility) - SUM(_5d * implied_volatility)) AS ivchange5d,
 				100 * (SUM(_0d * implied_volatility) - SUM(_10d * implied_volatility)) AS ivchange10d,
 				100 * (SUM(_0d * implied_volatility) - SUM(_20d * implied_volatility)) AS ivchange20d,
-				SUM(_0d * volume) / (SUM(_5 * volume) / 5) AS relvolume5,
-				SUM(_0d * volume) / (SUM(_10 * volume) / 10) AS relvolume10,
-				SUM(_0d * volume) / (SUM(_20 * volume) / 20) AS relvolume20
+				SUM(_0d * volume) / AVG(_5 * volume) AS relvolume5,
+				SUM(_0d * volume) / AVG(_10 * volume) AS relvolume10,
+				SUM(_0d * volume) / AVG(_20 * volume) AS relvolume20,
+				SUM(_0d * (volume / open_interest)) / AVG(_5 * (volume / open_interest)) AS relvolume2oi5,
+				SUM(_0d * (volume / open_interest)) / AVG(_10 * (volume / open_interest)) AS relvolume2oi10,
+				SUM(_0d * (volume / open_interest)) / AVG(_20 * (volume / open_interest)) AS relvolume2oi20
 			FROM
 				options{modifier} AS o
 			INNER JOIN
@@ -257,7 +274,7 @@ INSERT_OPTION_STATS = """
 					FROM
 						dateseries
 					WHERE
-						lag < 20
+						lag <= 20
 				) AS d
 				ON
 					o.date_current = d.lag_date
@@ -314,16 +331,11 @@ moneys = list(range(80, 125, 5))
 lags = ["_63", "_126", "_252"]
 lag_names = ["3", "6", "12"]
 
-ops = ""
+first_ops = ""
 for e in expirations:
 	for m in moneys:
-		ops += f"IF(m{e}m{m} * LAG_SERIES = 0, NULL, m{e}m{m} * LAG_SERIES) AS m{e}m{m}wLAG_NAME, \n"
-
-first_ops = ""
-for lag, lag_name in zip(lags, lag_names):
-	_ops = ops.replace("LAG_SERIES", lag)
-	_ops = _ops.replace("LAG_NAME", lag_name)
-	first_ops += _ops
+		for lag, lag_name in zip(lags, lag_names):
+			first_ops += f"m{e}m{m} * {lag} AS m{e}m{m}w{lag_name}, \n"
 first_ops = first_ops[:-3]
 
 second_ops = ""
