@@ -13,11 +13,12 @@ class Connector:
 	def __init__(self, CONFIG, date, logger=None):
 
 		self.db = CONFIG['db']
-		self.db_address = CONFIG['db_address'].replace("finance", "test")
+		self.db_address = CONFIG['db_address']
 		self.engine = sql.create_engine(self.db_address,
-								   		pool_size=10,
+								   		pool_size=3,
 								   		max_overflow=0,
-								   		pool_recycle=3600)
+								   		pool_recycle=299,
+								   		pool_pre_ping=True)
 
 		self.max_tries = 10
 		self.date = date
@@ -95,10 +96,6 @@ class Connector:
 		batchtickers = pd.DataFrame(tickers, columns = ['ticker'])
 		self.write(f"batchtickers{batch_id}", batchtickers)
 
-	def set_date_current(self):
-		
-		self.execute(f"""SET @date_current = "{self.date}";""")
-
 	def init_date_series(self):
 
 		self.set_date_current()
@@ -110,11 +107,11 @@ class Connector:
 						lag_date
 					)
 				VALUES
-					(0, "{DATE}");
+					(0, "{date}");
 			""".format(DATE=self.date))
 		self.execute("SET @i = 0;")
-		self.execute(INIT_DATE_SERIES.format(modifier=""))
-		self.execute(UPDATE_DATE_SERIES.format(modifier=""))
+		self.execute(INIT_DATE_SERIES.format(modifier="", date=self.date))
+		self.execute(UPDATE_DATE_SERIES)
 
 	def get_equity_tickers(self, N_USD, N_CAD):
 
@@ -172,11 +169,11 @@ class Connector:
 
 		def derived_engine():
 
-			self.set_date_current()
-
 			for name, procedure in DERIVED_PROCEDURES.items():
 				self.logger.info(f"Derived Engine,{batch_id},Executing Procedure,{name}")
-				self.execute(procedure.replace("batchtickers", f"batchtickers{batch_id}"))
+				procedure = procedure.replace("batchtickers", f"batchtickers{batch_id}")
+				procedure = procedure.format(date=self.date)
+				self.execute(procedure)
 
 		thread = Thread(target = derived_engine)
 		thread.start()

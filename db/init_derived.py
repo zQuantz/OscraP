@@ -145,42 +145,37 @@ def derive_stats():
 	for date in sorted(os.listdir(NEW['equity'])):
 
 		print(f"Creating dateseries table for date {date}.")
-		_connector.execute(f"""SET @date_current = "{date}";""")
-
 		_connector.execute("DELETE FROM dateseries;")
 		_connector.execute("SET @i = -1;")
-		_connector.execute(INIT_DATE_SERIES.format(modifier="BACK"))
+		_connector.execute(INIT_DATE_SERIES.format(modifier="BACK", date=date))
 		_connector.execute(UPDATE_DATE_SERIES)
 
-		for statement in INIT_DATE_SERIES:
-			_connector.execute(statement.format(modifier="BACK"))
-
 		print("Inserting OHLC Stats")
-		_connector.execute(INSERT_OHLC_STATS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_OHLC_STATS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Agg Option Stats")
-		_connector.execute(INSERT_AGG_OPTION_STATS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_AGG_OPTION_STATS.format(modifier="BACK", subset="", date=date))
 
 		print("Updating Agg Option Stats")
-		_connector.execute(UPDATE_AGG_OPTION_STATS.format(modifier="BACK", subset=""))
+		_connector.execute(UPDATE_AGG_OPTION_STATS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Options Stats")
-		_connector.execute(INSERT_OPTION_STATS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_OPTION_STATS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Surface Skew")
-		_connector.execute(INSERT_SURFACE_SKEW.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_SURFACE_SKEW.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Surface Stats")
-		_connector.execute(INSERT_SURFACE_STATS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_SURFACE_STATS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Options Counts")
-		_connector.execute(INSERT_OPTION_COUNTS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_OPTION_COUNTS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Analysis Counts")
-		_connector.execute(INSERT_ANALYSIS_COUNTS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_ANALYSIS_COUNTS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Keystats Counts")
-		_connector.execute(INSERT_KEYSTATS_COUNTS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_KEYSTATS_COUNTS.format(modifier="BACK", subset="", date=date))
 
 		print("\n----------\n")
 
@@ -196,14 +191,11 @@ def derive_tickermaps():
 
 	for date in sorted(os.listdir(NEW['equity'])):
 
-		print(f"Setting date_current to {date}")
-		_connector.execute(f"""SET @date_current = "{date}";""")
-
 		print("Inserting Ticker-Dates")
-		_connector.execute(INSERT_TICKER_DATES.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_TICKER_DATES.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Ticker-Option IDs")
-		_connector.execute(INSERT_TICKER_OIDS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_TICKER_OIDS.format(modifier="BACK", subset="", date=date))
 
 		print("\n----------\n")
 

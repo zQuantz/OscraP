@@ -67,21 +67,21 @@ def compress_data():
 				
 				print("Compressing Equity Folder:", folder.name)
 
-				with tar.open(f"{TAR[key]}/{folder}.tar.xz", "x:xz") as tar_file:
+				with tar.open(f"{TAR[key]}/{folder.name}.tar.xz", "x:xz") as tar_file:
 
-					for file in os.listdir(f"{NEW[key]}/{folder}"):
-						tar_file.add(f"{NEW[key]}/{folder}/{file}", file)
+					for file in os.listdir(f"{NEW[key]}/{folder.name}"):
+						tar_file.add(f"{NEW[key]}/{folder.name}/{file}", file)
 
 		else:
 
-			for file in sorted(os.listdir(NEW[key])):
+			for file in sorted(NEW[key].iterdir()):
 
-				print(f"Compressing {key.capitalize()} File:", file)
+				print(f"Compressing {key.capitalize()} File:", file.name)
 
-				basename = file.split(".")[0]
+				basename = file.name.split(".")[0]
 				
 				with tar.open(f"{TAR[key]}/{basename}.tar.xz", "x:xz") as tar_file:
-					tar_file.add(f"{NEW[key]}/{file}", file)
+					tar_file.add(f"{NEW[key]}/{file.name}", file.name)
 
 ###################################################################################################
 
@@ -372,9 +372,9 @@ def init():
 
 def main():
 
-	download_data()
-	transform()
-	init()
+	# download_data()
+	# transform()
+	# init()
 	compress_data()
 
 if __name__ == "__main__":

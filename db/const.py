@@ -12,6 +12,8 @@ DATE = datetime.today().strftime("%Y-%m-%d")
 with open(f"{DIR}/../config.json", "r") as file:
 	CONFIG = json.loads(file.read())
 
+CONFIG['db_address'] = CONFIG['db_address'].replace("test", "finance")
+
 from connector import Connector
 _connector = Connector(CONFIG, DATE)
 

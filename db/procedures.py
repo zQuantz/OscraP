@@ -13,7 +13,7 @@ INIT_DATE_SERIES = """
 		FROM
 			ohlc{modifier}
 		WHERE
-			date_current <= @date_current
+			date_current <= "{date}"
 		GROUP BY 
 			date_current DESC) AS t1;
 """
@@ -92,7 +92,7 @@ INSERT_AGG_OPTION_STATS = """
 		FROM
 			options{modifier}
 		WHERE
-			date_current = @date_current
+			date_current = "{date}"
 		{subset}
 		GROUP BY
 			ticker,
@@ -116,7 +116,7 @@ INSERT_OHLC_STATS = """
 				MAX(date_current) AS date_current,
 				ticker,
 				STDDEV(pct_change * _21) * SQRT(252) * 100 AS hvol1m,
-				STDDEV(pct_change * _43) * SQRT(252) * 100 AS hvol2m,
+				STDDEV(pct_change * _42) * SQRT(252) * 100 AS hvol2m,
 				STDDEV(pct_change * _63) * SQRT(252) * 100 AS hvol3m,
 				STDDEV(pct_change * _126) * SQRT(252) * 100 AS hvol6m,
 				STDDEV(pct_change * _189) * SQRT(252) * 100 AS hvol9m,
@@ -163,7 +163,7 @@ INSERT_OHLC_STATS = """
 				date_current DESC
 		) as t2
 	WHERE
-		date_current = @date_current
+		date_current = "{date}"
 	
 """
 
@@ -191,13 +191,13 @@ UPDATE_AGG_OPTION_STATS = """
 						SUM(_0d * total_volume) / AVG(total_volume * _20) AS rtv20,
 						SUM(_0d * cpv_spread) / AVG(cpv_spread * _5) AS rcpvs5,
 						SUM(_0d * cpv_spread) / AVG(cpv_spread * _10) AS rcpvs10,
-						SUM(_0d * cpv_spread) / AVG(cpv_spread * _20) AS rcpvs20
+						SUM(_0d * cpv_spread) / AVG(cpv_spread * _20) AS rcpvs20,
 						SUM(_0d * call_v2oi) / AVG(call_v2oi * _5) AS rcv2oi5,
 						SUM(_0d * call_v2oi) / AVG(call_v2oi * _10) AS rcv2oi10,
-						SUM(_0d * call_v2oi) / AVG(call_v2oi * _20) AS rcv2oi20
+						SUM(_0d * call_v2oi) / AVG(call_v2oi * _20) AS rcv2oi20,
 						SUM(_0d * put_v2oi) / AVG(put_v2oi * _5) AS rpv2oi5,
 						SUM(_0d * put_v2oi) / AVG(put_v2oi * _10) AS rpv2oi10,
-						SUM(_0d * put_v2oi) / AVG(put_v2oi * _20) AS rpv2oi20
+						SUM(_0d * put_v2oi) / AVG(put_v2oi * _20) AS rpv2oi20,
 						SUM(_0d * total_v2oi) / AVG(total_v2oi * _5) AS rtv2oi5,
 						SUM(_0d * total_v2oi) / AVG(total_v2oi * _10) AS rtv2oi10,
 						SUM(_0d * total_v2oi) / AVG(total_v2oi * _20) AS rtv2oi20
@@ -211,7 +211,7 @@ UPDATE_AGG_OPTION_STATS = """
 						ticker
 				) AS t1
 			WHERE
-				date_current = @date_current
+				date_current = "{date}"
 		) as t2
 	USING
 		(ticker, date_current)
@@ -227,13 +227,13 @@ UPDATE_AGG_OPTION_STATS = """
 		aggoptionstats{modifier}.rtv20 = t2.rtv20,
 		aggoptionstats{modifier}.rcpvs5 = t2.rcpvs5,
 		aggoptionstats{modifier}.rcpvs10 = t2.rcpvs10,
-		aggoptionstats{modifier}.rcpvs20 = t2.rcpvs20;
+		aggoptionstats{modifier}.rcpvs20 = t2.rcpvs20,
 		aggoptionstats{modifier}.rcv2oi5 = t2.rcv2oi5,
 		aggoptionstats{modifier}.rcv2oi10 = t2.rcv2oi10,
-		aggoptionstats{modifier}.rcv2oi20 = t2.rcv2oi20;
+		aggoptionstats{modifier}.rcv2oi20 = t2.rcv2oi20,
 		aggoptionstats{modifier}.rpv2oi5 = t2.rpv2oi5,
 		aggoptionstats{modifier}.rpv2oi10 = t2.rpv2oi10,
-		aggoptionstats{modifier}.rpv2oi20 = t2.rpv2oi20;
+		aggoptionstats{modifier}.rpv2oi20 = t2.rpv2oi20,
 		aggoptionstats{modifier}.rtv2oi5 = t2.rtv2oi5,
 		aggoptionstats{modifier}.rtv2oi10 = t2.rtv2oi10,
 		aggoptionstats{modifier}.rtv2oi20 = t2.rtv2oi20;
@@ -286,7 +286,7 @@ INSERT_OPTION_STATS = """
 				option_id ASC
 		) as t1
 	WHERE
-		date_current = @date_current
+		date_current = "{date}"
 
 """
 
@@ -320,7 +320,7 @@ INSERT_SURFACE_SKEW = """
 	FROM
 		surface{modifier}
 	WHERE
-		date_current = @date_current
+		date_current = "{date}"
 	{subset}
 """
 
@@ -384,7 +384,7 @@ INSERT_SURFACE_STATS = ("""
 					date_current DESC
 			) as t2
 		WHERE
-			date_current = @date_current;
+			date_current = "{date}";
 """)
 
 ###################################################################################################
@@ -400,7 +400,7 @@ INSERT_TICKER_DATES = """
 	FROM
 		options{modifier}
 	WHERE
-		date_current = @date_current
+		date_current = "{date}"
 	{subset}
 	GROUP BY
 		ticker, date_current
@@ -420,7 +420,7 @@ INSERT_TICKER_OIDS = """
 	FROM
 		options{modifier}
 	WHERE
-		date_current = @date_current
+		date_current = "{date}"
 	{subset}
 	GROUP BY
 		ticker,
@@ -439,7 +439,7 @@ INSERT_OPTION_COUNTS = """
 	FROM
 		options{modifier}
 	WHERE
-		date_current = @date_current
+		date_current = "{date}"
 	{subset}
 	GROUP BY
 		date_current,
@@ -458,7 +458,7 @@ INSERT_ANALYSIS_COUNTS = """
 	FROM
 		analysis{modifier}
 	WHERE
-		date_current = @date_current
+		date_current = "{date}"
 	{subset}
 	GROUP BY
 		date_current,
@@ -477,7 +477,7 @@ INSERT_KEYSTATS_COUNTS = """
 	FROM
 		keystats{modifier}
 	WHERE
-		date_current = @date_current
+		date_current = "{date}"
 	{subset}
 	GROUP BY
 		date_current,
