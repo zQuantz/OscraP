@@ -54,6 +54,7 @@ OPTIONS_TABLE = """
 OPTIONSTATS_TABLE = """
 	CREATE TABLE optionstatsBACK (
 		date_current DATE,
+		ticker VARCHAR(10),
 		option_id VARCHAR(40),
 		pctchange1d FLOAT(4),
 		pctchange5d FLOAT(4),

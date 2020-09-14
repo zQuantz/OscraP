@@ -250,6 +250,7 @@ INSERT_OPTION_STATS = """
 		(
 			SELECT
 				MAX(date_current) as date_current,
+				ticker,
 				option_id,
 				100 * ((SUM(_0d * option_price) / SUM(_1d * option_price)) - 1) AS pctchange1d,
 				100 * ((SUM(_0d * option_price) / SUM(_5d * option_price)) - 1) AS pctchange5d,
@@ -487,46 +488,50 @@ INSERT_KEYSTATS_COUNTS = """
 
 ###################################################################################################
 
-MODIFIER = ""
-SUBSET = """
-	 ticker IN (
-		SELECT
-			ticker
-		FROM
-			batchtickers
-	)
-"""
+def get_derived_procedures(date):
 
-DERIVED_PROCEDURE_NAMES = [
-	"Agg. Option Stats",
-	"OHLC Stats",
-	"Agg. Option Stats Update",
-	"Option Stats",
-	"Surface Stats",
-	"Surface Skew",
-	"Ticker-Dates Map",
-	"Ticker-OptionID Map",
-	"Option Counts",
-	"Analysis Counts",
-	"Key Stats Counts"
-]
+	MODIFIER = ""
+	SUBSET = """
+		 ticker IN (
+			SELECT
+				ticker
+			FROM
+				batchtickers
+		)
+	"""
 
-DERIVED_PROCEDURES = [
-	INSERT_AGG_OPTION_STATS.format(modifier=MODIFIER, subset="AND" + SUBSET),
-	INSERT_OHLC_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET.replace("ticker IN", "o1.ticker IN")),
-	UPDATE_AGG_OPTION_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET),
-	INSERT_OPTION_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET),
-	INSERT_SURFACE_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET),
-	INSERT_SURFACE_SKEW.format(modifier=MODIFIER, subset="AND" + SUBSET),
-	INSERT_TICKER_DATES.format(modifier=MODIFIER, subset="AND" + SUBSET),
-	INSERT_TICKER_OIDS.format(modifier=MODIFIER, subset="AND" + SUBSET),
-	INSERT_OPTION_COUNTS.format(modifier=MODIFIER, subset="AND" + SUBSET),
-	INSERT_ANALYSIS_COUNTS.format(modifier=MODIFIER, subset="AND" + SUBSET),
-	INSERT_KEYSTATS_COUNTS.format(modifier=MODIFIER, subset="AND" + SUBSET)
-]
+	DERIVED_PROCEDURE_NAMES = [
+		"Agg. Option Stats",
+		"OHLC Stats",
+		"Agg. Option Stats Update",
+		"Option Stats",
+		"Surface Stats",
+		"Surface Skew",
+		"Ticker-Dates Map",
+		"Ticker-OptionID Map",
+		"Option Counts",
+		"Analysis Counts",
+		"Key Stats Counts"
+	]
 
-DERIVED_PROCEDURES = {
-	name : procedure
-	for name, procedure
-	in zip(DERIVED_PROCEDURE_NAMES, DERIVED_PROCEDURES)
-}
+	DERIVED_PROCEDURES = [
+		INSERT_AGG_OPTION_STATS.format(modifier=MODIFIER, subset="AND" + SUBSET, date=date),
+		INSERT_OHLC_STATS.format(modifier=MODIFIER,
+								 subset="WHERE" + SUBSET.replace("ticker IN", "o1.ticker IN"),
+								 date=date),
+		UPDATE_AGG_OPTION_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET, date=date),
+		INSERT_OPTION_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET, date=date),
+		INSERT_SURFACE_STATS.format(modifier=MODIFIER, subset="WHERE" + SUBSET, date=date),
+		INSERT_SURFACE_SKEW.format(modifier=MODIFIER, subset="AND" + SUBSET, date=date),
+		INSERT_TICKER_DATES.format(modifier=MODIFIER, subset="AND" + SUBSET, date=date),
+		INSERT_TICKER_OIDS.format(modifier=MODIFIER, subset="AND" + SUBSET, date=date),
+		INSERT_OPTION_COUNTS.format(modifier=MODIFIER, subset="AND" + SUBSET, date=date),
+		INSERT_ANALYSIS_COUNTS.format(modifier=MODIFIER, subset="AND" + SUBSET, date=date),
+		INSERT_KEYSTATS_COUNTS.format(modifier=MODIFIER, subset="AND" + SUBSET, date=date)
+	]
+
+	return {
+		name : procedure
+		for name, procedure
+		in zip(DERIVED_PROCEDURE_NAMES, DERIVED_PROCEDURES)
+	}

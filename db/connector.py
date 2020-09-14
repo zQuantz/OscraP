@@ -1,4 +1,4 @@
-from procedures import DERIVED_PROCEDURES, INIT_DATE_SERIES, UPDATE_DATE_SERIES
+from procedures import get_derived_procedures, INIT_DATE_SERIES, UPDATE_DATE_SERIES
 from threading import Thread
 import sqlalchemy as sql
 from const import DIR
@@ -169,7 +169,7 @@ class Connector:
 
 		def derived_engine():
 
-			for name, procedure in DERIVED_PROCEDURES.items():
+			for name, procedure in get_derived_procedures(self.date).items():
 				self.logger.info(f"Derived Engine,{batch_id},Executing Procedure,{name}")
 				procedure = procedure.replace("batchtickers", f"batchtickers{batch_id}")
 				procedure = procedure.format(date=self.date)

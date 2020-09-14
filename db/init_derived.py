@@ -142,6 +142,31 @@ def derive_stats():
 	_connector.execute("DROP TABLE IF EXISTS keystatscountsBACK;")
 	_connector.execute(KEYSTATSCOUNTS_TABLE)
 
+	###############################################################################################
+
+	SUBSET = """
+		WHERE
+			ticker IN
+			(
+				SELECT
+					ticker
+				FROM
+					tickerdatesBACK
+				WHERE
+					date_current = "{date}"
+				AND ASCII(SUBSTRING(ticker, 1, 1))
+					BETWEEN {n1} AND {n2}
+			)
+	"""
+
+	ranges = [
+		(65, 69),
+		(70, 79),
+		(80, 91)
+	]
+
+	###############################################################################################
+
 	for date in sorted(os.listdir(NEW['equity'])):
 
 		print(f"Creating dateseries table for date {date}.")
@@ -160,7 +185,10 @@ def derive_stats():
 		_connector.execute(UPDATE_AGG_OPTION_STATS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Options Stats")
-		_connector.execute(INSERT_OPTION_STATS.format(modifier="BACK", subset="", date=date))
+		for i, _range in enumerate(ranges):
+			print(f"Batch #{i}. {_range}")
+			subset = SUBSET.format(date=date, n1=_range[0], n2=_range[1])
+			_connector.execute(INSERT_OPTION_STATS.format(modifier="BACK", subset=subset, date=date))
 
 		print("Inserting Surface Skew")
 		_connector.execute(INSERT_SURFACE_SKEW.format(modifier="BACK", subset="", date=date))
