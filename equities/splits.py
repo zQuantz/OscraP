@@ -1,4 +1,4 @@
-from const import DIR, DATE, logger
+from const import DIR, DATE, logger, _connector
 from datetime import datetime
 import pandas as pd
 
@@ -17,25 +17,37 @@ COLUMNS = [
 
 def process(dt):
 
-	df = pd.read_html(BASE.format(date=dt), attrs = {"class" : "datatable-component"})	
-	
-	if len(df) != 1:
-		raise Exception("Too Many Tables.")
+	tries, max_tries = 0, 5
+	while tries < max_tries:
 
-	df = df[0].iloc[1:, 1:]
-	df.columns = COLUMNS
+		try:
 
-	sf = df.split_factor.str
-	sf = sf.split(":", expand=True).astype(float)
+			df = pd.read_html(BASE.format(date=dt), attrs = {"class" : "datatable-component"})	
+			
+			if len(df) != 1:
+				raise Exception("Too Many Tables.")
 
-	df = df[~df.ticker.str.contains(":CA")]
-	df['split_factor'] = sf[1] / sf[0]
-	df['processed'] = False
+			df = df[0].iloc[1:, 1:]
+			df.columns = COLUMNS
 
-	for col in COLUMNS[-3:]:
-		df[col] = pd.to_datetime(df[col]).astype(str)
+			sf = df.split_factor.str
+			sf = sf.split(":", expand=True).astype(float)
 
-	return df
+			df = df[~df.ticker.str.contains(":CA")]
+			df['split_factor'] = sf[1] / sf[0]
+			df['processed'] = False
+
+			for col in COLUMNS[-3:]:
+				df[col] = pd.to_datetime(df[col]).astype(str)
+
+			return df
+
+		except Exception as e:
+
+			tries += 1
+
+	if tries > max_tries:
+		raise Exception("Too Many Tries.")
 
 def once():
 
@@ -47,19 +59,10 @@ def once():
 		
 		print("Processing:", dt)
 
-		tries, max_tries = 0, 5
-		while tries < max_tries:
-			
-			try:
-				dfs.append(process(dt))
-				break
-			except Exception as e:
-				print(e)
-
-			tries += 1
-
-			if tries > max_tries:
-				print("Too Many Tries.")
+		try:
+			dfs.append(process(dt))
+		except Exception as e:
+			1/0
 		
 	df = pd.concat(dfs)
 	df = df.sort_values("ex_date", ascending=True)
@@ -71,24 +74,24 @@ def splits():
 
 	now = datetime.now()
 	dt = datetime(now.year, now.month, 1).strftime("%m/%d/%Y")
-	
-	tries = 0
-	max_tries = 5
 
-	while tries < max_tries:
+	try:
 
-		try:
-			df = process(dt)
-			break
-		except Exception as e:
-			logger.warning(f"SCRAPER,SPLITS,FAILURE,{e}")
+		df = process(dt)
 
-		tries += 1
+		_connector.execute("DELETE FROM stocksplitstmpBACK;")
+		_connector.write("stocksplitstmpBACK", df.reset_index(drop=True))
+		_connector.execute("""
+				INSERT IGNORE INTO
+					stocksplitsBACK
+				SELECT
+					*
+				FROM
+					stocksplitstmpBACK
+			""")
+		
+		logger.info(f"SCRAPER,SPLITS,TERMINATED,{len(df)}")
 
-		if tries > max_tries:
-			raise Exception("Splits. Too Many Tries.")
+	except Exception as e:
 
-	df = df[df.ex_date == DATE]
-	logger.info(f"SCRAPER,SPLITS,TERMINATED,{len(df)}")
-
-	return df
+		logger.warning(f"SCRAPER,SPLITS,FAILURE,{e}")

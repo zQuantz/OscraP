@@ -55,7 +55,8 @@ def main():
 
 	init_folders()
 	_connector.init_date_series()
-	# _connector.write("stocksplits", splits())
+
+	# splits()
 
 	tickers = _connector.get_equity_tickers(N_USD)
 	checkpoint = len(tickers) / BATCH_SIZE
