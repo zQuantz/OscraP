@@ -122,6 +122,7 @@ def transform_keystats():
 
 	def transformation(keystats):
 
+		keystats = keystats[~keystats.ticker.str.contains(".TO")]
 		return keystats.dropna(subset=["value"])
 
 	for folder in sorted(OLD['equity'].iterdir()):
@@ -141,6 +142,7 @@ def transform_analysis():
 
 	def transformation(analysis):
 
+		analysis = analysis[~analysis.ticker.str.contains(".TO")]
 		return analysis.dropna(subset=["value"])
 
 	for folder in sorted(OLD['equity'].iterdir()):
@@ -160,6 +162,9 @@ def transform_ohlc():
 
 	def transformation(ohlc):
 
+		ohlc = ohlc[~ohlc.ticker.str.contains(".TO")]
+		ohlc['dividend_yield'] *= 100
+
 		rename = {
 			key : f"{key}_price"
 			for key in ["open", "high", "low", "close"]
@@ -167,8 +172,6 @@ def transform_ohlc():
 		rename['stock_volume'] = 'volume'
 		rename['adj_close'] = 'adjclose_price'
 		ohlc = ohlc.rename(rename, axis=1)
-
-		ohlc['dividend_yield'] *= 100
 
 		return ohlc
 

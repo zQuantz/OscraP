@@ -11,8 +11,7 @@ from gcp import send_gcp_metric
 ###################################################################################################
 
 BATCH_SIZE = 50
-N_USD = 1350
-N_CAD = 150
+N_USD = 1500
 
 ###################################################################################################
 
@@ -56,7 +55,7 @@ def main():
 	init_folders()
 	_connector.init_date_series()
 
-	tickers = _connector.get_equity_tickers(N_USD, N_CAD)
+	tickers = _connector.get_equity_tickers(N_USD)
 	checkpoint = len(tickers) / BATCH_SIZE
 	checkpoint = int(checkpoint / 4)
 
@@ -102,7 +101,8 @@ def main():
 
 if __name__ == '__main__':
 
+	main()
 	try:
-		main()
+		True
 	except Exception as e:
 		logger.warning(f"SCRAPER,JOB,MAIN ERROR,{e},")

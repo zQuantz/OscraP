@@ -128,7 +128,7 @@ INSERT_OHLC_STATS = """
 				SUM(volume * _0d) / AVG(volume * _126) AS relvolume126,
 				SUM(volume * _0d) / AVG(volume * _189) AS relvolume189,
 				SUM(volume * _0d) / AVG(volume * _252) AS relvolume252,
-				pct_change AS pctchange1d,
+				100 * pct_change AS pctchange1d,
 				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _5d) - 1) AS pctchange5d,
 				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _10d) - 1) AS pctchange10d,
 				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _21d) - 1) AS pctchange21d,

@@ -95,13 +95,13 @@ class Ticker():
 				self.logger.warning(f"{ticker},{batch_id},Analysis,Failure,{e}")
 			self.sleep()
 
-		if ('.TO' not in ticker) and (not retries or retries['options']):
+		if not retries or retries['options']:
 			try:
 				self.options = []
 				self.get_options()
 				self.logger.info(f"{ticker},{batch_id},Options,Success,")	
 			except Exception as e:
-				self.logger.warning(f"{ticker},{batch_id},Options,Failure,{e}")					
+				self.logger.warning(f"{ticker},{batch_id},Options,Failure,{e}")				
 			self.sleep()
 
 	def sleep(self):

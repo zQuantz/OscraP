@@ -98,7 +98,6 @@ class Connector:
 
 	def init_date_series(self):
 
-		self.set_date_current()
 		self.execute("DELETE FROM dateseries;")
 		self.execute("""
 				INSERT INTO 
@@ -108,32 +107,25 @@ class Connector:
 					)
 				VALUES
 					(0, "{date}");
-			""".format(DATE=self.date))
+			""".format(date=self.date))
 		self.execute("SET @i = 0;")
 		self.execute(INIT_DATE_SERIES.format(modifier="", date=self.date))
 		self.execute(UPDATE_DATE_SERIES)
 
-	def get_equity_tickers(self, N_USD, N_CAD):
+	def get_equity_tickers(self, N_USD):
 
 		df = self.read("""
 				SELECT
-					*
+					ticker
 				FROM
 					instruments
 				WHERE
 					market_cap >= {}
+				AND exchange_code != "TSX"
 				ORDER BY
 					market_cap DESC
-			""".format(1_000_000))
-
-		usd = df[~df.exchange_code.isin(["TSX"])].iloc[:N_USD, :]
-		cad = df[df.exchange_code.isin(["TSX"])].iloc[:N_CAD, :]
-		
-		tickers = (usd.ticker.values.tolist() + cad.ticker.values.tolist())
-
-		df = df[df.ticker.isin(tickers)]
-		df = df.sort_values('market_cap', ascending=False)
-		df = df.drop_duplicates(subset=["ticker"], keep="first")
+				LIMIT {}
+			""".format(1_000_000, N_USD))
 
 		return tuple(df.ticker)
 
