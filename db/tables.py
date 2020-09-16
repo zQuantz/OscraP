@@ -279,6 +279,20 @@ TREASURYRATEMAP_TABLE = """
 	)
 """
 
+columns = ""
+for expiry in [1, 3, 6, 9, 12, 18, 24]:
+	for moneyness in range(80, 125, 5):
+		columns += f"m{expiry}m{moneyness} FLOAT(6), "
+
+SURFACE_TABLE = """
+	CREATE TABLE surfaceBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		{columns}
+		PRIMARY KEY(ticker, date_current)
+	)
+""".format(columns=columns)
+
 TICKERDATES_TABLE = """
 	CREATE TABLE tickerdatesBACK (
 		ticker VARCHAR(10),
@@ -322,19 +336,17 @@ KEYSTATSCOUNTS_TABLE = """
 	)
 """
 
-columns = ""
-for expiry in [1, 3, 6, 9, 12, 18, 24]:
-	for moneyness in range(80, 125, 5):
-		columns += f"m{expiry}m{moneyness} FLOAT(6), "
-
-SURFACE_TABLE = """
-	CREATE TABLE surfaceBACK (
-		date_current DATE,
+STOCKSPLITS_TABLE = """
+	CREATE TABLE stocksplitsBACK (
 		ticker VARCHAR(10),
-		{columns}
-		PRIMARY KEY(ticker, date_current)
+		split_factor FLOAT(8),
+		announcement_date DATE,
+		record_date DATE,
+		ex_date DATE,
+		processed BOOLEAN,
+		PRIMARY KEY(ticker, ex_date)
 	)
-""".format(columns=columns)
+"""
 
 ###################################################################################################
 
