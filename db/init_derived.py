@@ -170,10 +170,8 @@ def derive_stats():
 	for date in sorted(os.listdir(NEW['equity'])):
 
 		print(f"Creating dateseries table for date {date}.")
-		_connector.execute("DELETE FROM dateseries;")
-		_connector.execute("SET @i = -1;")
-		_connector.execute(INIT_DATE_SERIES.format(modifier="BACK", date=date))
-		_connector.execute(UPDATE_DATE_SERIES)
+		_connector.date = date
+		_connector.init_date_series()
 
 		print("Inserting OHLC Stats")
 		_connector.execute(INSERT_OHLC_STATS.format(modifier="BACK", subset="", date=date))
@@ -218,6 +216,8 @@ def derive_tickermaps():
 	_connector.execute(TICKEROIDS_TABLE)
 
 	for date in sorted(os.listdir(NEW['equity'])):
+
+		print("Processing", date)
 
 		print("Inserting Ticker-Dates")
 		_connector.execute(INSERT_TICKER_DATES.format(modifier="BACK", subset="", date=date))

@@ -33,8 +33,7 @@ BUCKET_NAME = CONFIG['gcp_bucket_name']
 EXCHANGES = [
 	"American Stock Exchange",
 	"NASDAQ Stock Exchange",
-	"New York Stock Exchange",
-	"Toronto Stock Exchange"
+	"New York Stock Exchange"
 ]
 
 LETTERS = sorted(set(string.ascii_letters.lower()))
@@ -268,7 +267,6 @@ def main():
 	DATA.mkdir()
 
 	for exchange_code, exchange_name in get_exchanges():
-		modifier = '.TO' if exchange_code == 'TSX' else ''
 		scrape(exchange_code, exchange_name, modifier)
 
 	logger.info("Indexing.")

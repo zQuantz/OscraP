@@ -163,7 +163,7 @@ def transform_ohlc():
 	def transformation(ohlc):
 
 		ohlc = ohlc[~ohlc.ticker.str.contains(".TO")]
-		ohlc['dividend_yield'] *= 100
+		ohlc.dividend_yield *= 100
 
 		rename = {
 			key : f"{key}_price"
@@ -211,6 +211,7 @@ def transform_instruments():
 
 	def transformation(instruments):
 
+		instruments = instruments[~instruments.exchange_code.isin(["TSX"])]
 		return instruments
 
 	for file in sorted(OLD['instruments'].iterdir()):
@@ -246,12 +247,12 @@ def transform():
 
 	print("Core Data Transformation")
 
+	transform_instruments()
 	transform_ohlc()
 	transform_options()
 	transform_analysis()
 	transform_keystats()
 	transform_rates()
-	transform_instruments()
 	transform_rss()
 
 ###################################################################################################
@@ -375,9 +376,9 @@ def init():
 
 def main():
 
-	# download_data()
-	# transform()
-	# init()
+	download_data()
+	transform()
+	init()
 	compress_data()
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ INIT_DATE_SERIES = """
 		FROM
 			ohlc{modifier}
 		WHERE
-			date_current <= "{date}"
+			date_current < "{date}"
 		GROUP BY 
 			date_current DESC) AS t1;
 """
@@ -56,7 +56,7 @@ INSERT_AGG_OPTION_STATS = """
 			ticker, 
 			call_volume, 
 			put_volume, 
-			cpv_spread, 
+			cpv_ratio, 
 			total_volume,
 			call_open_interest,
 			put_open_interest,
@@ -70,7 +70,7 @@ INSERT_AGG_OPTION_STATS = """
 		ticker,
 		call_volume,
 		put_volume,
-		call_volume - put_volume AS cpv_spread,
+		call_volume / put_volume AS cpv_ratio,
 		total_volume,
 		call_open_interest,
 		put_open_interest,
@@ -189,9 +189,9 @@ UPDATE_AGG_OPTION_STATS = """
 						SUM(_0d * call_volume) / AVG(call_volume * _20) AS rcv20,
 						SUM(_0d * put_volume) / AVG(put_volume * _20) AS rpv20,
 						SUM(_0d * total_volume) / AVG(total_volume * _20) AS rtv20,
-						SUM(_0d * cpv_spread) / AVG(cpv_spread * _5) AS rcpvs5,
-						SUM(_0d * cpv_spread) / AVG(cpv_spread * _10) AS rcpvs10,
-						SUM(_0d * cpv_spread) / AVG(cpv_spread * _20) AS rcpvs20,
+						SUM(_0d * cpv_ratio) / AVG(cpv_ratio * _5) AS rcpvs5,
+						SUM(_0d * cpv_ratio) / AVG(cpv_ratio * _10) AS rcpvs10,
+						SUM(_0d * cpv_ratio) / AVG(cpv_ratio * _20) AS rcpvs20,
 						SUM(_0d * call_v2oi) / AVG(call_v2oi * _5) AS rcv2oi5,
 						SUM(_0d * call_v2oi) / AVG(call_v2oi * _10) AS rcv2oi10,
 						SUM(_0d * call_v2oi) / AVG(call_v2oi * _20) AS rcv2oi20,
@@ -240,6 +240,9 @@ UPDATE_AGG_OPTION_STATS = """
 
 """
 
+
+(0.5 * (bid_price + ask_price) )
+
 INSERT_OPTION_STATS = """
 
 	INSERT INTO
@@ -256,10 +259,14 @@ INSERT_OPTION_STATS = """
 				100 * ((SUM(_0d * option_price) / SUM(_5d * option_price)) - 1) AS pctchange5d,
 				100 * ((SUM(_0d * option_price) / SUM(_10d * option_price)) - 1) AS pctchange10d,
 				100 * ((SUM(_0d * option_price) / SUM(_20d * option_price)) - 1) AS pctchange20d,
-				100 * (SUM(_0d * implied_volatility) - SUM(_1d * implied_volatility)) AS ivchange1d,
-				100 * (SUM(_0d * implied_volatility) - SUM(_5d * implied_volatility)) AS ivchange5d,
-				100 * (SUM(_0d * implied_volatility) - SUM(_10d * implied_volatility)) AS ivchange10d,
-				100 * (SUM(_0d * implied_volatility) - SUM(_20d * implied_volatility)) AS ivchange20d,
+				100 * ((SUM(_0d * (0.5 * (bid_price + ask_price) )) / SUM(_1d * (0.5 * (bid_price + ask_price) ))) - 1) AS midpctchange1d,
+				100 * ((SUM(_0d * (0.5 * (bid_price + ask_price) )) / SUM(_5d * (0.5 * (bid_price + ask_price) ))) - 1) AS midpctchange5d,
+				100 * ((SUM(_0d * (0.5 * (bid_price + ask_price) )) / SUM(_10d * (0.5 * (bid_price + ask_price) ))) - 1) AS midpctchange10d,
+				100 * ((SUM(_0d * (0.5 * (bid_price + ask_price) )) / SUM(_20d * (0.5 * (bid_price + ask_price) ))) - 1) AS midpctchange20d,
+				(SUM(_0d * implied_volatility) - SUM(_1d * implied_volatility)) AS ivchange1d,
+				(SUM(_0d * implied_volatility) - SUM(_5d * implied_volatility)) AS ivchange5d,
+				(SUM(_0d * implied_volatility) - SUM(_10d * implied_volatility)) AS ivchange10d,
+				(SUM(_0d * implied_volatility) - SUM(_20d * implied_volatility)) AS ivchange20d,
 				SUM(_0d * volume) / AVG(_5 * volume) AS relvolume5,
 				SUM(_0d * volume) / AVG(_10 * volume) AS relvolume10,
 				SUM(_0d * volume) / AVG(_20 * volume) AS relvolume20,

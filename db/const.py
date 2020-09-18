@@ -52,6 +52,7 @@ TABLE_NAMES = [
 	"surfacestats",
 	"surfaceskew",
 	"optionstats",
+	"ohlcstats",
 	"aggoptionstats",
 	"optionscounts",
 	"analysiscounts",
