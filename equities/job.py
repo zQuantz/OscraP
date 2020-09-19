@@ -3,7 +3,6 @@ from batch import main as batch_main
 from store import main as store
 from ticker import Ticker
 from report import report
-from splits import splits
 import sys, os
 
 sys.path.append(f"{DIR}/../utils")
@@ -55,8 +54,6 @@ def main():
 
 	init_folders()
 	_connector.init_date_series()
-
-	# splits()
 
 	tickers = _connector.get_equity_tickers(N_USD)
 	checkpoint = len(tickers) / BATCH_SIZE

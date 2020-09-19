@@ -1,6 +1,12 @@
-from const import DIR, DATE, logger, _connector
+from const import CONFIG, DIR, DATE, logger, _connector
 from datetime import datetime
+import tarfile as tar
 import pandas as pd
+import sys, os
+
+sys.path.append(f"{DIR}/../utils")
+from gcp import send_to_bucket
+from gcp import send_gcp_metric
 
 ###################################################################################################
 
@@ -12,6 +18,8 @@ COLUMNS = [
 	"record_date",
 	"ex_date"
 ]
+
+BUCKET_NAME = CONFIG['gcp_bucket_name']
 
 ###################################################################################################
 
@@ -77,21 +85,28 @@ def splits():
 
 	try:
 
-		df = process(dt)
+		df = once()
 
-		_connector.execute("DELETE FROM stocksplitstmpBACK;")
-		_connector.write("stocksplitstmpBACK", df.reset_index(drop=True))
-		_connector.execute("""
-				INSERT IGNORE INTO
-					stocksplitsBACK
-				SELECT
-					*
-				FROM
-					stocksplitstmpBACK
-			""")
+		filename = DIR / "split_data" / f"{DATE}.csv" 
+		df.to_csv(filename, index=False)
+		with tar.open(filename.with_suffix(".tar.xz"), "x:xz") as tar_file:
+			tar_file.add(filename, filename.name)
+		os.unlink(filename)
+
+		send_to_bucket("splits", BUCKET_NAME, f"{DATE}.tar.xz",
+				       f"{DIR}/split_data", logger=logger)
+
+		df = df[df.ex_date == DATE]
+		if len(df) != 0:
+			logger.info(f"SCRAPER,SPLITS,ADJUSTING,{len(df)}")
+			_connector.adjust_for_splits(df.ticker, df.split_factor)
 		
+		metric = 1
 		logger.info(f"SCRAPER,SPLITS,TERMINATED,{len(df)}")
 
 	except Exception as e:
 
+		metric = 0
 		logger.warning(f"SCRAPER,SPLITS,FAILURE,{e}")
+
+	send_gcp_metric(CONFIG, "splits_success_indicator", "int64_value", metric)

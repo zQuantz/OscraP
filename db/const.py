@@ -20,9 +20,10 @@ _connector = Connector(CONFIG, DATE)
 ###################################################################################################
 
 OLD = {
-	"equity" : f"{DIR}/data/old/equities",
-	"rates" : f"{DIR}/data/old/rates",
 	"instruments" : f"{DIR}/data/old/instruments",
+	"equity" : f"{DIR}/data/old/equities",
+	"splits" : f"{DIR}/data/old/splits",
+	"rates" : f"{DIR}/data/old/rates",
 	"rss" : f"{DIR}/data/old/rss"
 }
 

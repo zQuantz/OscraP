@@ -47,7 +47,7 @@ OPTIONS_TABLE = """
 		implied_volatility FLOAT(6),
 		volume INT UNSIGNED,
 		open_interest INT UNSIGNED,
-		PRIMARY KEY (date_current, option_id)
+		INDEX(date_current, option_id)
 	)
 """
 
@@ -74,7 +74,7 @@ OPTIONSTATS_TABLE = """
 		relvolume2oi5 FLOAT(4),
 		relvolume2oi10 FLOAT(4),
 		relvolume2oi20 FLOAT(4),
-		PRIMARY KEY(date_current, option_id)
+		INDEX(date_current, option_id)
 	)
 """
 

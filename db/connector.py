@@ -1,5 +1,6 @@
-from procedures import get_derived_procedures, INIT_DATE_SERIES, UPDATE_DATE_SERIES
+from datetime import datetime
 from threading import Thread
+from procedures import *
 import sqlalchemy as sql
 from const import DIR
 import pandas as pd
@@ -15,10 +16,10 @@ class Connector:
 		self.db = CONFIG['db']
 		self.db_address = CONFIG['db_address']
 		self.engine = sql.create_engine(self.db_address,
-								   		pool_size=3,
-								   		max_overflow=0,
-								   		pool_recycle=299,
-								   		pool_pre_ping=True)
+										pool_size=3,
+										max_overflow=0,
+										pool_recycle=299,
+										pool_pre_ping=True)
 
 		self.max_tries = 10
 		self.date = date
@@ -78,14 +79,14 @@ class Connector:
 
 		return self.read("""
 				SELECT
-				    TABLE_NAME AS tablename,
-				    TABLE_ROWS AS row_count
+					TABLE_NAME AS tablename,
+					TABLE_ROWS AS row_count
 				FROM
-				    information_schema.tables
+					information_schema.tables
 				WHERE
-				    TABLE_SCHEMA = "{db}"
+					TABLE_SCHEMA = "{db}"
 				AND
-				    TABLE_NAME in ("options", "ohlc", "analysis", "keystats")
+					TABLE_NAME in ("options", "ohlc", "analysis", "keystats")
 			""".format(db=self.db))
 
 
@@ -169,3 +170,58 @@ class Connector:
 
 		thread = Thread(target = derived_engine)
 		thread.start()
+
+	def adjust_for_splits(self, tickers, factors, modifier=""):
+
+		self.logger.info(f"SPLITS,INITIATED,{' '.join(tickers)},")
+
+		start_date = datetime.strptime("2020-07-01", "%Y-%m-%d")
+		end_date = datetime.strptime(self.date, "%Y-%m-%d")
+
+		dates = pd.date_range(start=start_date, end=end_date, freq="D")
+		dates = dates.astype(str)
+
+		batches = max(int((end_date - start_date).days / 15), 1)
+		batch_size = int(len(dates) / batches)
+		batches = [
+			dates[i - batch_size : i]
+			for i in range(batch_size, len(dates) + batch_size, batch_size)
+		]
+		batches = [(batch[0], batch[-1]) for batch in batches]
+		for i in range(len(batches) - 1):
+			batches[i] = (batches[i][0], batches[i+1][0])
+
+		self.logger.info(f"SPLITS,BATCHES,{len(batches)},")
+
+		###########################################################################################
+
+		for i, batch in enumerate(batches):
+
+			for ticker, factor in zip(tickers, factors):
+
+				self.logger.info(f"SPLITS,BATCH,{' '.join(batch)},{ticker} {factor}")
+
+				ohlc = SPLIT_OHLC_UPDATE.format(modifier=modifier,
+												factor=factor,
+												d1=batch[0],
+												d2=batch[1],
+												ticker=ticker)
+				self.execute(ohlc)
+				self.logger.info(f"SPLITS,BATCH,OHLC,COMPLETED")
+
+				options = SPLIT_OPTIONS_UPDATE.format(modifier=modifier,
+													  factor=factor,
+													  d1=batch[0],
+													  d2=batch[1],
+													  ticker=ticker)
+				self.execute(options)
+				self.logger.info(f"SPLITS,BATCH,OPTIONS,COMPLETED")
+
+				option_ids = SPLIT_OPTION_ID_UPDATE.format(modifier=modifier,
+														   factor=factor,
+														   d1=batch[0],
+														   d2=batch[1],
+														   ticker=ticker)
+				self.execute(option_ids)
+				
+				self.logger.info(f"SPLITS,BATCH,OPTION ID,COMPLETED")

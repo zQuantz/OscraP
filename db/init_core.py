@@ -21,7 +21,7 @@ def download_data():
 	os.mkdir(f"{DIR}/data/tar/old")
 	os.mkdir(f"{DIR}/data/tar/new")
 
-	FOLDERS = ["equities", "rates", "instruments", "rss"]
+	FOLDERS = ["equities", "rates", "instruments", "rss", "splits"]
 	for folder in FOLDERS:
 
 		os.mkdir(f"{DIR}/data/old/{folder}")
@@ -102,6 +102,12 @@ def transform_options():
 			}
 		options = options.rename(renames, axis=1)
 		options.implied_volatility *= 100
+
+		oid = options.ticker + ' ' + options.expiration_date.astype(str)
+		oid += ' ' + options.option_type
+		sp = options.strike_price.round(2).astype(str)
+		sp = sp.str.rstrip("0").str.rstrip(".")
+		options['option_id'] = oid + sp
 		
 		return options
 
@@ -163,7 +169,7 @@ def transform_ohlc():
 	def transformation(ohlc):
 
 		ohlc = ohlc[~ohlc.ticker.str.contains(".TO")]
-		ohlc.dividend_yield *= 100
+		ohlc['dividend_yield'] = ohlc.dividend_yield * 100
 
 		rename = {
 			key : f"{key}_price"
@@ -339,7 +345,6 @@ def init_equities():
 	_connector.write("keystatsBACK", keystats)
 
 def init_options():
-
 
 	print("Initializing Options")
 	_connector.execute("DROP TABLE IF EXISTS optionsBACK;")

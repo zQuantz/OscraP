@@ -282,8 +282,9 @@ class Ticker():
 
 		df = pd.DataFrame(self.options, columns = OPTION_COLS)
 		oid = df.ticker + ' ' + df.expiration_date + ' ' + df.option_type
-		oid += df.strike_price.round(2).astype(str)
-		df['option_id'] = oid
+		sp = df.strike_price.round(2).astype(str)
+		sp = sp.str.rstrip("0").str.rstrip(".")
+		df['option_id'] = oid + sp
 
 		if not self.retries and len(df) > 0:
 			
