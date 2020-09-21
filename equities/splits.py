@@ -119,8 +119,8 @@ def splits():
 
 	try:
 
-		df = process(dt)
-		store(df)
+		df = once()
+		# store(df)
 
 		_connector.execute("DELETE FROM stocksplitstmpBACK;")
 		_connector.write("stocksplitstmpBACK", df)
@@ -133,28 +133,12 @@ def splits():
 					stocksplitstmpBACK;
 			""")
 
-		###########################################################################################
-		## Need to adjust the Ticker-OIDS table.
-		## Need to adjust Agg Options Table.
-
 		df = df[df.ex_date == DATE]
 		if len(df) != 0:
 
 			logger.info(f"SCRAPER,SPLITS,ADJUSTING,{len(df)}")
-			
 			_connector.register_splits(P_COLUMNS, "BACK")
 			_connector.adjust_splits("BACK")
-
-			report_df = _connector.read("""
-					SELECT
-						*
-					FROM
-						stocksplitstatusBACK
-					WHERE
-						ex_date = "{date}"
-				""".format(date=DATE))
-
-		###########################################################################################
 		
 		metric = 1
 		title_modifier = "SUCCESS"
@@ -166,8 +150,19 @@ def splits():
 		title_modifier = "FAILURE"
 		logger.warning(f"SCRAPER,SPLITS,FAILURE,{e}")
 
+	###############################################################################################
+
+	report = _connector.read("""
+			SELECT
+				*
+			FROM
+				stocksplitstatusBACK
+			WHERE
+				ex_date = "{date}"
+		""".format(date=DATE))
+
 	send_gcp_metric(CONFIG, "splits_success_indicator", "int64_value", metric)
-	send_email(CONFIG, f"{title_modifier} - Stock Splits", report_df.to_html(), [], logger)
+	send_email(CONFIG, f"{title_modifier} - Stock Splits", report.to_html(), [], logger)
 
 if __name__ == '__main__':
 

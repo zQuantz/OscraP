@@ -175,7 +175,7 @@ class Connector:
 
 		self.logger.info(f"REGISTER SPLITS,INITIATED,{self.date},")
 
-		start_date = datetime.strptime("2020-07-01", "%Y-%m-%d")
+		start_date = datetime.strptime("2019-11-01", "%Y-%m-%d")
 		end_date = datetime.strptime(self.date, "%Y-%m-%d")
 
 		dates = pd.date_range(start=start_date, end=end_date, freq="D")
@@ -223,7 +223,9 @@ class Connector:
 		processes = pd.DataFrame(processes, columns = columns)
 		self.write(f"stocksplitstatus{modifier}", processes)
 
-	def adjust_splits(self, modifier=""):
+		###########################################################################################
+
+	def adjust_splits(self, modifier="", retake=False):
 
 		self.logger.info(f"ADJUST SPLITS,INITIATED,{self.date},")
 
@@ -248,10 +250,28 @@ class Connector:
 					d2 ASC;
 			""".format(modifier=modifier, date=self.date))
 
+		if not retake:
+
+			self.execute("""
+					DELETE FROM
+						tickeroids{modifier}
+					WHERE
+						ticker IN (
+							SELECT
+								DISTINCT ticker
+							FROM
+								stocksplitstatus{modifier}
+							WHERE
+								ex_date = "{date}"
+						)
+				""".format(modifier=modifier, date=self.date))
+
+		###########################################################################################
+
 		for row in df.values:
 
 			ticker, ex_date, procedure_name, d1, d2, split_factor = row
-			self.logger.info(f"SPLITS,PROCEDURE, {procedure_name} - {d1} {d2},{ticker} {split_factor}")
+			self.logger.info(f"SPLITS,PROCEDURE,{procedure_name} - {d1} {d2},{ticker} {split_factor}")
 			procedure = SPLIT_PROCEDURES[procedure_name]
 			procedure = procedure.format(modifier=modifier,
 										 factor=split_factor,
@@ -271,4 +291,29 @@ class Connector:
 			self.execute(procedure)
 			self.logger.info(f"SPLITS,PROCEDURE,{procedure_name},UPDATED")
 
-		
+		###########################################################################################
+
+		self.execute("""
+				UPDATE
+					compour9_test.stocksplits{modifier} AS sp
+				INNER JOIN
+					(
+						SELECT
+							ticker,
+							ex_date
+						FROM
+							compour9_test.stocksplitstatus{modifier}
+						WHERE
+							ex_date = "{date}"
+						GROUP BY
+							ticker,
+							ex_date
+						HAVING
+							COUNT(*) - SUM(IF(processed_timestamp IS NULL, 0, 1)) = 0
+					) as t1
+					USING(ticker, ex_date)
+				SET
+					sp.processed_timestamp = CURRENT_TIMESTAMP();
+			""".format(modifier=modifier, date=self.date))
+
+

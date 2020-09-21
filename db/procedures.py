@@ -509,6 +509,23 @@ SPLIT_OHLC_UPDATE = """
 	AND ticker = "{ticker}";
 """
 
+SPLIT_AGG_UPDATE = """
+	UPDATE
+		aggoptionstats{modifier}
+	SET
+		call_volume = ROUND(call_volume / {factor}, 0),
+		put_volume = ROUND(put_volume / {factor}, 0),
+		total_volume = ROUND(total_volume / {factor}, 0),
+		call_open_interest = ROUND(call_open_interest / {factor}, 0),
+		put_open_interest = ROUND(put_open_interest / {factor}, 0),
+		total_open_interest = ROUND(total_open_interest / {factor}, 0)
+	WHERE
+		date_current
+		BETWEEN "{d1}" AND "{d2}"
+	AND date_current < "{d2}"
+	AND ticker = "{ticker}";
+"""
+
 SPLIT_OPTIONS_UPDATE = """
 	UPDATE
 		options{modifier}
@@ -524,6 +541,23 @@ SPLIT_OPTIONS_UPDATE = """
 		BETWEEN "{d1}" AND "{d2}"
 	AND date_current < "{d2}"
 	AND ticker = "{ticker}";
+"""
+
+SPLIT_TICKEROIDS_UPDATE = """
+	INSERT IGNORE INTO
+		tickeroids{modifier}
+	SELECT
+		ticker,
+		option_id
+	FROM
+		options{modifier}
+	WHERE
+		date_current
+		BETWEEN "{d1}" AND "{d2}"
+	AND ticker = "{ticker}"
+	GROUP BY
+		ticker,
+		option_id
 """
 
 SPLIT_OPTION_ID_UPDATE = """
@@ -557,8 +591,10 @@ UPDATE_SPLIT_STATUS = """
 
 SPLIT_PROCEDURES = {
 	"SPLIT_OHLC_UPDATE" : SPLIT_OHLC_UPDATE,
+	"SPLIT_AGG_UPDATE" : SPLIT_AGG_UPDATE,
 	"SPLIT_OPTIONS_UPDATE" : SPLIT_OPTIONS_UPDATE,
 	"SPLIT_OPTION_ID_UPDATE" : SPLIT_OPTION_ID_UPDATE,
+	"SPLIT_TICKEROIDS_UPDATE" : SPLIT_TICKEROIDS_UPDATE
 }
 
 ###################################################################################################

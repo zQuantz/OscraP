@@ -268,13 +268,13 @@ def transform():
 
 	print("Core Data Transformation")
 
-	transform_instruments()
-	transform_ohlc()
-	transform_options()
-	transform_analysis()
-	transform_keystats()
-	transform_rates()
-	transform_rss()
+	# transform_instruments()
+	# transform_ohlc()
+	# transform_options()
+	# transform_analysis()
+	# transform_keystats()
+	# transform_rates()
+	# transform_rss()
 	transform_splits()
 
 ###################################################################################################
@@ -411,18 +411,18 @@ def init_splits():
 
 def init():
 
-	init_instruments()
-	init_rates()
-	init_equities()
-	init_options()
+	# init_instruments()
+	# init_rates()
+	# init_equities()
+	# init_options()
 	init_splits()
 
 def main():
 
-	download_data()
+	# download_data()
 	transform()
 	init()
-	compress_data()
+	# compress_data()
 
 if __name__ == "__main__":
 
