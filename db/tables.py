@@ -343,12 +343,27 @@ KEYSTATSCOUNTS_TABLE = """
 STOCKSPLITS_TABLE = """
 	CREATE TABLE stocksplitsBACK (
 		ticker VARCHAR(10),
-		split_factor FLOAT(8),
+		split_factor FLOAT(4),
 		announcement_date DATE,
 		record_date DATE,
 		ex_date DATE,
-		processed BOOLEAN,
-		PRIMARY KEY(ticker, ex_date)
+		processed_timestamp TIMESTAMP NULL DEFAULT NULL,
+		UNIQUE KEY(ticker, ex_date)
+	)
+"""
+STOCKSPLITSTMP_TABLE = STOCKSPLITS_TABLE.replace("stocksplits", "stocksplitstmp")
+
+STOCKSPLITSTATUS_TABLE = """
+	CREATE TABLE stocksplitstatusBACK (
+		ticker VARCHAR(10),
+		ex_date DATE,
+		procedure_order TINYINT,
+		procedure_name CHAR(25),
+		d1 DATE,
+		d2 DATE,
+		split_factor FLOAT(4),
+		processed_timestamp TIMESTAMP NULL DEFAULT NULL,
+		UNIQUE KEY(ticker, ex_date, procedure_name, d1, d2)
 	)
 """
 

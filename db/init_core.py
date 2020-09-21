@@ -231,6 +231,21 @@ def transform_instruments():
 		instruments = transformation(instruments)
 		instruments.to_csv(f"{NEW['instruments']}/{file.name}", index=False)
 
+
+def transform_splits():
+
+	def transformation(splits):
+
+		return splits
+
+	for file in sorted(OLD['splits'].iterdir()):
+
+		print("Splits Core Transofmration", file.name)
+
+		splits = pd.read_csv(file)
+		splits = transformation(splits)
+		splits.to_csv(f"{NEW['splits']}/{file.name}", index=False)
+
 def transform_rss():
 
 	def transformation(rss):
@@ -260,6 +275,7 @@ def transform():
 	transform_keystats()
 	transform_rates()
 	transform_rss()
+	transform_splits()
 
 ###################################################################################################
 
@@ -372,12 +388,34 @@ def init_options():
 	print("Final Index.\nIndexing Options", len(options))
 	_connector.write("optionsBACK", options)
 
+def init_splits():
+
+	print("Initializing Splits")
+	_connector.execute("DROP TABLE IF EXISTS stocksplitsBACK;")
+	_connector.execute(STOCKSPLITS_TABLE)
+
+	print("Initializing Tmp Splits")
+	_connector.execute("DROP TABLE IF EXISTS stocksplitstmpBACK;")
+	_connector.execute(STOCKSPLITSTMP_TABLE)
+
+	print("Initializing Splits Status")
+	_connector.execute("DROP TABLE IF EXISTS stocksplitstatusBACK;")
+	_connector.execute(STOCKSPLITSTATUS_TABLE)
+
+	splits = []
+	for file in sorted((NEWDIR / "splits").iterdir()):
+		splits.append(pd.read_csv(file))
+	splits = pd.concat(splits).drop_duplicates()
+
+	_connector.write("stocksplitsBACK", splits)
+
 def init():
 
 	init_instruments()
 	init_rates()
 	init_equities()
 	init_options()
+	init_splits()
 
 def main():
 

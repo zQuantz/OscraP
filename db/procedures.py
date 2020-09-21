@@ -490,6 +490,8 @@ INSERT_KEYSTATS_COUNTS = """
 
 """
 
+###################################################################################################
+
 SPLIT_OHLC_UPDATE = """
 	UPDATE
 		ohlc{modifier}
@@ -539,6 +541,25 @@ SPLIT_OPTION_ID_UPDATE = """
 	AND o.date_current < "{d2}"
 	AND o.ticker = "{ticker}";
 """
+
+UPDATE_SPLIT_STATUS = """
+	UPDATE
+		stocksplitstatus{modifier}
+	SET
+		processed_timestamp = CURRENT_TIMESTAMP()
+	WHERE
+		ticker = "{ticker}"
+	AND d1 = "{d1}"
+	AND d2 = "{d2}"
+	AND ex_date = "{ex_date}"
+	AND procedure_name = "{procedure_name}";
+"""
+
+SPLIT_PROCEDURES = {
+	"SPLIT_OHLC_UPDATE" : SPLIT_OHLC_UPDATE,
+	"SPLIT_OPTIONS_UPDATE" : SPLIT_OPTIONS_UPDATE,
+	"SPLIT_OPTION_ID_UPDATE" : SPLIT_OPTION_ID_UPDATE,
+}
 
 ###################################################################################################
 

@@ -171,9 +171,9 @@ class Connector:
 		thread = Thread(target = derived_engine)
 		thread.start()
 
-	def adjust_for_splits(self, tickers, factors, modifier=""):
+	def register_splits(self, columns, modifier=""):
 
-		self.logger.info(f"SPLITS,INITIATED,{' '.join(tickers)},")
+		self.logger.info(f"REGISTER SPLITS,INITIATED,{self.date},")
 
 		start_date = datetime.strptime("2020-07-01", "%Y-%m-%d")
 		end_date = datetime.strptime(self.date, "%Y-%m-%d")
@@ -191,37 +191,84 @@ class Connector:
 		for i in range(len(batches) - 1):
 			batches[i] = (batches[i][0], batches[i+1][0])
 
-		self.logger.info(f"SPLITS,BATCHES,{len(batches)},")
+		df = self.read("""
+				SELECT
+					*
+				FROM
+					stocksplits{modifier}
+				WHERE
+					ex_date = "{date}"
+			""".format(modifier=modifier, date=self.date))
+
+		self.logger.info(f"REGISTER SPLITS,TICKERS,{len(df)},")
 
 		###########################################################################################
 
-		for i, batch in enumerate(batches):
+		processes = []
+		for ticker, split_factor, ex_date in zip(df.ticker, df.split_factor, df.ex_date):
+			for batch in batches:
+				for i, process in enumerate(SPLIT_PROCEDURES):
+					processes.append([
+							ticker,
+							ex_date,
+							i,
+							process,
+							batch[0],
+							batch[1],
+							split_factor,
+							None
+						])
 
-			for ticker, factor in zip(tickers, factors):
+		self.logger.info(f"REGISTER SPLITS,PROCESSES,{len(processes)},")
+		processes = pd.DataFrame(processes, columns = columns)
+		self.write(f"stocksplitstatus{modifier}", processes)
 
-				self.logger.info(f"SPLITS,BATCH,{' '.join(batch)},{ticker} {factor}")
+	def adjust_splits(self, modifier=""):
 
-				ohlc = SPLIT_OHLC_UPDATE.format(modifier=modifier,
-												factor=factor,
-												d1=batch[0],
-												d2=batch[1],
-												ticker=ticker)
-				self.execute(ohlc)
-				self.logger.info(f"SPLITS,BATCH,OHLC,COMPLETED")
+		self.logger.info(f"ADJUST SPLITS,INITIATED,{self.date},")
 
-				options = SPLIT_OPTIONS_UPDATE.format(modifier=modifier,
-													  factor=factor,
-													  d1=batch[0],
-													  d2=batch[1],
-													  ticker=ticker)
-				self.execute(options)
-				self.logger.info(f"SPLITS,BATCH,OPTIONS,COMPLETED")
+		df = self.read("""
+				SELECT
+					ticker,
+					ex_date,
+					procedure_name,
+					d1,
+					d2,
+					split_factor
+				FROM
+					stocksplitstatus{modifier}
+				WHERE
+					ex_date = "{date}"
+				AND processed_timestamp IS NULL
+				ORDER BY
+					ticker,
+					ex_date,
+					procedure_order ASC,
+					d1 ASC,
+					d2 ASC;
+			""".format(modifier=modifier, date=self.date))
 
-				option_ids = SPLIT_OPTION_ID_UPDATE.format(modifier=modifier,
-														   factor=factor,
-														   d1=batch[0],
-														   d2=batch[1],
-														   ticker=ticker)
-				self.execute(option_ids)
-				
-				self.logger.info(f"SPLITS,BATCH,OPTION ID,COMPLETED")
+		for row in df.values:
+
+			ticker, ex_date, procedure_name, d1, d2, split_factor = row
+			self.logger.info(f"SPLITS,PROCEDURE, {procedure_name} - {d1} {d2},{ticker} {split_factor}")
+			procedure = SPLIT_PROCEDURES[procedure_name]
+			procedure = procedure.format(modifier=modifier,
+										 factor=split_factor,
+										 d1=d1,
+										 d2=d2,
+										 ticker=ticker)
+			self.execute(procedure)
+			self.logger.info(f"SPLITS,PROCEDURE,{procedure_name},COMPLETED")
+
+			self.logger.info(f"SPLITS,PROCEDURE,Updating Status,")
+			procedure = UPDATE_SPLIT_STATUS.format(modifier=modifier,
+												   ticker=ticker,
+												   d1=d1,
+												   d2=d2,
+												   ex_date=ex_date,
+												   procedure_name=procedure_name)
+			self.execute(procedure)
+			self.logger.info(f"SPLITS,PROCEDURE,{procedure_name},UPDATED")
+
+		
