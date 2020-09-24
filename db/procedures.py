@@ -496,11 +496,11 @@ SPLIT_OHLC_UPDATE = """
 	UPDATE
 		ohlc{modifier}
 	SET
-		open_price = ROUND(open_price * {factor}, 3),
-		high_price = ROUND(high_price * {factor}, 3),
-		low_price = ROUND(low_price * {factor}, 3),
-		close_price = ROUND(close_price * {factor}, 3),
-		adjclose_price = ROUND(adjclose_price * {factor}, 3),
+		open_price = ROUND(open_price * {factor}, 2),
+		high_price = ROUND(high_price * {factor}, 2),
+		low_price = ROUND(low_price * {factor}, 2),
+		close_price = ROUND(close_price * {factor}, 2),
+		adjclose_price = ROUND(adjclose_price * {factor}, 2),
 		volume = ROUND(volume / {factor}, 0)
 	WHERE
 		date_current
@@ -530,10 +530,10 @@ SPLIT_OPTIONS_UPDATE = """
 	UPDATE
 		options{modifier}
 	SET
-		bid_price = ROUND(bid_price * {factor}, 3),
-		ask_price = ROUND(ask_price * {factor}, 3),
-		option_price = ROUND(option_price * {factor}, 3),
-		strike_price = ROUND(strike_price * {factor}, 3),
+		bid_price = ROUND(bid_price * {factor}, 2),
+		ask_price = ROUND(ask_price * {factor}, 2),
+		option_price = ROUND(option_price * {factor}, 2),
+		strike_price = ROUND(strike_price * {factor}, 2),
 		volume = ROUND(volume / {factor}, 0),
 		open_interest = ROUND(open_interest / {factor}, 0)
 	WHERE
