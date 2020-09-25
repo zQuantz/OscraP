@@ -62,5 +62,7 @@ TABLE_NAMES = [
 	"treasuryrates",
 	"instruments",
 	"tickerdates",
-	"tickeroids"
+	"tickeroids",
+	"stocksplits",
+	"stocksplitstatus"
 ]

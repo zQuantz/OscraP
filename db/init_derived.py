@@ -171,7 +171,7 @@ def derive_stats():
 
 		print(f"Creating dateseries table for date {date}.")
 		_connector.date = date
-		_connector.init_date_series()
+		_connector.init_date_series("BACK")
 
 		print("Inserting OHLC Stats")
 		_connector.execute(INSERT_OHLC_STATS.format(modifier="BACK", subset="", date=date))

@@ -33,6 +33,8 @@ P_COLUMNS = [
 
 BUCKET_NAME = CONFIG['gcp_bucket_name']
 
+MODIFIER = ""
+
 ###################################################################################################
 
 def process(dt):
@@ -119,26 +121,26 @@ def splits():
 
 	try:
 
-		df = once()
-		# store(df)
+		df = process(dt)
+		store(df)
 
-		_connector.execute("DELETE FROM stocksplitstmpBACK;")
-		_connector.write("stocksplitstmpBACK", df)
+		_connector.execute(f"DELETE FROM stocksplitstmp{MODIFIER};")
+		_connector.write(f"stocksplitstmp{MODIFIER}", df)
 		_connector.execute("""
 				INSERT IGNORE INTO
-					stocksplitsBACK
+					stocksplits{modifier}
 				SELECT
 					*
 				FROM
-					stocksplitstmpBACK;
-			""")
+					stocksplitstmp{modifier};
+			""".format(modifier=MODIFIER))
 
 		df = df[df.ex_date == DATE]
 		if len(df) != 0:
 
 			logger.info(f"SCRAPER,SPLITS,ADJUSTING,{len(df)}")
-			_connector.register_splits(P_COLUMNS, "BACK")
-			_connector.adjust_splits("BACK")
+			_connector.register_splits(P_COLUMNS, MODIFIER)
+			_connector.adjust_splits(MODIFIER)
 		
 		metric = 1
 		title_modifier = "SUCCESS"
@@ -156,10 +158,10 @@ def splits():
 			SELECT
 				*
 			FROM
-				stocksplitstatusBACK
+				stocksplitstatus{modifier}
 			WHERE
 				ex_date = "{date}"
-		""".format(date=DATE))
+		""".format(modifier=MODIFIER, date=DATE))
 
 	send_gcp_metric(CONFIG, "splits_success_indicator", "int64_value", metric)
 	send_email(CONFIG, f"{title_modifier} - Stock Splits", report.to_html(), [], logger)

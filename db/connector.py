@@ -97,7 +97,7 @@ class Connector:
 		batchtickers = pd.DataFrame(tickers, columns = ['ticker'])
 		self.write(f"batchtickers{batch_id}", batchtickers)
 
-	def init_date_series(self):
+	def init_date_series(self, modifier=""):
 
 		self.execute("DELETE FROM dateseries;")
 		self.execute("""
@@ -110,7 +110,7 @@ class Connector:
 					(0, "{date}");
 			""".format(date=self.date))
 		self.execute("SET @i = 0;")
-		self.execute(INIT_DATE_SERIES.format(modifier="", date=self.date))
+		self.execute(INIT_DATE_SERIES.format(modifier=modifier, date=self.date))
 		self.execute(UPDATE_DATE_SERIES)
 
 	def get_equity_tickers(self, N_USD):
