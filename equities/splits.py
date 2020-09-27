@@ -116,9 +116,6 @@ def splits():
 	report_df = pd.DataFrame()
 	dt = datetime(now.year, now.month, 1).strftime("%m/%d/%Y")
 
-	DATE = "2020-08-31"
-	_connector.date = DATE
-
 	try:
 
 		df = process(dt)
