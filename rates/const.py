@@ -33,7 +33,7 @@ with open(f"{DIR}/../config.json", "w") as file:
 
 	if socket.gethostname() == CONFIG['gcp_hostname']:
 		CONFIG['db'] = "compour9_finance"
-		CONFIG['gcp_bucket_prefix'] = "rates"
+		CONFIG['gcp_bucket_prefix'] = "treasuryrates"
 	else:
 		CONFIG['db'] = "compour9_test"
 		CONFIG['gcp_bucket_prefix'] = "tmp"
