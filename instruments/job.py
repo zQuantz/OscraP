@@ -128,7 +128,7 @@ def get_market_cap(ticker):
 
 	return float(value[:-1]) * CONVERTER[value[-1]]
 
-def scrape(exchange_code, exchange_name, modifier=''):
+def scrape(exchange_code, exchange_name):
 
 	stats = []
 	for letter in LETTERS:
@@ -267,7 +267,7 @@ def main():
 	DATA.mkdir()
 
 	for exchange_code, exchange_name in get_exchanges():
-		scrape(exchange_code, exchange_name, modifier)
+		scrape(exchange_code, exchange_name)
 
 	logger.info("Indexing.")
 	df = index()
