@@ -73,7 +73,7 @@ def process(dt):
 
 		except Exception as e:
 
-			print(e)
+			logger.warning(e)
 			tries += 1
 
 	if tries > max_tries:
