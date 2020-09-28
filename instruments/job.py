@@ -246,7 +246,7 @@ def report(df):
 	attachments = [
 		{
 			"ContentType" : "plain/text",
-			"filename" : "instruments.log",
+			"filename" : "log.log",
 			"filepath" : f"{DIR}"
 		}
 	]
