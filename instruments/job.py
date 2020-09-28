@@ -149,8 +149,6 @@ def scrape(exchange_code, exchange_name):
 				name = row.find("td", text=ticker).next_sibling.text
 
 				ticker = ticker.replace('.', '-')
-				ticker += modifier
-				
 				market_cap = get_market_cap(ticker)
 				sector, industry, instrument_type = get_sector_and_industry(ticker)
 			
