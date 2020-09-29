@@ -128,7 +128,7 @@ class Connector:
 				LIMIT {}
 			""".format(1_000_000, N_USD))
 
-		return tuple(df.ticker)
+		return tuple(df.ticker.unique())
 
 	def get_lower_bounds(self, tablename, batch_id):
 
