@@ -295,14 +295,14 @@ class Connector:
 
 		self.execute("""
 				UPDATE
-					compour9_test.stocksplits{modifier} AS sp
+					stocksplits{modifier} AS sp
 				INNER JOIN
 					(
 						SELECT
 							ticker,
 							ex_date
 						FROM
-							compour9_test.stocksplitstatus{modifier}
+							stocksplitstatus{modifier}
 						WHERE
 							ex_date = "{date}"
 						GROUP BY
