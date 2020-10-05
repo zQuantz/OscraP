@@ -181,7 +181,7 @@ class Connector:
 		dates = pd.date_range(start=start_date, end=end_date, freq="D")
 		dates = dates.astype(str)
 
-		batches = max(int((end_date - start_date).days / 15), 1)
+		batches = max(int((end_date - start_date).days / 5), 1)
 		batch_size = int(len(dates) / batches)
 		batches = [
 			dates[i - batch_size : i]
