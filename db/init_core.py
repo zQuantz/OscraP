@@ -92,26 +92,6 @@ def compress_data():
 def transform_options():
 
 	def transformation(options):
-
-		cols = ["time_to_expiry", "delta", "gamma", "theta", "vega", "rho"]
-		options = options.drop(cols, axis=1)
-
-		days = options.expiration_date - options.date_current
-		days = days.dt.days
-		options['days_to_expiry'] = days
-
-		renames = {
-				"bid" : "bid_price",
-				"ask" : "ask_price"
-			}
-		options = options.rename(renames, axis=1)
-		options.implied_volatility *= 100
-
-		oid = options.ticker + ' ' + options.expiration_date.astype(str)
-		oid += ' ' + options.option_type
-		sp = options.strike_price.round(2).astype(str)
-		sp = sp.str.rstrip("0").str.rstrip(".")
-		options['option_id'] = oid + sp
 		
 		return options
 
@@ -132,8 +112,7 @@ def transform_keystats():
 
 	def transformation(keystats):
 
-		keystats = keystats[~keystats.ticker.str.contains(".TO")]
-		return keystats.dropna(subset=["value"])
+		return keystats
 
 	for folder in sorted(OLD['equity'].iterdir()):
 
@@ -152,8 +131,7 @@ def transform_analysis():
 
 	def transformation(analysis):
 
-		analysis = analysis[~analysis.ticker.str.contains(".TO")]
-		return analysis.dropna(subset=["value"])
+		return analysis
 
 	for folder in sorted(OLD['equity'].iterdir()):
 
@@ -171,17 +149,6 @@ def transform_analysis():
 def transform_ohlc():
 
 	def transformation(ohlc):
-
-		ohlc = ohlc[~ohlc.ticker.str.contains(".TO")]
-		ohlc['dividend_yield'] = ohlc.dividend_yield * 100
-
-		rename = {
-			key : f"{key}_price"
-			for key in ["open", "high", "low", "close"]
-		}
-		rename['stock_volume'] = 'volume'
-		rename['adj_close'] = 'adjclose_price'
-		ohlc = ohlc.rename(rename, axis=1)
 
 		return ohlc
 
@@ -202,11 +169,6 @@ def transform_rates():
 
 	def transformation(rates):
 
-		if rates.shape[1] == 14:
-			rates = rates.iloc[:, 1:]
-		
-		rates.loc[:, rates.columns[1:]] *= 100
-
 		return rates
 
 	for file in sorted(OLD['rates'].iterdir()):
@@ -221,7 +183,6 @@ def transform_instruments():
 
 	def transformation(instruments):
 
-		instruments = instruments[~instruments.exchange_code.isin(["TSX"])]
 		return instruments
 
 	for file in sorted(OLD['instruments'].iterdir()):
