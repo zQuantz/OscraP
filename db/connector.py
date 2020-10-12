@@ -26,12 +26,7 @@ class Connector:
 			        host=CONFIG['db_ip'],
 			        port=CONFIG['db_port'],
 			        database=CONFIG['db'],
-			        query={
-			            "unix_socket":"{}/{}".format(
-			                "/home/zquantz/cloudsql",
-			                "oscrapdb-20201011:northamerica-northeast1:oscrap-db-1"
-			            )
-			        }
+			        query={"unix_socket":CONFIG['db_socket']}
 			    ),
 			    pool_size=3,
 				max_overflow=0,
@@ -139,7 +134,7 @@ class Connector:
 		self.execute("""
 				INSERT INTO 
 					dateseries (
-						lag,
+						_lag,
 						lag_date
 					)
 				VALUES

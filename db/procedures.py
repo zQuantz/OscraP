@@ -1,11 +1,11 @@
 INIT_DATE_SERIES = """
 	INSERT INTO
 		dateseries (
-			lag, 
+			_lag, 
 			lag_date
 		)
 	SELECT
-		(@i:=@i+1) AS lag,
+		(@i:=@i+1) AS _lag,
 		date_current AS lag_date
 	FROM
 		(SELECT
@@ -14,8 +14,8 @@ INIT_DATE_SERIES = """
 			ohlc{modifier}
 		WHERE
 			date_current < "{date}"
-		GROUP BY 
-			date_current DESC) AS t1;
+		ORDER BY 
+			date_current DESC) t1;
 """
 
 UPDATE_DATE_SERIES = """
@@ -23,29 +23,29 @@ UPDATE_DATE_SERIES = """
 		dateseries AS d1
 	INNER JOIN
 		dateseries AS d2
-		ON d1.lag = (d2.lag - 1)
+		ON d1._lag = (d2._lag - 1)
 	SET
 		d1.prev_lag_date = d2.lag_date,
-		d1._5 = IF(d1.lag < 5, 1, NULL),
-		d1._10 = IF(d1.lag < 10, 1, NULL),
-		d1._20 = IF(d1.lag < 20, 1, NULL),
-		d1._21 = IF(d1.lag < 21, 1, NULL),
-		d1._42 = IF(d1.lag < 42, 1, NULL),
-		d1._63 = IF(d1.lag < 63, 1, NULL),
-		d1._126 = IF(d1.lag < 126, 1, NULL),
-		d1._189 = IF(d1.lag < 189, 1, NULL),
-		d1._252 = IF(d1.lag < 252, 1, NULL),
-		d1._0d = IF(d1.lag = 0, 1, NULL),
-		d1._1d = IF(d1.lag = 1, 1, NULL),
-		d1._5d = IF(d1.lag = 5, 1, NULL),
-		d1._10d = IF(d1.lag = 10, 1, NULL),
-		d1._20d = IF(d1.lag = 20, 1, NULL),
-		d1._21d = IF(d1.lag = 21, 1, NULL),
-		d1._42d = IF(d1.lag = 42, 1, NULL),
-		d1._63d = IF(d1.lag = 63, 1, NULL),
-		d1._126d = IF(d1.lag = 126, 1, NULL),
-		d1._189d = IF(d1.lag = 189, 1, NULL),
-		d1._252d = IF(d1.lag = 252, 1, NULL);
+		d1._5 = IF(d1._lag < 5, 1, NULL),
+		d1._10 = IF(d1._lag < 10, 1, NULL),
+		d1._20 = IF(d1._lag < 20, 1, NULL),
+		d1._21 = IF(d1._lag < 21, 1, NULL),
+		d1._42 = IF(d1._lag < 42, 1, NULL),
+		d1._63 = IF(d1._lag < 63, 1, NULL),
+		d1._126 = IF(d1._lag < 126, 1, NULL),
+		d1._189 = IF(d1._lag < 189, 1, NULL),
+		d1._252 = IF(d1._lag < 252, 1, NULL),
+		d1._0d = IF(d1._lag = 0, 1, NULL),
+		d1._1d = IF(d1._lag = 1, 1, NULL),
+		d1._5d = IF(d1._lag = 5, 1, NULL),
+		d1._10d = IF(d1._lag = 10, 1, NULL),
+		d1._20d = IF(d1._lag = 20, 1, NULL),
+		d1._21d = IF(d1._lag = 21, 1, NULL),
+		d1._42d = IF(d1._lag = 42, 1, NULL),
+		d1._63d = IF(d1._lag = 63, 1, NULL),
+		d1._126d = IF(d1._lag = 126, 1, NULL),
+		d1._189d = IF(d1._lag = 189, 1, NULL),
+		d1._252d = IF(d1._lag = 252, 1, NULL);
 """
 
 INSERT_AGG_OPTION_STATS = """
@@ -128,7 +128,7 @@ INSERT_OHLC_STATS = """
 				SUM(volume * _0d) / AVG(volume * _126) AS relvolume126,
 				SUM(volume * _0d) / AVG(volume * _189) AS relvolume189,
 				SUM(volume * _0d) / AVG(volume * _252) AS relvolume252,
-				100 * pct_change AS pctchange1d,
+				100 * t1.pct_change AS pctchange1d,
 				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _5d) - 1) AS pctchange5d,
 				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _10d) - 1) AS pctchange10d,
 				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _21d) - 1) AS pctchange21d,
@@ -279,7 +279,7 @@ INSERT_OPTION_STATS = """
 					FROM
 						dateseries
 					WHERE
-						lag <= 20
+						_lag <= 20
 				) AS d
 				ON
 					o.date_current = d.lag_date

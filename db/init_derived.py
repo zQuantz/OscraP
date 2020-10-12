@@ -45,7 +45,7 @@ def derive_treasuryratemap():
 
 	rates = [
 		pd.read_csv(file)
-		for file in sorted(NEW['rates'].iterdir())
+		for file in sorted(NEW['treasuryrates'].iterdir())
 	]
 
 	rates = pd.concat(rates)
@@ -229,8 +229,8 @@ def derive_tickermaps():
 
 def derive():
 
-	derive_tickermaps()
 	derive_treasuryratemap()
+	derive_tickermaps()
 	derive_surface()
 	derive_stats()
 
