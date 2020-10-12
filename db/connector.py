@@ -14,26 +14,48 @@ class Connector:
 	def __init__(self, CONFIG, date, logger=None):
 
 		self.db = CONFIG['db']
-		self.engine = sql.create_engine(
-		    sql.engine.url.URL(
-		        drivername="mysql+pymysql",
-		        username=CONFIG['db_user'],
-		        password=CONFIG['db_password'],
-		        host=CONFIG['db_ip'],
-		        port=CONFIG['db_port'],
-		        database=CONFIG['db'],
-		        query={
-		            "unix_socket":"{}/{}".format(
-		                "/home/zquantz/cloudsql",
-		                "oscrapdb-20201011:northamerica-northeast1:oscrap-db-1"
-		            )
-		        }
-		    ),
-		    pool_size=3,
-			max_overflow=0,
-			pool_recycle=299,
-			pool_pre_ping=True
-		)
+
+		self.isGCP = False
+		if self.isGCP:
+
+			self.engine = sql.create_engine(
+			    sql.engine.url.URL(
+			        drivername="mysql+pymysql",
+			        username=CONFIG['db_user'],
+			        password=CONFIG['db_password'],
+			        host=CONFIG['db_ip'],
+			        port=CONFIG['db_port'],
+			        database=CONFIG['db'],
+			        query={
+			            "unix_socket":"{}/{}".format(
+			                "/home/zquantz/cloudsql",
+			                "oscrapdb-20201011:northamerica-northeast1:oscrap-db-1"
+			            )
+			        }
+			    ),
+			    pool_size=3,
+				max_overflow=0,
+				pool_recycle=299,
+				pool_pre_ping=True
+			)
+
+		else:
+
+			self.engine = sql.create_engine(
+			    sql.engine.url.URL(
+			        drivername="mysql",
+			        username=CONFIG['db_user'],
+			        password=CONFIG['db_password'],
+			        host=CONFIG['db_ip'],
+			        port=CONFIG['db_port'],
+			        database=CONFIG['db']
+			    ),
+			    pool_size=3,
+				max_overflow=0,
+				pool_recycle=299,
+				pool_pre_ping=True
+			)
+
 
 		self.max_tries = 10
 		self.date = date
