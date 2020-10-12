@@ -183,7 +183,7 @@ OHLC_TABLE = """
 		low_price FLOAT(4),
 		close_price FLOAT(4),
 		adjclose_price FLOAT(4),
-		volume INT UNSIGNED,
+		volume BIGINT UNSIGNED,
 		dividend_yield FLOAT(6),
 		PRIMARY KEY(date_current, ticker)
 	)

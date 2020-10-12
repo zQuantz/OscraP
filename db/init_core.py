@@ -22,14 +22,11 @@ def download_data():
 	os.mkdir(f"{DIR}/data/tar/old")
 	os.mkdir(f"{DIR}/data/tar/new")
 
-	FOLDERS = ["equities", "rates", "instruments", "rss", "splits"]
+	FOLDERS = ["equities", "treasuryrates", "instruments", "rss", "splits"]
 	for folder in FOLDERS:
 
 		os.mkdir(f"{DIR}/data/old/{folder}")
 		os.mkdir(f"{DIR}/data/tar/old/{folder}")
-
-		if folder == "rates":
-			folder = "treasuryrates"
 
 		os.mkdir(f"{DIR}/data/new/{folder}")
 		os.mkdir(f"{DIR}/data/tar/new/{folder}")
@@ -118,7 +115,7 @@ def transform_keystats():
 
 		print("Key Stats Core Transformation:", folder.name)
 
-		file = folder / "key_stats.csv"
+		file = folder / "keystats.csv"
 		if not file.exists():
 			print("No key stats file found.")
 			continue
@@ -171,13 +168,13 @@ def transform_rates():
 
 		return rates
 
-	for file in sorted(OLD['rates'].iterdir()):
+	for file in sorted(OLD['treasuryrates'].iterdir()):
 
 		print("Rates Core Transformation:", file.name)
 		
 		rates = pd.read_csv(file)
 		rates = transformation(rates)
-		rates.to_csv(f"{NEW['rates']}/{file.name}", index=False)
+		rates.to_csv(f"{NEW['treasuryrates']}/{file.name}", index=False)
 
 def transform_instruments():
 
@@ -249,7 +246,7 @@ def generate_split_series():
 	splits = pd.concat([
 		pd.read_csv(file)
 		for file in NEW['splits'].iterdir()
-	])
+	]).drop_duplicates()
 
 	splits = splits[["ticker", "split_factor", "ex_date"]]
 	splits['ex_date'] = pd.to_datetime(splits.ex_date) - timedelta(days=1)
@@ -351,10 +348,10 @@ def init_equities(splits):
 			keystats.append(pd.read_csv(folder / "keystats.csv"))
 
 	ohlc = pd.concat(ohlc)
+	ohlc = adjust_for_splits(ohlc)
+
 	analysis = pd.concat(analysis)
 	keystats = pd.concat(keystats)
-
-	ohlc = adjust_for_splits(ohlc)
 
 	###############################################################################################
 
@@ -466,10 +463,10 @@ def init():
 
 def main():
 
-	download_data()
-	transform()
+	# download_data()
+	# transform()
 	init()
-	compress_data()
+	# compress_data()
 
 if __name__ == "__main__":
 
