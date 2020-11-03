@@ -45,7 +45,7 @@ def derive_treasuryratemap():
 
 	rates = [
 		pd.read_csv(file)
-		for file in sorted(NEW['rates'].iterdir())
+		for file in sorted(NEW['treasuryrates'].iterdir())
 	]
 
 	rates = pd.concat(rates)
@@ -142,40 +142,66 @@ def derive_stats():
 	_connector.execute("DROP TABLE IF EXISTS keystatscountsBACK;")
 	_connector.execute(KEYSTATSCOUNTS_TABLE)
 
+	###############################################################################################
+
+	SUBSET = """
+		WHERE
+			ticker IN
+			(
+				SELECT
+					ticker
+				FROM
+					tickerdatesBACK
+				WHERE
+					date_current = "{date}"
+				AND ASCII(SUBSTRING(ticker, 1, 1))
+					BETWEEN {n1} AND {n2}
+			)
+	"""
+
+	ranges = [
+		(65, 69),
+		(70, 79),
+		(80, 91)
+	]
+
+	###############################################################################################
+
 	for date in sorted(os.listdir(NEW['equity'])):
 
 		print(f"Creating dateseries table for date {date}.")
-		_connector.execute(f"""SET @date_current = "{date}";""")
-
-		for statement in INIT_DATE_SERIES:
-			_connector.execute(statement.format(modifier="BACK"))
+		_connector.date = date
+		_connector.init_date_series("BACK")
 
 		print("Inserting OHLC Stats")
-		_connector.execute(INSERT_OHLC_STATS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_OHLC_STATS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Agg Option Stats")
-		_connector.execute(INSERT_AGG_OPTION_STATS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_AGG_OPTION_STATS.format(modifier="BACK", subset="", date=date))
 
 		print("Updating Agg Option Stats")
-		_connector.execute(UPDATE_AGG_OPTION_STATS.format(modifier="BACK", subset=""))
+		_connector.execute(UPDATE_AGG_OPTION_STATS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Options Stats")
-		_connector.execute(INSERT_OPTION_STATS.format(modifier="BACK", subset=""))
+		for i, _range in enumerate(ranges):
+			print(f"Batch #{i}. {_range}")
+			subset = SUBSET.format(date=date, n1=_range[0], n2=_range[1])
+			_connector.execute(INSERT_OPTION_STATS.format(modifier="BACK", subset=subset, date=date))
 
 		print("Inserting Surface Skew")
-		_connector.execute(INSERT_SURFACE_SKEW.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_SURFACE_SKEW.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Surface Stats")
-		_connector.execute(INSERT_SURFACE_STATS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_SURFACE_STATS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Options Counts")
-		_connector.execute(INSERT_OPTION_COUNTS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_OPTION_COUNTS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Analysis Counts")
-		_connector.execute(INSERT_ANALYSIS_COUNTS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_ANALYSIS_COUNTS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Keystats Counts")
-		_connector.execute(INSERT_KEYSTATS_COUNTS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_KEYSTATS_COUNTS.format(modifier="BACK", subset="", date=date))
 
 		print("\n----------\n")
 
@@ -191,21 +217,20 @@ def derive_tickermaps():
 
 	for date in sorted(os.listdir(NEW['equity'])):
 
-		print(f"Setting date_current to {date}")
-		_connector.execute(f"""SET @date_current = "{date}";""")
+		print("Processing", date)
 
 		print("Inserting Ticker-Dates")
-		_connector.execute(INSERT_TICKER_DATES.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_TICKER_DATES.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Ticker-Option IDs")
-		_connector.execute(INSERT_TICKER_OIDS.format(modifier="BACK", subset=""))
+		_connector.execute(INSERT_TICKER_OIDS.format(modifier="BACK", subset="", date=date))
 
 		print("\n----------\n")
 
 def derive():
 
-	derive_tickermaps()
 	derive_treasuryratemap()
+	derive_tickermaps()
 	derive_surface()
 	derive_stats()
 

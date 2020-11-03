@@ -95,13 +95,13 @@ class Ticker():
 				self.logger.warning(f"{ticker},{batch_id},Analysis,Failure,{e}")
 			self.sleep()
 
-		if ('.TO' not in ticker) and (not retries or retries['options']):
+		if not retries or retries['options']:
 			try:
 				self.options = []
 				self.get_options()
 				self.logger.info(f"{ticker},{batch_id},Options,Success,")	
 			except Exception as e:
-				self.logger.warning(f"{ticker},{batch_id},Options,Failure,{e}")					
+				self.logger.warning(f"{ticker},{batch_id},Options,Failure,{e}")			
 			self.sleep()
 
 	def sleep(self):
@@ -282,8 +282,9 @@ class Ticker():
 
 		df = pd.DataFrame(self.options, columns = OPTION_COLS)
 		oid = df.ticker + ' ' + df.expiration_date + ' ' + df.option_type
-		oid += df.strike_price.round(2).astype(str)
-		df['option_id'] = oid
+		sp = df.strike_price.round(2).astype(str)
+		sp = sp.str.rstrip("0").str.rstrip(".")
+		df['option_id'] = oid + sp
 
 		if not self.retries and len(df) > 0:
 			

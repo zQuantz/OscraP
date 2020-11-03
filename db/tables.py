@@ -1,6 +1,6 @@
 DATESERIES_TABLE = """
 	CREATE TABLE dateseries (
-		lag SMALLINT,
+		_lag SMALLINT,
 		lag_date DATE,
 		prev_lag_date DATE, 
 		_5 SMALLINT,
@@ -47,18 +47,23 @@ OPTIONS_TABLE = """
 		implied_volatility FLOAT(6),
 		volume INT UNSIGNED,
 		open_interest INT UNSIGNED,
-		PRIMARY KEY (date_current, option_id)
+		INDEX(date_current, option_id)
 	)
 """
 
 OPTIONSTATS_TABLE = """
 	CREATE TABLE optionstatsBACK (
 		date_current DATE,
+		ticker VARCHAR(10),
 		option_id VARCHAR(40),
 		pctchange1d FLOAT(4),
 		pctchange5d FLOAT(4),
 		pctchange10d FLOAT(4),
 		pctchange20d FLOAT(4),
+		midpctchange1d FLOAT(4),
+		midpctchange5d FLOAT(4),
+		midpctchange10d FLOAT(4),
+		midpctchange20d FLOAT(4),
 		ivchange1d FLOAT(4),
 		ivchange5d FLOAT(4),
 		ivchange10d FLOAT(4),
@@ -66,7 +71,10 @@ OPTIONSTATS_TABLE = """
 		relvolume5 FLOAT(4),
 		relvolume10 FLOAT(4),
 		relvolume20 FLOAT(4),
-		PRIMARY KEY(date_current, option_id)
+		relvolume2oi5 FLOAT(4),
+		relvolume2oi10 FLOAT(4),
+		relvolume2oi20 FLOAT(4),
+		INDEX(date_current, option_id)
 	)
 """
 
@@ -133,8 +141,14 @@ AGGOPTIONSTATS_TABLE = """
 		ticker VARCHAR(10),
 		call_volume BIGINT,
 		put_volume BIGINT,
-		cpv_spread BIGINT,
+		cpv_ratio FLOAT(6),
 		total_volume BIGINT,
+		call_open_interest BIGINT,
+		put_open_interest BIGINT,
+		total_open_interest BIGINT,
+		call_v2oi FLOAT(4),
+		put_v2oi FLOAT(4),
+		total_v2oi FLOAT(4),
 		rcv5 FLOAT(4),
 		rpv5 FLOAT(4),
 		rtv5 FLOAT(4),
@@ -147,6 +161,15 @@ AGGOPTIONSTATS_TABLE = """
 		rcpvs5 FLOAT(4),
 		rcpvs10 FLOAT(4),
 		rcpvs20 FLOAT(4),
+		rcv2oi5 FLOAT(4),
+		rcv2oi10 FLOAT(4),
+		rcv2oi20 FLOAT(4),
+		rpv2oi5 FLOAT(4),
+		rpv2oi10 FLOAT(4),
+		rpv2oi20 FLOAT(4),
+		rtv2oi5 FLOAT(4),
+		rtv2oi10 FLOAT(4),
+		rtv2oi20 FLOAT(4),
 		PRIMARY KEY(date_current, ticker)
 	)
 """
@@ -160,7 +183,7 @@ OHLC_TABLE = """
 		low_price FLOAT(4),
 		close_price FLOAT(4),
 		adjclose_price FLOAT(4),
-		volume INT UNSIGNED,
+		volume BIGINT UNSIGNED,
 		dividend_yield FLOAT(6),
 		PRIMARY KEY(date_current, ticker)
 	)
@@ -176,13 +199,6 @@ OHLCSTATS_TABLE = """
 		hvol6m FLOAT(4),
 		hvol9m FLOAT(4),
 		hvol12m FLOAT(4),
-		avgvolume10 BIGINT,
-		avgvolume21 BIGINT,
-		avgvolume42 BIGINT,
-		avgvolume63 BIGINT,
-		avgvolume126 BIGINT,
-		avgvolume189 BIGINT,
-		avgvolume252 BIGINT,
 		relvolume10 FLOAT(4),
 		relvolume21 FLOAT(4),
 		relvolume42 FLOAT(4),
@@ -196,6 +212,9 @@ OHLCSTATS_TABLE = """
 		pctchange21d FLOAT(4),
 		pctchange42d FLOAT(4),
 		pctchange63d FLOAT(4),
+		pctchange126d FLOAT(4),
+		pctchange189d FLOAT(4),
+		pctchange252d FLOAT(4),
 		PRIMARY KEY(date_current, ticker)
 	)
 """
@@ -264,6 +283,20 @@ TREASURYRATEMAP_TABLE = """
 	)
 """
 
+columns = ""
+for expiry in [1, 3, 6, 9, 12, 18, 24]:
+	for moneyness in range(80, 125, 5):
+		columns += f"m{expiry}m{moneyness} FLOAT(6), "
+
+SURFACE_TABLE = """
+	CREATE TABLE surfaceBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		{columns}
+		PRIMARY KEY(ticker, date_current)
+	)
+""".format(columns=columns)
+
 TICKERDATES_TABLE = """
 	CREATE TABLE tickerdatesBACK (
 		ticker VARCHAR(10),
@@ -307,19 +340,32 @@ KEYSTATSCOUNTS_TABLE = """
 	)
 """
 
-columns = ""
-for expiry in [1, 3, 6, 9, 12, 18, 24]:
-	for moneyness in range(80, 125, 5):
-		columns += f"m{expiry}m{moneyness} FLOAT(6), "
-
-SURFACE_TABLE = """
-	CREATE TABLE surfaceBACK (
-		date_current DATE,
+STOCKSPLITS_TABLE = """
+	CREATE TABLE stocksplitsBACK (
 		ticker VARCHAR(10),
-		{columns}
-		PRIMARY KEY(ticker, date_current)
+		split_factor FLOAT(4),
+		announcement_date DATE,
+		record_date DATE,
+		ex_date DATE,
+		processed_timestamp TIMESTAMP NULL DEFAULT NULL,
+		UNIQUE KEY(ticker, ex_date)
 	)
-""".format(columns=columns)
+"""
+STOCKSPLITSTMP_TABLE = STOCKSPLITS_TABLE.replace("stocksplits", "stocksplitstmp")
+
+STOCKSPLITSTATUS_TABLE = """
+	CREATE TABLE stocksplitstatusBACK (
+		ticker VARCHAR(10),
+		ex_date DATE,
+		procedure_order TINYINT,
+		procedure_name CHAR(25),
+		d1 DATE,
+		d2 DATE,
+		split_factor FLOAT(4),
+		processed_timestamp TIMESTAMP NULL DEFAULT NULL,
+		UNIQUE KEY(ticker, ex_date, procedure_name, d1, d2)
+	)
+"""
 
 ###################################################################################################
 

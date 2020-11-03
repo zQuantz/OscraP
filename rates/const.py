@@ -13,7 +13,6 @@ DIR = os.path.realpath(os.path.dirname(__file__))
 DIR = Path(DIR)
 
 DATE = datetime.today().strftime("%Y-%m-%d")
-DATE = "2020-09-04"
 DATA = DIR / "rate_data" / DATE
 
 logger = logging.getLogger(__name__)
@@ -34,7 +33,7 @@ with open(f"{DIR}/../config.json", "w") as file:
 
 	if socket.gethostname() == CONFIG['gcp_hostname']:
 		CONFIG['db'] = "compour9_finance"
-		CONFIG['gcp_bucket_prefix'] = "rates"
+		CONFIG['gcp_bucket_prefix'] = "treasuryrates"
 	else:
 		CONFIG['db'] = "compour9_test"
 		CONFIG['gcp_bucket_prefix'] = "tmp"
@@ -67,6 +66,6 @@ t_map = np.array(t_map)
 
 ###################################################################################################
 
-sys.path.append("../db")
+sys.path.append(f"{DIR}/../db")
 from connector import Connector
 _connector = Connector(CONFIG, DATE, logger)

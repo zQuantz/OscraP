@@ -33,8 +33,7 @@ BUCKET_NAME = CONFIG['gcp_bucket_name']
 EXCHANGES = [
 	"American Stock Exchange",
 	"NASDAQ Stock Exchange",
-	"New York Stock Exchange",
-	"Toronto Stock Exchange"
+	"New York Stock Exchange"
 ]
 
 LETTERS = sorted(set(string.ascii_letters.lower()))
@@ -129,7 +128,7 @@ def get_market_cap(ticker):
 
 	return float(value[:-1]) * CONVERTER[value[-1]]
 
-def scrape(exchange_code, exchange_name, modifier=''):
+def scrape(exchange_code, exchange_name):
 
 	stats = []
 	for letter in LETTERS:
@@ -150,8 +149,6 @@ def scrape(exchange_code, exchange_name, modifier=''):
 				name = row.find("td", text=ticker).next_sibling.text
 
 				ticker = ticker.replace('.', '-')
-				ticker += modifier
-				
 				market_cap = get_market_cap(ticker)
 				sector, industry, instrument_type = get_sector_and_industry(ticker)
 			
@@ -194,6 +191,10 @@ def index():
 	df = df.sort_values('market_cap', ascending=False)
 	df = df[df.market_cap >= 1_000]
 
+	cols = ["ticker", "exchange_code"]
+	df = df.drop_duplicates(subset=cols, keep="first")
+	df['last_updated'] = DATE
+
 	ticker_codes = df.ticker + ' ' + df.exchange_code
 	ticker_codes = ticker_codes.values.tolist()
 
@@ -206,8 +207,6 @@ def index():
 	)
 	query = query.bindparams(ticker_codes=ticker_codes)
 	_connector.execute(query)
-
-	df['last_updated'] = DATE
 	_connector.write("instruments", df)
 
 	df = _connector.read("SELECT * FROM instruments;")
@@ -247,7 +246,7 @@ def report(df):
 	attachments = [
 		{
 			"ContentType" : "plain/text",
-			"filename" : "instruments.log",
+			"filename" : "log.log",
 			"filepath" : f"{DIR}"
 		}
 	]
@@ -266,8 +265,7 @@ def main():
 	DATA.mkdir()
 
 	for exchange_code, exchange_name in get_exchanges():
-		modifier = '.TO' if exchange_code == 'TSX' else ''
-		scrape(exchange_code, exchange_name, modifier)
+		scrape(exchange_code, exchange_name)
 
 	logger.info("Indexing.")
 	df = index()

@@ -1,4 +1,5 @@
 from const import CONFIG, DIR, OLD, NEW, TAR, _connector
+from datetime import datetime, timedelta
 from google.cloud import storage
 from pathlib import Path
 import tarfile as tar
@@ -21,14 +22,11 @@ def download_data():
 	os.mkdir(f"{DIR}/data/tar/old")
 	os.mkdir(f"{DIR}/data/tar/new")
 
-	FOLDERS = ["equities", "rates", "instruments", "rss"]
+	FOLDERS = ["equities", "treasuryrates", "instruments", "rss", "splits"]
 	for folder in FOLDERS:
 
 		os.mkdir(f"{DIR}/data/old/{folder}")
 		os.mkdir(f"{DIR}/data/tar/old/{folder}")
-
-		if folder == "rates":
-			folder = "treasuryrates"
 
 		os.mkdir(f"{DIR}/data/new/{folder}")
 		os.mkdir(f"{DIR}/data/tar/new/{folder}")
@@ -40,6 +38,9 @@ def download_data():
 
 		folder, filename = blob.name.split("/")
 		filedate = filename.split(".")[0]
+
+		if filename == "":
+			continue
 
 		if folder not in FOLDERS:
 			continue
@@ -67,41 +68,27 @@ def compress_data():
 				
 				print("Compressing Equity Folder:", folder.name)
 
-				with tar.open(f"{TAR[key]}/{folder}.tar.xz", "x:xz") as tar_file:
+				with tar.open(f"{TAR[key]}/{folder.name}.tar.xz", "x:xz") as tar_file:
 
-					for file in os.listdir(f"{NEW[key]}/{folder}"):
-						tar_file.add(f"{NEW[key]}/{folder}/{file}", file)
+					for file in os.listdir(f"{NEW[key]}/{folder.name}"):
+						tar_file.add(f"{NEW[key]}/{folder.name}/{file}", file)
 
 		else:
 
-			for file in sorted(os.listdir(NEW[key])):
+			for file in sorted(NEW[key].iterdir()):
 
-				print(f"Compressing {key.capitalize()} File:", file)
+				print(f"Compressing {key.capitalize()} File:", file.name)
 
-				basename = file.split(".")[0]
+				basename = file.name.split(".")[0]
 				
 				with tar.open(f"{TAR[key]}/{basename}.tar.xz", "x:xz") as tar_file:
-					tar_file.add(f"{NEW[key]}/{file}", file)
+					tar_file.add(f"{NEW[key]}/{file.name}", file.name)
 
 ###################################################################################################
 
 def transform_options():
 
 	def transformation(options):
-
-		cols = ["time_to_expiry", "delta", "gamma", "theta", "vega", "rho"]
-		options = options.drop(cols, axis=1)
-
-		days = options.expiration_date - options.date_current
-		days = days.dt.days
-		options['days_to_expiry'] = days
-
-		renames = {
-				"bid" : "bid_price",
-				"ask" : "ask_price"
-			}
-		options = options.rename(renames, axis=1)
-		options.implied_volatility *= 100
 		
 		return options
 
@@ -122,13 +109,13 @@ def transform_keystats():
 
 	def transformation(keystats):
 
-		return keystats.dropna(subset=["value"])
+		return keystats
 
 	for folder in sorted(OLD['equity'].iterdir()):
 
 		print("Key Stats Core Transformation:", folder.name)
 
-		file = folder / "key_stats.csv"
+		file = folder / "keystats.csv"
 		if not file.exists():
 			print("No key stats file found.")
 			continue
@@ -141,7 +128,7 @@ def transform_analysis():
 
 	def transformation(analysis):
 
-		return analysis.dropna(subset=["value"])
+		return analysis
 
 	for folder in sorted(OLD['equity'].iterdir()):
 
@@ -159,16 +146,6 @@ def transform_analysis():
 def transform_ohlc():
 
 	def transformation(ohlc):
-
-		rename = {
-			key : f"{key}_price"
-			for key in ["open", "high", "low", "close"]
-		}
-		rename['stock_volume'] = 'volume'
-		rename['adj_close'] = 'adjclose_price'
-		ohlc = ohlc.rename(rename, axis=1)
-
-		ohlc['dividend_yield'] *= 100
 
 		return ohlc
 
@@ -189,20 +166,15 @@ def transform_rates():
 
 	def transformation(rates):
 
-		if rates.shape[1] == 14:
-			rates = rates.iloc[:, 1:]
-		
-		rates.loc[:, rates.columns[1:]] *= 100
-
 		return rates
 
-	for file in sorted(OLD['rates'].iterdir()):
+	for file in sorted(OLD['treasuryrates'].iterdir()):
 
 		print("Rates Core Transformation:", file.name)
 		
 		rates = pd.read_csv(file)
 		rates = transformation(rates)
-		rates.to_csv(f"{NEW['rates']}/{file.name}", index=False)
+		rates.to_csv(f"{NEW['treasuryrates']}/{file.name}", index=False)
 
 def transform_instruments():
 
@@ -220,6 +192,21 @@ def transform_instruments():
 		instruments = pd.read_csv(file)
 		instruments = transformation(instruments)
 		instruments.to_csv(f"{NEW['instruments']}/{file.name}", index=False)
+
+
+def transform_splits():
+
+	def transformation(splits):
+
+		return splits
+
+	for file in sorted(OLD['splits'].iterdir()):
+
+		print("Splits Core Transofmration", file.name)
+
+		splits = pd.read_csv(file)
+		splits = transformation(splits)
+		splits.to_csv(f"{NEW['splits']}/{file.name}", index=False)
 
 def transform_rss():
 
@@ -243,15 +230,51 @@ def transform():
 
 	print("Core Data Transformation")
 
+	transform_splits()
+	transform_instruments()
 	transform_ohlc()
 	transform_options()
 	transform_analysis()
 	transform_keystats()
 	transform_rates()
-	transform_instruments()
 	transform_rss()
 
 ###################################################################################################
+
+def generate_split_series():
+
+	splits = pd.concat([
+		pd.read_csv(file)
+		for file in NEW['splits'].iterdir()
+	]).drop_duplicates()
+
+	splits = splits[["ticker", "split_factor", "ex_date"]]
+	splits['ex_date'] = pd.to_datetime(splits.ex_date) - timedelta(days=1)
+	splits['ex_date'] = splits.ex_date.astype(str)
+
+	dates = pd.date_range(start="2019-11-06", end=datetime.now(), freq="D")
+	dates = dates.astype(str).values
+
+	values = [
+	    [
+	        ticker,
+	        date
+	    ]
+	    for ticker in splits.ticker.unique()
+	    for date in dates
+	]
+
+	df = pd.DataFrame(values, columns=['ticker', 'date_current'])
+	df = df.merge(splits, how="outer", left_on=["ticker", "date_current"], right_on=["ticker", "ex_date"])
+	df = df[["ticker", "date_current", "split_factor"]]
+	df = df.dropna(subset=["date_current"]).fillna(1)
+
+	def by_ticker(ticker):
+	    split_factor = ticker.split_factor.values
+	    ticker['split_factor'] = split_factor[::-1].cumprod()[::-1]
+	    return ticker
+
+	return df.groupby("ticker").apply(by_ticker)
 
 def init_instruments():
 
@@ -291,7 +314,24 @@ def init_rates():
 	_connector.execute(TREASURYRATES_TABLE)
 	_connector.write("treasuryratesBACK", treasuryrates)
 
-def init_equities():
+def init_equities(splits):
+
+	def adjust_for_splits(ohlc):
+
+		ohlc = ohlc.merge(splits,
+						  on=["date_current", "ticker"],
+						  how="outer")
+		ohlc = ohlc.dropna(how="all", subset=ohlc.columns[2:-1])
+
+		sf = ohlc.split_factor.fillna(1)
+		ohlc['open_price'] = (ohlc.open_price * sf).round(2)
+		ohlc['high_price'] = (ohlc.high_price * sf).round(2)
+		ohlc['low_price'] = (ohlc.low_price * sf).round(2)
+		ohlc['close_price'] = (ohlc.close_price * sf).round(2)
+		ohlc['adjclose_price'] = (ohlc.adjclose_price * sf).round(2)
+		ohlc['volume'] = (ohlc.volume / sf).round(0)
+
+		return ohlc.drop(['split_factor'], axis=1)
 
 	print("Initializing Equities Excl. Options")
 
@@ -308,6 +348,8 @@ def init_equities():
 			keystats.append(pd.read_csv(folder / "keystats.csv"))
 
 	ohlc = pd.concat(ohlc)
+	ohlc = adjust_for_splits(ohlc)
+
 	analysis = pd.concat(analysis)
 	keystats = pd.concat(keystats)
 
@@ -334,8 +376,30 @@ def init_equities():
 	print(keystats)
 	_connector.write("keystatsBACK", keystats)
 
-def init_options():
+def init_options(splits):
 
+	def adjust_for_splits(options):
+
+		options = options.merge(splits,
+						  on=["date_current", "ticker"],
+						  how="outer")
+		options = options.dropna(how="all", subset=options.columns[2:-1])
+
+		sf = options.split_factor.fillna(1)
+		options['strike_price'] = (options.strike_price * sf).round(2)
+		options['bid_price'] = (options.bid_price * sf).round(2)
+		options['option_price'] = (options.option_price * sf).round(2)
+		options['ask_price'] = (options.ask_price * sf).round(2)
+		options['volume'] = (options.volume / sf).round(0)
+		options['open_interest'] = (options.open_interest / sf).round(0)
+
+		oid = options.ticker + ' ' + options.expiration_date.astype(str)
+		oid += ' ' + options.option_type
+		sp = options.strike_price.round(2).astype(str)
+		sp = sp.str.rstrip("0").str.rstrip(".")
+		options['option_id'] = oid + sp
+
+		return options.drop(["split_factor"], axis=1)
 
 	print("Initializing Options")
 	_connector.execute("DROP TABLE IF EXISTS optionsBACK;")
@@ -355,27 +419,54 @@ def init_options():
 		if len(options) % 10 == 0:
 
 			options = pd.concat(options)
+			options = adjust_for_splits(options)
 			print("Indexing Options", len(options))
 			_connector.write("optionsBACK", options)
 			options = []
 
-	options = pd.concat(options)
-	print("Final Index.\nIndexing Options", len(options))
-	_connector.write("optionsBACK", options)
+	if len(options) != 0:
+		options = pd.concat(options)
+		print("Final Index.\nIndexing Options", len(options))
+		_connector.write("optionsBACK", options)
+
+def init_splits():
+
+	print("Initializing Splits")
+	_connector.execute("DROP TABLE IF EXISTS stocksplitsBACK;")
+	_connector.execute(STOCKSPLITS_TABLE)
+
+	print("Initializing Tmp Splits")
+	_connector.execute("DROP TABLE IF EXISTS stocksplitstmpBACK;")
+	_connector.execute(STOCKSPLITSTMP_TABLE)
+
+	print("Initializing Splits Status")
+	_connector.execute("DROP TABLE IF EXISTS stocksplitstatusBACK;")
+	_connector.execute(STOCKSPLITSTATUS_TABLE)
+
+	splits = []
+	for file in sorted((NEWDIR / "splits").iterdir()):
+		splits.append(pd.read_csv(file))
+	splits = pd.concat(splits).drop_duplicates()
+	splits['processed_timestamp'] = datetime.now()
+
+	_connector.write("stocksplitsBACK", splits)
 
 def init():
 
+	splits = generate_split_series()
+
 	init_instruments()
 	init_rates()
-	init_equities()
-	init_options()
+	init_equities(splits)
+	init_options(splits)
+	init_splits()
 
 def main():
 
-	download_data()
-	transform()
+	# download_data()
+	# transform()
 	init()
-	compress_data()
+	# compress_data()
 
 if __name__ == "__main__":
 

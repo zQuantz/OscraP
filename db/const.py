@@ -9,7 +9,7 @@ import os
 DIR = os.path.dirname(os.path.realpath(__file__))
 DATE = datetime.today().strftime("%Y-%m-%d")
 
-with open("../config.json", "r") as file:
+with open(f"{DIR}/../config_gcp.json", "r") as file:
 	CONFIG = json.loads(file.read())
 
 from connector import Connector
@@ -18,9 +18,10 @@ _connector = Connector(CONFIG, DATE)
 ###################################################################################################
 
 OLD = {
-	"equity" : f"{DIR}/data/old/equities",
-	"rates" : f"{DIR}/data/old/rates",
+	"treasuryrates" : f"{DIR}/data/old/treasuryrates",
 	"instruments" : f"{DIR}/data/old/instruments",
+	"equity" : f"{DIR}/data/old/equities",
+	"splits" : f"{DIR}/data/old/splits",
 	"rss" : f"{DIR}/data/old/rss"
 }
 
@@ -28,7 +29,6 @@ NEW = {
 	key : value.replace("/old/", "/new/")
 	for key, value in OLD.items()
 }
-NEW['rates'] = f"{DIR}/data/new/treasuryrates"
 
 TAR = {
 	key : value.replace("/new/", "/tar/new/")
@@ -40,3 +40,27 @@ NEW = {k : Path(v) for k, v in NEW.items()}
 TAR = {k : Path(v) for k, v in TAR.items()}
 
 ###################################################################################################
+
+TABLE_NAMES = [
+	"options",
+	"ohlc",
+	"keystats",
+	"analysis",
+	"surface",
+	"surfacestats",
+	"surfaceskew",
+	"optionstats",
+	"ohlcstats",
+	"aggoptionstats",
+	"optionscounts",
+	"analysiscounts",
+	"keystatscounts",
+	"treasuryratemap",
+	"treasuryrates",
+	"instruments",
+	"tickerdates",
+	"tickeroids",
+	"stocksplits",
+	"stocksplitstmp",
+	"stocksplitstatus"
+]

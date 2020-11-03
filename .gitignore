@@ -25,3 +25,4 @@ instruments/log.log
 instruments/err.log
 
 config.json
+config_gcp.json
