@@ -27,7 +27,7 @@ for group in groups:
     num_feeds = 0
     for source in group:
         num_feeds += counts[source]
-    sleep = round(max(1, 60 / num_feeds))
+    sleep = round(max(1, 90 / num_feeds))
     group_info[tuple(group)] = sleep
 
 ## Manually set GlobeNewsWire to 3 seconds

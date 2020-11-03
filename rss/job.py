@@ -76,6 +76,8 @@ def main():
 		
 		os.remove(f"{DIR}/pids/{file}")
 
+	os.system(f"touch {DIR}/pids/{os.getpid()}")
+	
 	group_keys = list(groups.keys())
 	parallel_groups = [group_keys[0::2], group_keys[1::2]]
 
