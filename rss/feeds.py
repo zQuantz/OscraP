@@ -12,7 +12,7 @@ import uuid
 
 class Feeds(Thread):
 	
-	WINDOW = 500
+	WINDOW = 1000
 
 	def __init__(self, sources, feeds, sleep, logger):
 
@@ -36,7 +36,7 @@ class Feeds(Thread):
 
 		job_defaults = {
 			'coalesce': True,
-			'max_instances': 2
+			'max_instances': 1
 		}
 		self.blocker = BlockingScheduler(job_defaults = job_defaults)
 		self.blocker.add_job(self.parse_feed, 'cron', second=f'*/{self.sleep}', id='parse_feed')
@@ -53,7 +53,11 @@ class Feeds(Thread):
 		self.coords.rotate()
 		self.source, self.feed = self.coords[0]
 		
-		response = feedparser.parse(self.feed)
+		try:
+			response = feedparser.parse(self.feed)
+		except Exception as e:
+			self.logger.warning(f"Status,{self.source},{self.feed},{e}")
+			return
 
 		status = response.get('status', None)
 		if not status:
@@ -82,6 +86,7 @@ class Feeds(Thread):
 
 			utc_now = datetime.now(tz=timezone.utc).strftime("%Y-%d-%m %H:%M:%S.%f")
 			entry['oscrap_acquisition_datetime'] = utc_now
+			entry['oscrap_source'] = self.source
 
 			self.entries.append(entry)
 

@@ -121,15 +121,6 @@ BBC,http://feeds.bbci.co.uk/news/science_and_environment/rss.xml,Science News,,B
 BBC,http://feeds.bbci.co.uk/news/technology/rss.xml,Technology News,,BBC News - Technology
 Yahoo Finance,https://finance.yahoo.com/rss/topstories,News,,Yahoo Finance
 Yahoo Finance,https://finance.yahoo.com/rss/popularstories,News,,Yahoo Finance
-NASDAQ,https://www.nasdaq.com/feed/rssoutbound?category=Commodities,Commodity News,,Commodities Feed
-NASDAQ,https://www.nasdaq.com/feed/rssoutbound?category=Cryptocurrencies,Cryptocurrency News,,Cryptocurrencies Feed
-NASDAQ,https://www.nasdaq.com/feed/rssoutbound?category=Dividends,Market News,,Dividends Feed
-NASDAQ,https://www.nasdaq.com/feed/rssoutbound?category=Earnings,Market News,,Earnings Feed
-NASDAQ,https://www.nasdaq.com/feed/rssoutbound?category=ETFs,Market News,,ETFs Feed
-NASDAQ,https://www.nasdaq.com/feed/rssoutbound?category=IPOs,Market News,,IPOs Feed
-NASDAQ,https://www.nasdaq.com/feed/rssoutbound?category=Markets,Market News,,Markets Feed
-NASDAQ,https://www.nasdaq.com/feed/rssoutbound?category=Options,Market News,,Options Feed
-NASDAQ,https://www.nasdaq.com/feed/rssoutbound?category=Stocks,Market News,,Stocks Feed
 MarketWatch,http://feeds.marketwatch.com/marketwatch/topstories/,General,Top Stories,MarketWatch.com - Top Stories
 MarketWatch,http://feeds.marketwatch.com/marketwatch/realtimeheadlines/,General,Realtime Headlines,MarketWatch.com - Real-time Headlines
 MarketWatch,http://feeds.marketwatch.com/marketwatch/marketpulse/,General,Marketpulse,MarketWatch.com - MarketPulse

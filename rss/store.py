@@ -28,6 +28,7 @@ def compress_files():
 
 	ctr = 0
 	data, hashes = list(), set()
+	sources, usources = dict(), dict()
 	for file in files:
 
 		with open(file, "r") as data_file:
@@ -41,10 +42,24 @@ def compress_files():
 				item_ = item.copy()
 				item_.pop("oscrap_acquisition_datetime")
 
+				if 'oscrap_source' not in item_:
+					continue
+
+				source = item_['oscrap_source']
+				if source in sources:
+					sources[source] += 1
+				else:
+					sources[source] = 1
+
 				hash_ = md5(json.dumps(item_).encode()).hexdigest()
 
 				if hash_ in hashes:
 					continue
+
+				if source in usources:
+					usources[source] += 1
+				else:
+					usources[source] = 1
 
 				data.append(item)
 				hashes.add(hash_)
@@ -54,6 +69,18 @@ def compress_files():
 	
 	send_gcp_metric(CONFIG, "rss_daily_item_uniques", "int64_value", len(hashes))
 	send_gcp_metric(CONFIG, "rss_daily_item_total", "int64_value", ctr)
+
+	for source in sources:
+		
+		logger.info(f"RSS,Source Total,{source},{sources[source]}")
+		metric_name = source.lower().replace(" ", "_")
+		send_gcp_metric(CONFIG, f"{metric_name}_daily_item_total", "int64_value", sources[source])
+
+	for source in usources:
+
+		logger.info(f"RSS,Source Uniques,{source},{usources[source]}")
+		metric_name = source.lower().replace(" ", "_")
+		send_gcp_metric(CONFIG, f"{metric_name}_daily_item_uniques", "int64_value", usources[source])
 
 	with open(back_file_name, "w") as file:
 		file.write(json.dumps(data))

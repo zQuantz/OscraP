@@ -27,13 +27,13 @@ for group in groups:
     num_feeds = 0
     for source in group:
         num_feeds += counts[source]
-    sleep = round(max(1, 60 / num_feeds))
+    sleep = round(max(1, 120 / num_feeds))
     group_info[tuple(group)] = sleep
 
 ## Manually set GlobeNewsWire to 3 seconds
-group_info[("GlobeNewsWire",)] = 3
+group_info[("GlobeNewsWire",)] = 10
+group_info[("NASDAQ", "BBC", "Wall Street Journal")] = 20
 
-print()
 for group in group_info:
     print("Group:", group, "Sleep Timer:", group_info[group])
 
