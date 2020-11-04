@@ -88,6 +88,7 @@ class Feeds(Thread):
 			entry['oscrap_acquisition_datetime'] = utc_now
 			entry['oscrap_source'] = self.source
 
+			print(self.source)
 			self.entries.append(entry)
 
 		if len(self.entries) > 0:
