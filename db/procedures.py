@@ -25,7 +25,7 @@ UPDATE_DATE_SERIES = """
 		dateseries AS d2
 		ON d1.lag = (d2.lag - 1)
 	SET
-		d1.prevlag_date = d2.lag_date,
+		d1.prev_lag_date = d2.lag_date,
 		d1._5 = IF(d1.lag < 5, 1, NULL),
 		d1._10 = IF(d1.lag < 10, 1, NULL),
 		d1._20 = IF(d1.lag < 20, 1, NULL),
@@ -153,7 +153,7 @@ INSERT_OHLC_STATS = """
 						ON o1.date_current = d1.lag_date
 						INNER JOIN
 							ohlc{modifier} AS o2
-							ON o2.date_current = d1.prevlag_date 
+							ON o2.date_current = d1.prev_lag_date 
 							AND o2.ticker = o1.ticker
 					{subset}
 				) AS t1
