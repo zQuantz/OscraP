@@ -102,6 +102,11 @@ def main():
 if __name__ == '__main__':
 
 	try:
+	
+		send_gcp_metric(CONFIG, "oscrap_job_status", "int64_value", 1)
 		main()
+	
 	except Exception as e:
+
+		send_gcp_metric(CONFIG, "oscrap_job_status", "int64_value", 0)
 		logger.warning(f"SCRAPER,JOB,MAIN ERROR,{e},")

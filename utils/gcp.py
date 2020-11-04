@@ -166,6 +166,7 @@ if __name__ == '__main__':
 	# create_gcp_metric("oscrap_key_stats_sucess", "DOUBLE")
 	# create_gcp_metric("oscrap_analysis_sucess", "DOUBLE")
 	# create_gcp_metric("oscrap_ohlc_sucess", "DOUBLE")
+	# create_gcp_metric("oscrap_job_status", "INT64")
 	
 	# # Rates
 	# create_gcp_metric("rates_success_indicator", "INT64")
@@ -175,11 +176,11 @@ if __name__ == '__main__':
 	# create_gcp_metric("rss_daily_item_counter", "INT64")
 	# create_gcp_metric("rss_daily_item_uniques", "INT64")
 	
-	sources = [
-		"benzinga", "globenewswire", "cnbc",
-		"ny_times", "marketwatch", "bank_of_canada",
-		"bank_of_england", "yahoo_finance", "investing"
-	]
-	for source in sources:
-		create_gcp_metric(f"{source}_daily_item_total", "INT64")
-		create_gcp_metric(f"{source}_daily_item_uniques", "INT64")
+	# sources = [
+	# 	"benzinga", "globenewswire", "cnbc",
+	# 	"ny_times", "marketwatch", "bank_of_canada",
+	# 	"bank_of_england", "yahoo_finance", "investing"
+	# ]
+	# for source in sources:
+	# 	create_gcp_metric(f"{source}_daily_item_total", "INT64")
+	# 	create_gcp_metric(f"{source}_daily_item_uniques", "INT64")

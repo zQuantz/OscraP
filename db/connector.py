@@ -134,7 +134,7 @@ class Connector:
 		self.execute("""
 				INSERT INTO 
 					dateseries (
-						_lag,
+						lag,
 						lag_date
 					)
 				VALUES
