@@ -333,7 +333,12 @@ def cleaning_loop():
 
 		if len(new_items) != 0:
 
-			helpers.bulk(new_items)
+			try:
+				response = helpers.bulk(ES_CLIENT, new_items)
+			except Exception as e:
+				response = e
+
+			print(len(new_items), response)
 			new_items = []
 
 		time.sleep(5)
