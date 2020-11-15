@@ -1,18 +1,18 @@
-from unicodedata import normalize
+from elasticsearch import Elasticsearch, helpers
 from urllib.parse import urlparse
-from socket import gethostname
+from const import DIR, CONFIG
 from bs4 import BeautifulSoup
 from langid import classify
 from hashlib import sha256
-from const import DIR
 import pandas as pd
 import sys, os
 import json
 import time
-import uuid
 import re
 
 ###################################################################################################
+
+ES_CLIENT = Elasticsearch(CONFIG['ES_IP'], http_comprress=True, timeout=30)
 
 df = pd.read_csv("data/tickers.csv")
 df['FullCode'] = df.ExchangeCode + ":" + df.Ticker
@@ -37,9 +37,9 @@ exchange_set = [re.sub("-|\.", "", exch) for exch in exchange_set]
 TICKER_PAT = "[A-Z\.-]{3,15}[\s]{0,1}:[\s]{0,1}[A-Z\.-]{1,15}"
 TICKER_PAT2 = "\((?:Symbol|Nasdaq|Euronext)[\s]{0,1}:[\s]{0,1}[A-Z\.-]+\)"
 SUB_PAT = "<pre(.*?)</pre>|<img(.*?)/>|<img(.*?)>(.*?)</img>|</br>"
+DEFAULT_TIME = "1970-01-01 00:00:00"
 
 NEWS_DIR = f"{DIR}/news_data"
-CLEAN_NEWS_DIR = f"{DIR}/clean_news_data"
 
 ###################################################################################################
 
@@ -84,16 +84,10 @@ def clean(item):
 	_authors.append(item.get("author_detail", default).get('name'))
 	_authors.append(item.get("publisher"))
 
-	link_author = urlparse(item['link']).netloc
-	link_author = link_author.split(".")[1]
-	_authors.append(link_author)
-
 	_authors = [author for author in _authors if author]
 
-	if item.get('author') == "":
-		author_display = link_author
-	else:
-		author_display = "  /  ".join([link_author, item.get("author")])
+	article_source = urlparse(item['link']).netloc
+	article_source = article_source.split(".")[1]
 
 	for contributor in item.get("contributors", []):
 		contribs.append(contributor.get('name'))
@@ -237,13 +231,21 @@ def clean(item):
 			summary = summary + f" {string}"
 
 	###############################################################################################
-	## Time stamp
+	## Time Stuff
 
 	timestamp = item.get('published', item.get('updated'))
 	try:
-		timestamp = str(pd.to_datetime(timestamp))
+		timestamp = pd.to_datetime(timestamp)
 	except Exception as e:
-		timestamp = str(pd.to_datetime(int(timestamp)))
+		timestamp = pd.to_datetime(int(timestamp))
+
+	timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
+	oscrap_timestamp = item.get('oscrap_acquisition_datetime', DEFAULT_TIME)
+	oscrap_timestamp = oscrap_timestamp[:19]
+
+	if oscrap_timestamp == "None":
+		oscrap_timestamp = DEFAULT_TIME
 
 	###############################################################################################
 	## Language
@@ -258,10 +260,11 @@ def clean(item):
 		'summary' : summary,
 		'_summary' : item.get('summary', ''),
 		'timestamp' : timestamp,
-		'oscrap_timestamp' : item.get('oscrap_acquisition_datetime', timestamp),
+		'oscrap_timestamp' : oscrap_timestamp,
 		'language' : language,
 		'link' : item['link'],
-		'author_display' : author_display
+		'article_source' : article_source,
+		'source' : "rss"
 	}
 
 	if ticker_matches:
@@ -290,14 +293,15 @@ def clean(item):
 def cleaning_loop():
 
 	files = set([".gitignore"])
-	items = set()
 
 	while True:
 
-		new_files = set(os.listdir(NEWS_DIR)).difference(files)
+		new_files = os.listdir(NEWS_DIR)
+		if len(new_files) < len(files):
+			files = set([".gitignore"])
 		
 		items = []
-		for new_file in new_files:
+		for new_file in set(new_files).difference(files):
 
 			with open(f"{NEWS_DIR}/{new_file}", "r") as file:
 
@@ -314,26 +318,23 @@ def cleaning_loop():
 			if not title:
 				continue
 
-			summary = item.get("summary", None)
-			author = item.get("author", "")
-
 			dummy_item = {
-				"title" : title,
-				"summary" : summary,
-				"author" : author
+				"link" : item['link'],
 			}
 			dummy_item = json.dumps(dummy_item, sort_keys = True)
-			hash_ = sha256(dummy_item.encode()).hexdigest()
+			_hash = sha256(dummy_item.encode()).hexdigest()
 
-			if hash_ in items:
-				continue
-
-			new_items.append(clean(item))
+			new_items.append({
+				"_index" : "news",
+				"_id" : _hash,
+				"_op_type" : "create",
+				"_source" : clean(item)
+			})
 
 		if len(new_items) != 0:
 
-			with open(f"{DIR}/clean_news_data/{str(uuid.uuid4())}.txt", "w") as file:
-				file.write(json.dumps(new_items))
+			helpers.bulk(new_items)
+			new_items = []
 
 		time.sleep(5)
 
