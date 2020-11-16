@@ -1,3 +1,4 @@
+from elasticsearch.helpers.errors import BulkIndexError
 from elasticsearch import Elasticsearch, helpers
 from urllib.parse import urlparse
 from const import DIR, CONFIG
@@ -333,12 +334,10 @@ def cleaning_loop():
 
 		if len(new_items) != 0:
 
-			try:
-				response = helpers.bulk(ES_CLIENT, new_items)
-			except Exception as e:
-				response = e
-
-			print(len(new_items), response)
+			successes, failures = helpers.bulk(ES_CLIENT,
+											   new_items,
+											   stats_only=True,
+											   raise_on_error=False)
 			new_items = []
 
 		time.sleep(5)
