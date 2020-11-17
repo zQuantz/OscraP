@@ -12,6 +12,9 @@ import json
 import time
 import re
 
+sys.path.append(f"{DIR}/../utils")
+from gcp import send_gcp_metric
+
 ###################################################################################################
 
 ES_CLIENT = Elasticsearch(CONFIG['ES_IP'], http_comprress=True, timeout=30)
@@ -306,6 +309,13 @@ def cleaning_loop():
 	while True:
 
 		new_files = os.listdir(NEWS_DIR)
+		send_gcp_metric(
+			CONFIG,
+			"rss_daily_item_counter",
+			"int64_value",
+			len(new_files) - 1
+		)
+		
 		if len(new_files) < len(files):
 			files = set([".gitignore"])
 		

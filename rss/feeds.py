@@ -6,6 +6,7 @@ from threading import Thread
 from hashlib import md5
 from const import DIR
 import feedparser
+import socket
 import sys, os
 import json
 import uuid
@@ -31,6 +32,8 @@ class Feeds(Thread):
 			feed : []
 			for _, feed in self.coords
 		}
+
+		socket.setdefaulttimeout(3)
 
 	def run(self):
 

@@ -159,9 +159,7 @@ def bucket_backup():
 
 if __name__ == '__main__':
 
-	pass
-
-	# bucket_backup()
+	bucket_backup()
 
 	# # OscraP
 	# create_gcp_metric("oscrap_options_sucess", "DOUBLE")
