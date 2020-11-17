@@ -18,9 +18,11 @@ NUMBERS = ''.join([str(i) for i in range(10)])
 DIR = os.path.realpath(os.path.dirname(__file__))
 DIR = Path(DIR)
 
-DTDATE = datetime.today()
-DATE = DTDATE.strftime("%Y-%m-%d")
+DATE = datetime.today().strftime("%Y-%m-%d")
 DATA = DIR / "financial_data" / DATE
+
+DTDATE = DATE + " 17:00:00"
+DTDATE = datetime.strptime(DTDATE, "%Y-%m-%d %H:%M:%S")
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
