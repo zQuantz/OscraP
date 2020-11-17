@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from langid import classify
 from hashlib import sha256
 import pandas as pd
+import requests
 import sys, os
 import json
 import time
@@ -14,6 +15,7 @@ import re
 ###################################################################################################
 
 ES_CLIENT = Elasticsearch(CONFIG['ES_IP'], http_comprress=True, timeout=30)
+HEADERS = {"Content-Type" : "application/json"}
 
 df = pd.read_csv("data/tickers.csv")
 df['FullCode'] = df.ExchangeCode + ":" + df.Ticker
@@ -43,6 +45,12 @@ DEFAULT_TIME = "1970-01-01 00:00:00"
 NEWS_DIR = f"{DIR}/news_data"
 
 ###################################################################################################
+
+def get_scores(sentences):
+
+	response = requests.post("http://localhost:9602", headers=HEADERS, json={"sentences" : sentences})
+	response = json.loads(response.content)
+	return response.values()
 
 def validate(match, hit, miss):
 
@@ -333,6 +341,16 @@ def cleaning_loop():
 			})
 
 		if len(new_items) != 0:
+
+			titles = [
+				item['_source']['title']
+				for item in new_items
+			]
+			scores = get_scores(titles)
+
+			for item, score in zip(new_items, scores):
+				item['_source']['sentiment'] = score['prediction']
+				item['_source']['sentiment_score'] = score['sentiment_score']
 
 			successes, failures = helpers.bulk(ES_CLIENT,
 											   new_items,
