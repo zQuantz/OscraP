@@ -1,6 +1,6 @@
 DATESERIES_TABLE = """
 	CREATE TABLE dateseries (
-		_lag SMALLINT,
+		lag SMALLINT,
 		lag_date DATE,
 		prev_lag_date DATE, 
 		_5 SMALLINT,
