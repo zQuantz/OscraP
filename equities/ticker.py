@@ -266,7 +266,7 @@ class Ticker():
 
 			expiry_date = datetime.strptime(expiry_date, NAMED_DATE_FMT)
 			expiry_date_fmt = expiry_date.strftime("%Y-%m-%d")
-			expiration_days = (expiry_date - datetime.now()).days + 1
+			expiration_days = (expiry_date - DTDATE).days + 1
 
 			page = url+f"&date={str(expiry)}"
 			bs, _ = get_page(page)
