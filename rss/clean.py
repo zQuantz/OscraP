@@ -309,12 +309,19 @@ def cleaning_loop():
 	while True:
 
 		new_files = os.listdir(NEWS_DIR)
-		send_gcp_metric(
-			CONFIG,
-			"rss_daily_item_counter",
-			"int64_value",
-			len(new_files) - 1
-		)
+
+		try:
+			
+			send_gcp_metric(
+				CONFIG,
+				"rss_daily_item_counter",
+				"int64_value",
+				len(new_files) - 1
+			)
+
+		except Exception as e:
+
+			print(e)
 		
 		if len(new_files) < len(files):
 			files = set([".gitignore"])
@@ -366,6 +373,8 @@ def cleaning_loop():
 											   new_items,
 											   stats_only=True,
 											   raise_on_error=False)
+			
+			print(successes, failures)
 			new_items = []
 
 		time.sleep(5)
