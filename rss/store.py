@@ -92,6 +92,7 @@ def compress_files():
 	if file_size > 0:
 		for file in files:
 			os.remove(file)
+		os.remove(back_file_name)
 	else:
 		raise Exception("TarFile Corrupted. File Size 0.")
 

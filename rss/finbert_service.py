@@ -21,55 +21,58 @@ app = Flask(__name__)
 ###################################################################################################
 
 def predict(sentences):
-    """
-    
-    Not my code.
-    See https://github.com/ProsusAI/finBERT/blob/fcec6c5db7604606ae3ca1cb0db5f60bf8546cbb/predict.py for reference
 
-    Predict sentiments of sentences in a given text. The function first tokenizes sentences, make predictions and write
-    results.
-    Parameters
-    ----------
-    text: string
-        text to be analyzed
-    model: BertForSequenceClassification
-        path to the classifier model
-    write_to_csv (optional): bool
-    path (optional): string
-        path to write the string
-    """
-    model.eval()
+	"""
+	
+	Not my code.
+	See https://github.com/ProsusAI/finBERT/blob/fcec6c5db7604606ae3ca1cb0db5f60bf8546cbb/predict.py for reference
 
-    label_list = ['positive', 'negative', 'neutral']
-    label_dict = {0: 'positive', 1: 'negative', 2: 'neutral'}
-    result = pd.DataFrame(columns=['sentence','logit','prediction','sentiment_score'])
-    for batch in chunks(sentences, CHUNK_SIZE):
+	Predict sentiments of sentences in a given text. The function first tokenizes sentences, make predictions and write
+	results.
+	Parameters
+	----------
+	text: string
+		text to be analyzed
+	model: BertForSequenceClassification
+		path to the classifier model
+	write_to_csv (optional): bool
+	path (optional): string
+		path to write the string
+	"""
+	model.eval()
 
-        examples = [InputExample(str(i), sentence) for i, sentence in enumerate(batch)]
+	label_list = ['positive', 'negative', 'neutral']
+	label_dict = {0: 'positive', 1: 'negative', 2: 'neutral'}
+	result = pd.DataFrame(columns=['sentence','logit','prediction','sentiment_score'])
+	for i, batch in enumerate(chunks(sentences, CHUNK_SIZE)):
 
-        features = convert_examples_to_features(examples, label_list, 64, tokenizer)
+		print(i * CHUNK_SIZE / len(sentences))
 
-        all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
-        all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
-        all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
+		examples = [InputExample(str(i), sentence) for i, sentence in enumerate(batch)]
 
-        with torch.no_grad():
-            logits = model(all_input_ids, all_segment_ids, all_input_mask)
-            logits = softmax(np.array(logits))
-            sentiment_score = pd.Series(logits[:,0] - logits[:,1])
-            predictions = np.squeeze(np.argmax(logits, axis=1))
+		features = convert_examples_to_features(examples, label_list, 64, tokenizer)
 
-            batch_result = {'sentence': batch,
-                            'logit': list(logits),
-                            'prediction': predictions,
-                            'sentiment_score':sentiment_score}
-            
-            batch_result = pd.DataFrame(batch_result)
-            result = pd.concat([result,batch_result], ignore_index=True)
+		all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
+		all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
+		all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
 
-    result['prediction'] = result.prediction.apply(lambda x: label_dict[x])
+		with torch.no_grad():
+			logits = model(all_input_ids, all_segment_ids, all_input_mask)
+			logits = softmax(np.array(logits))
+			sentiment_score = pd.Series(logits[:,0] - logits[:,1])
+			predictions = np.squeeze(np.argmax(logits, axis=1))
 
-    return result
+			batch_result = {'sentence': batch,
+							'logit': list(logits),
+							'prediction': predictions,
+							'sentiment_score':sentiment_score}
+			
+			batch_result = pd.DataFrame(batch_result)
+			result = pd.concat([result,batch_result], ignore_index=True)
+
+	result['prediction'] = result.prediction.apply(lambda x: label_dict[x])
+
+	return result
 
 ###################################################################################################
 
