@@ -25,6 +25,8 @@ def get_date(filename):
 
 def download():
 
+	print("DOWNLOAD")
+
 	if not PATH.is_dir():
 		PATH.mkdir()
 
@@ -46,6 +48,8 @@ def download():
 		os.remove(PATH / name)
 
 def clean_items():
+
+	print("CLEAN ITEMS")
 
 	if not CPATH.is_dir():
 		CPATH.mkdir()
@@ -71,6 +75,8 @@ def clean_items():
 			_file.write(json.dumps(items))
 
 def remove_duplicates():
+
+	print("REMOVE DUPLICATES")
 
 	hashs = set()
 
@@ -105,6 +111,8 @@ def remove_duplicates():
 
 def get_sentiment():
 
+	print("CALCULATE SENTIMENT")
+
 	for i, file in enumerate(sorted(CPATH.iterdir())):
 
 		print(file.name)
@@ -132,6 +140,8 @@ def get_sentiment():
 			_file.write(json.dumps(items))
 
 def index():
+
+	print("INDEX")
 
 	es = Elasticsearch([CONFIG['ES_IP']], timeout=60_000)
 	# try:
