@@ -159,7 +159,7 @@ def bucket_backup():
 
 if __name__ == '__main__':
 
-	bucket_backup()
+	# bucket_backup()
 
 	# # OscraP
 	# create_gcp_metric("oscrap_options_sucess", "DOUBLE")
@@ -175,6 +175,8 @@ if __name__ == '__main__':
 	# create_gcp_metric("rss_daily_item_total", "INT64")
 	# create_gcp_metric("rss_daily_item_counter", "INT64")
 	# create_gcp_metric("rss_daily_item_uniques", "INT64")
+	# create_gcp_metric("rss_daily_clean_total", "INT64")
+	# create_gcp_metric("rss_daily_clean_uniques", "INT64")
 	
 	# sources = [
 	# 	"benzinga", "globenewswire", "cnbc",
@@ -184,3 +186,5 @@ if __name__ == '__main__':
 	# for source in sources:
 	# 	create_gcp_metric(f"{source}_daily_item_total", "INT64")
 	# 	create_gcp_metric(f"{source}_daily_item_uniques", "INT64")
+
+	print("Nothing")

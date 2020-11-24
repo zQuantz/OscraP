@@ -13,6 +13,7 @@ import requests
 import sys, os
 import json
 import time
+import uuid
 import re
 
 sys.path.append(f"{DIR}/../utils")
@@ -355,10 +356,10 @@ def cleaning_loop():
 		new_items = []
 		for item in items:
 
-			title = item.get("title", None)
-			if not title:
+			if not item.get("title"):
 				continue
 
+			item = clean(item)
 			dummy_item = {
 				"title" : item['title'],
 				'summary' : item['summary'],
@@ -368,10 +369,10 @@ def cleaning_loop():
 			_hash = sha256(dummy_item.encode()).hexdigest()
 
 			new_items.append({
-				"_index" : "news",
+				"_index" : "rss",
 				"_id" : _hash,
 				"_op_type" : "create",
-				"_source" : clean(item)
+				"_source" : item
 			})
 
 		if len(new_items) != 0:
@@ -392,6 +393,9 @@ def cleaning_loop():
 											   raise_on_error=False)
 			
 			print(successes, failures)
+			with open(f"{DIR}/cleaned_news_data/{str(uuid.uuid4())}.txt", "w") as file:
+				file.write(json.dumps(new_items))
+
 			new_items = []
 
 		time.sleep(5)

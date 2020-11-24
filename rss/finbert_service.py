@@ -10,7 +10,7 @@ import json
 
 ###################################################################################################
 
-CHUNK_SIZE = 5
+CHUNK_SIZE = 25
 
 model = BertForSequenceClassification.from_pretrained(f"{DIR}/data/sentiment_model",
 													  num_labels=3,
@@ -39,6 +39,7 @@ def predict(sentences):
 	path (optional): string
 		path to write the string
 	"""
+	
 	model.eval()
 
 	label_list = ['positive', 'negative', 'neutral']
@@ -46,7 +47,7 @@ def predict(sentences):
 	result = pd.DataFrame(columns=['sentence','logit','prediction','sentiment_score'])
 	for i, batch in enumerate(chunks(sentences, CHUNK_SIZE)):
 
-		print(i * CHUNK_SIZE / len(sentences))
+		print("Progress:", i * CHUNK_SIZE / len(sentences))
 
 		examples = [InputExample(str(i), sentence) for i, sentence in enumerate(batch)]
 

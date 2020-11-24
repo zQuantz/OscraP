@@ -1,7 +1,7 @@
 from elasticsearch import Elasticsearch, helpers
+from const import DIR, CONFIG, ES_MAPPINGS
 from clean import clean, get_scores
 from google.cloud import storage
-from const import DIR, CONFIG
 from hashlib import sha256
 from pathlib import Path
 import tarfile as tar
@@ -15,75 +15,8 @@ PATH = Path(f"{DIR}/tmp/rss_data")
 CPATH = Path(f"{DIR}/tmp/cleaned_rss_data")
 
 SUBSET = [
+	"2020-11-23"
 ]
-
-settings = {
-    "settings": {
-        "number_of_shards": 1,
-        "number_of_replicas": 0
-    },
-    "mappings": {
-        "properties": {
-                "title": {
-                    "type" : "text"
-                },
-                "summary" : {
-                    "type" : "text"
-                },
-                "_summary" : {
-                    "type" : "text"
-                },
-                "tables" : {
-                	"type" : "text"
-                },
-                "link" : {
-                    "type" : "text"
-                },
-                "timestamp" : {
-                    "type" : "date",
-                },
-                "oscrap_timestamp": {
-                    "type" : "date",
-                },
-                "authors" : {
-                    "type" : "keyword"
-                },
-                "article_type" : {
-                    "type" : "keyword"
-                },
-                "article_source" : {
-                	"type" : "keyword"
-                },
-                "source" : {
-                	"type" : "keyword"
-                },
-                "tickers" : {
-                    "type" : "keyword"
-                },
-                "language" : {
-                    "type" : "keyword"
-                },
-                "categories" : {
-                    "type" : "keyword"
-                },
-                "related" : {
-                    "type" : "keyword"
-                },
-                "_tickers" : {
-                    "type" : "keyword"
-                },
-                "credit": {
-                    "type" : "keyword"
-                },
-                "sentiment": {
-                	"type" : "keyword"
-                },
-                "sentiment_score" : {
-                	"type" : "float"
-                }
-            }
-        }
-    }
 
 ###################################################################################################
 
@@ -201,16 +134,20 @@ def get_sentiment():
 def index():
 
 	es = Elasticsearch([CONFIG['ES_IP']], timeout=60_000)
-	try:
-		es.indices.delete(index="rss")
-	except Exception as e:
-		print(e)
-	es.indices.create(index='rss',body=settings)
+	# try:
+	# 	es.indices.delete(index="rss")
+	# except Exception as e:
+	# 	print(e)
+	# es.indices.create(index='rss',body=ES_MAPPINGS)
 
 	items = []
 	for i, file in enumerate(sorted(CPATH.iterdir())):
 
 		print(file.name)
+
+		if SUBSET:
+			if get_date(file.name) not in SUBSET:
+				continue
 
 		with open(file, "r") as _file:
 			new_items = json.loads(_file.read())
@@ -243,4 +180,5 @@ if __name__ == '__main__':
 	# clean_items()
 	# remove_duplicates()
 	# get_sentiment()
-	index()
+	# index()
+	pass
