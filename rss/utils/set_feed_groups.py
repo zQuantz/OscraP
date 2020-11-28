@@ -31,7 +31,7 @@ for group in groups:
     group_info[tuple(group)] = sleep
 
 ## Manually set GlobeNewsWire to 3 seconds
-group_info[("GlobeNewsWire",)] = 3
+group_info[("GlobeNewsWire",)] = 5
 
 for group in group_info:
     print("Group:", group, "Sleep Timer:", group_info[group])

@@ -13,9 +13,9 @@ import json
 BUCKET = storage.Client().bucket(CONFIG["gcp_bucket_name"])
 PATH = Path(f"{DIR}/tmp/rss_data")
 CPATH = Path(f"{DIR}/tmp/cleaned_rss_data")
+TPATH = Path(f"{DIR}/tmp/tar_rss_data")
 
 SUBSET = [
-	"2020-11-23"
 ]
 
 ###################################################################################################
@@ -171,18 +171,33 @@ def index():
 			for item in new_items
 		]
 
-		items.extend([
+		new_items = [
 			{
 				"_index" : "rss",
 				"_op_type" : "create",
-				"_source" : item,
-				"_id" : _hash
+				"_id" : _hash,
+				"_source" : item
 			}
-			for item, _hash in zip(new_items, hashs)
-		])
+			for _hash, item in zip(hashs, new_items)
+		]
+		items.extend(new_items)
 
-	successes, failures = helpers.bulk(es, items, stats_only=True, raise_on_error=False, chunk_size=25_000, max_retries=2)
-	print(successes, failures)
+		with open(file, "w") as _file:
+			_file.write(json.dumps(new_items))
+
+	# successes, failures = helpers.bulk(es, items, stats_only=True, raise_on_error=False, chunk_size=25_000, max_retries=2)
+	# print(successes, failures)
+
+def tar_it():
+
+	if not TPATH.is_dir():
+		TPATH.mkdir()
+
+	for file in sorted(CPATH.iterdir()):
+
+		print(file.name)
+		with tar.open(TPATH / file.with_suffix(".tar.xz").name, "x:xz") as tar_file:
+			tar_file.add(file, arcname=file.name)
 
 if __name__ == '__main__':
 
@@ -191,4 +206,5 @@ if __name__ == '__main__':
 	# remove_duplicates()
 	# get_sentiment()
 	# index()
-	pass
+	tar_it()
+	# pass
