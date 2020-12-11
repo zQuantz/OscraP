@@ -167,6 +167,7 @@ if __name__ == '__main__':
 	# create_gcp_metric("oscrap_analysis_sucess", "DOUBLE")
 	# create_gcp_metric("oscrap_ohlc_sucess", "DOUBLE")
 	# create_gcp_metric("oscrap_job_status", "INT64")
+	# create_gcp_metric("splits_success_indicator", "INT64")
 	
 	# # Rates
 	# create_gcp_metric("rates_success_indicator", "INT64")
