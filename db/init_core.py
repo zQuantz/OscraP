@@ -193,7 +193,6 @@ def transform_instruments():
 		instruments = transformation(instruments)
 		instruments.to_csv(f"{NEW['instruments']}/{file.name}", index=False)
 
-
 def transform_splits():
 
 	def transformation(splits):

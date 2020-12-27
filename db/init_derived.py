@@ -1,3 +1,4 @@
+from scipy.interpolate import CubicHermiteSpline
 from const import DIR, NEW, _connector
 from procedures import *
 from tables import *
@@ -73,30 +74,12 @@ def derive_treasuryratemap():
 
 		r_map = df.iloc[-1, 1:].values
 		r_map = np.array([0] + r_map.tolist())
-		r_map /= 100
 
-		def get_rate(t):
-			
-			if t >= (30 * 360):
-				return r_map[-1]
-
-			b1 = t_map <= t
-			b2 = t_map > t
-
-			r1 = r_map[b1][-1]
-			r2 = r_map[b2][0]
-
-			t1 = t_map[b1][-1]
-			t2 = t_map[b2][0]
-
-			interpolated_rate = (t - t1) / (t2 - t1)
-			interpolated_rate *= (r2 - r1)
-
-			return interpolated_rate + r1
+		chs = CubicHermiteSpline(t_map, r_map, [0]*len(t_map))
 
 		rm_df = pd.DataFrame()
 		rm_df['days_to_expiry'] = np.arange(0, 365 * 10 + 1).astype(int)
-		rm_df['rate'] = rm_df.days_to_expiry.apply(get_rate)
+		rm_df['rate'] = chs(rm_df.days_to_expiry.values)
 
 		return rm_df
 

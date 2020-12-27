@@ -64,6 +64,22 @@ t_map = [
 ]
 t_map = np.array(t_map)
 
+t_names = [
+    "date_current",
+    "_1_month",
+    "_2_months",
+    "_3_months",
+    "_6_months",
+    "_1_year",
+    "_2_years",
+    "_3_years",
+    "_5_years",
+    "_7_years",
+    "_10_years",
+    "_20_years",
+    "_30_years",
+]
+
 ###################################################################################################
 
 sys.path.append(f"{DIR}/../db")

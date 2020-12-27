@@ -1,4 +1,5 @@
-from const import DIR, DATA, DATE, CONFIG, logger, t_map, _connector
+from const import DIR, DATA, DATE, CONFIG, logger, t_map, t_names, _connector
+from scipy.interpolate import CubicHermiteSpline
 
 import tarfile as tar
 import pandas as pd
@@ -45,21 +46,7 @@ def collect():
 		return
 
 	df = df[0]
-	df.columns = [
-		"date_current",
-		"_1_month",
-		"_2_months",
-		"_3_months",
-		"_6_months",
-		"_1_year",
-		"_2_years",
-		"_3_years",
-		"_5_years",
-		"_7_years",
-		"_10_years",
-		"_20_years",
-		"_30_years",
-	]
+	df.columns = t_names
 
 	df['date_current'] = pd.to_datetime(df.date_current)
 	df = df.sort_values('date_current', ascending=False)
@@ -80,29 +67,11 @@ def collect():
 
 	r_map = df.iloc[-1, 1:].values
 	r_map = np.array([0] + r_map.tolist())
-
-	def get_rate(t):
-		
-		if t >= 30 * 360:
-			return r_map[-1]
-
-		b1 = t_map <= t
-		b2 = t_map > t
-
-		r1 = r_map[b1][-1]
-		r2 = r_map[b2][0]
-
-		t1 = t_map[b1][-1]
-		t2 = t_map[b2][0]
-
-		interpolated_rate = (t - t1) / (t2 - t1)
-		interpolated_rate *= (r2 - r1)
-
-		return interpolated_rate + r1
+	chs = CubicHermiteSpline(t_map, r_map, [0]*len(t_map))
 
 	rm_df = pd.DataFrame()
 	rm_df['days_to_expiry'] = np.arange(0, 365 * 10 + 1).astype(int)
-	rm_df['rate'] = rm_df.days_to_expiry.apply(get_rate)
+	rm_df['rate'] = chs(rm_df.days_to_expiry.values)
 	rm_df['date_current'] = DATE
 
 	_connector.write("treasuryratemap", rm_df)
