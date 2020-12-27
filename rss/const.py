@@ -38,3 +38,71 @@ with open(f"{DIR}/../config.json", "w") as file:
 	file.write(json.dumps(CONFIG))
 
 ###################################################################################################
+
+ES_MAPPINGS = {
+    "settings": {
+        "number_of_shards": 1,
+        "number_of_replicas": 0
+    },
+    "mappings": {
+        "properties": {
+                "title": {
+                    "type" : "text"
+                },
+                "summary" : {
+                    "type" : "text"
+                },
+                "_summary" : {
+                    "type" : "text"
+                },
+                "tables" : {
+                	"type" : "text"
+                },
+                "link" : {
+                    "type" : "text"
+                },
+                "timestamp" : {
+                    "type" : "date",
+                },
+                "oscrap_timestamp": {
+                    "type" : "date",
+                },
+                "authors" : {
+                    "type" : "keyword"
+                },
+                "article_type" : {
+                    "type" : "keyword"
+                },
+                "article_source" : {
+                	"type" : "keyword"
+                },
+                "source" : {
+                	"type" : "keyword"
+                },
+                "tickers" : {
+                    "type" : "keyword"
+                },
+                "language" : {
+                    "type" : "keyword"
+                },
+                "categories" : {
+                    "type" : "keyword"
+                },
+                "related" : {
+                    "type" : "keyword"
+                },
+                "_tickers" : {
+                    "type" : "keyword"
+                },
+                "credit": {
+                    "type" : "keyword"
+                },
+                "sentiment": {
+                	"type" : "keyword"
+                },
+                "sentiment_score" : {
+                	"type" : "float"
+                }
+            }
+        }
+    }

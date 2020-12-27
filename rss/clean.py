@@ -1,15 +1,19 @@
 from elasticsearch.helpers.errors import BulkIndexError
+from datetime import datetime, timedelta, timezone
 from elasticsearch import Elasticsearch, helpers
 from urllib.parse import urlparse
 from const import DIR, CONFIG
 from bs4 import BeautifulSoup
 from langid import classify
 from hashlib import sha256
+from pathlib import Path
 import pandas as pd
+import dateparser
 import requests
 import sys, os
 import json
 import time
+import uuid
 import re
 
 sys.path.append(f"{DIR}/../utils")
@@ -43,7 +47,14 @@ exchange_set = [re.sub("-|\.", "", exch) for exch in exchange_set]
 TICKER_PAT = "[A-Z\.-]{3,15}[\s]{0,1}:[\s]{0,1}[A-Z\.-]{1,15}"
 TICKER_PAT2 = "\((?:Symbol|Nasdaq|Euronext)[\s]{0,1}:[\s]{0,1}[A-Z\.-]+\)"
 SUB_PAT = "<pre(.*?)</pre>|<img(.*?)/>|<img(.*?)>(.*?)</img>|</br>"
+
 DEFAULT_TIME = "1970-01-01 00:00:00"
+DATE_FMTS = [
+	"%a, %d %b %Y %H:%M %Z",
+	"%a, %d %b %Y %H:%M %z",
+	"%Y-%m-%d %H:%M:%S",
+	"%Y-%d-%m %H:%M:%S",
+]
 
 NEWS_DIR = f"{DIR}/news_data"
 
@@ -51,7 +62,8 @@ NEWS_DIR = f"{DIR}/news_data"
 
 def get_scores(sentences):
 
-	response = requests.post("http://localhost:9602", headers=HEADERS, json={"sentences" : sentences})
+	data = {"sentences" : sentences}
+	response = requests.post("http://localhost:9602", headers=HEADERS, json=data)
 	response = json.loads(response.content)
 	return response.values()
 
@@ -86,14 +98,12 @@ def clean(item):
 	###############################################################################################
 	## Author and Categories
 
-	default = {"name" : None}
-
 	_authors.append(item.get("author"))
 
 	for author in item.get("authors", []):
 		_authors.append(author.get('name'))
 
-	_authors.append(item.get("author_detail", default).get('name'))
+	_authors.append(item.get("author_detail", {"name" : None}).get('name'))
 	_authors.append(item.get("publisher"))
 
 	_authors = [author for author in _authors if author]
@@ -245,19 +255,25 @@ def clean(item):
 	###############################################################################################
 	## Time Stuff
 
-	timestamp = item.get('published', item.get('updated'))
+	timestamp = item.get('published', item.get('updated', DEFAULT_TIME))
 	try:
-		timestamp = pd.to_datetime(timestamp)
+		timestamp = dateparser.parse(timestamp, DATE_FMTS)
+		tz = (
+			timedelta(seconds=0) 
+			if not timestamp.utcoffset()
+			else timestamp.utcoffset()
+		)
+		timestamp += tz
+		timestamp = timestamp.replace(tzinfo=None)
 	except Exception as e:
-		timestamp = pd.to_datetime(int(timestamp))
-
-	timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+		timestamp = datetime.strptime(DEFAULT_TIME, DATE_FMTS[-1])
+		print(e)
 
 	oscrap_timestamp = item.get('oscrap_acquisition_datetime', DEFAULT_TIME)
-	oscrap_timestamp = oscrap_timestamp[:19]
+	oscrap_timestamp = datetime.strptime(oscrap_timestamp[:19], DATE_FMTS[-1])
 
-	if oscrap_timestamp == "None":
-		oscrap_timestamp = DEFAULT_TIME
+	oscrap_timestamp = oscrap_timestamp.isoformat()[:19]
+	timestamp = timestamp.isoformat()[:19]
 
 	###############################################################################################
 	## Language
@@ -340,21 +356,23 @@ def cleaning_loop():
 		new_items = []
 		for item in items:
 
-			title = item.get("title", None)
-			if not title:
+			if not item.get("title"):
 				continue
 
+			item = clean(item)
 			dummy_item = {
-				"link" : item['link'],
+				"title" : item['title'],
+				'summary' : item['summary'],
+				"link" : item['link']
 			}
 			dummy_item = json.dumps(dummy_item, sort_keys = True)
 			_hash = sha256(dummy_item.encode()).hexdigest()
 
 			new_items.append({
-				"_index" : "news",
+				"_index" : "rss",
 				"_id" : _hash,
 				"_op_type" : "create",
-				"_source" : clean(item)
+				"_source" : item
 			})
 
 		if len(new_items) != 0:
@@ -375,6 +393,9 @@ def cleaning_loop():
 											   raise_on_error=False)
 			
 			print(successes, failures)
+			with open(f"{DIR}/cleaned_news_data/{str(uuid.uuid4())}.txt", "w") as file:
+				file.write(json.dumps(new_items))
+
 			new_items = []
 
 		time.sleep(5)

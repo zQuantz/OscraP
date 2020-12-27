@@ -9,7 +9,7 @@ import os
 DIR = os.path.dirname(os.path.realpath(__file__))
 DATE = datetime.today().strftime("%Y-%m-%d")
 
-with open(f"{DIR}/../config_gcp.json", "r") as file:
+with open(f"{DIR}/../config.json", "r") as file:
 	CONFIG = json.loads(file.read())
 
 from connector import Connector

@@ -89,7 +89,8 @@ def compress_data():
 def transform_options():
 
 	def transformation(options):
-		
+
+		options['days_to_expiry'] = (options.expiration_date - options.date_current).dt.days
 		return options
 
 	for folder in sorted(OLD['equity'].iterdir()):
@@ -463,8 +464,8 @@ def init():
 def main():
 
 	# download_data()
-	# transform()
-	init()
+	transform()
+	# init()
 	# compress_data()
 
 if __name__ == "__main__":
