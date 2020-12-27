@@ -1,5 +1,6 @@
 from const import CONFIG, DIR, OLD, NEW, TAR, _connector
 from datetime import datetime, timedelta
+import pandas_market_calendars as mcal
 from google.cloud import storage
 from pathlib import Path
 import tarfile as tar
@@ -12,6 +13,19 @@ import sys, os
 NEWDIR = Path(f"{DIR}/data/new")
 BUCKET = storage.Client().bucket(CONFIG["gcp_bucket_name"])
 
+nyse = mcal.get_calendar('NYSE')
+schedule = nyse.schedule(start_date="2019-01-01", end_date="2029-01-01")
+TDAYS = mcal.date_range(schedule, frequency="1D").tolist()
+TDAYS = [str(day)[:10] for day in TDAYS]
+
+def get_trading_days(x):
+    try:
+        i = trading_days.index(x[0])
+        j = trading_days.index(x[1])
+        return j - i
+    except:
+        return None
+
 ###################################################################################################
 
 def download_data():
@@ -22,7 +36,7 @@ def download_data():
 	os.mkdir(f"{DIR}/data/tar/old")
 	os.mkdir(f"{DIR}/data/tar/new")
 
-	FOLDERS = ["equities", "treasuryrates", "instruments", "rss", "splits"]
+	FOLDERS = ["equities", "treasuryrates", "instruments", "splits"]
 	for folder in FOLDERS:
 
 		os.mkdir(f"{DIR}/data/old/{folder}")
@@ -66,7 +80,7 @@ def compress_data():
 
 			for folder in sorted(NEW[key].iterdir()):
 				
-				print("Compressing Equity Folder:", folder.name)
+				print("Compressing Equity Folder:", folder.name)											
 
 				with tar.open(f"{TAR[key]}/{folder.name}.tar.xz", "x:xz") as tar_file:
 
@@ -90,7 +104,18 @@ def transform_options():
 
 	def transformation(options):
 
-		options['days_to_expiry'] = (options.expiration_date - options.date_current).dt.days
+		print(options.shape)
+
+		cols = ['date_current', 'expiration_date']
+		pairs = options[cols].drop_duplicates(ignore_index=True)
+		pairs['days_to_expiry'] = pairs.apply(get_trading_days, axis=1)
+		pairs = pairs.dropna()
+
+		options = options.drop("days_to_expiry", axis=1)
+		options = options.merge(pairs, on=cols, how='inner')
+
+		print(options.shape)
+
 		return options
 
 	for folder in sorted(OLD['equity'].iterdir()):
@@ -208,24 +233,6 @@ def transform_splits():
 		splits = transformation(splits)
 		splits.to_csv(f"{NEW['splits']}/{file.name}", index=False)
 
-def transform_rss():
-
-	def transformation(rss):
-
-		return rss
-
-	for filename in sorted(OLD['rss'].iterdir()):
-
-		print("RSS Core Transformation:", filename.name)
-
-		with filename.open() as file:
-			rss = file.read()
-
-		rss = transformation(rss)
-
-		with open(f"{NEW['rss']}/{filename.name}", "w") as file:
-			file.write(rss)
-
 def transform():
 
 	print("Core Data Transformation")
@@ -237,7 +244,6 @@ def transform():
 	transform_analysis()
 	transform_keystats()
 	transform_rates()
-	transform_rss()
 
 ###################################################################################################
 
@@ -463,7 +469,7 @@ def init():
 
 def main():
 
-	# download_data()
+	download_data()
 	transform()
 	# init()
 	# compress_data()
