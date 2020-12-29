@@ -7,25 +7,18 @@ import sys, os
 
 ###################################################################################################
 
-SURFACE_COLS = []
-for e in [1,3,6,9,12,18,24]:
-	for m in range(80,125,5):
-		SURFACE_COLS.append(f"m{e}m{m}")
-
-###################################################################################################
-
 def greeks(options):
 
 	o = options.copy()
 	m = o.option_type.map({"C" : 1, "P" : -1}).values
 
-	tau = o.days_to_expiry.values / 365
+	tau = o.days_to_expiry.values / 252
 	rtau = np.sqrt(tau)
 	iv = o.implied_volatility.values
 	S = o.stock_price.values
 	K = o.strike_price.values
 	q = o.dividend_yield.values
-	r = o.rate.values
+	r = np.log(1 + o.rate.values)
 
 	###################################################################################################
 
@@ -117,6 +110,15 @@ def greeks(options):
 	options.loc[:, greek_columns] = options[greek_columns].round(6).fillna(0)
 
 	return options
+
+###################################################################################################
+
+SURFACE_COLS = []
+for e in [1,3,6,9,12,18,24]:
+	for m in range(80,125,5):
+		SURFACE_COLS.append(f"m{e}m{m}")
+
+###################################################################################################
 
 def closest_surface(options, ohlc, date):
 
