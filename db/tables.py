@@ -45,6 +45,7 @@ OPTIONS_TABLE = """
 		option_price FLOAT(4),
 		ask_price FLOAT(4),
 		implied_volatility FLOAT(6),
+		zimplied_volatility FLOAT(6),
 		volume INT UNSIGNED,
 		open_interest INT UNSIGNED,
 		INDEX(date_current, option_id)

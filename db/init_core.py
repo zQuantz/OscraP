@@ -20,8 +20,8 @@ TDAYS = [str(day)[:10] for day in TDAYS]
 
 def get_trading_days(x):
     try:
-        i = trading_days.index(x[0])
-        j = trading_days.index(x[1])
+        i = TDAYS.index(x[0])
+        j = TDAYS.index(x[1])
         return j - i
     except:
         return None
@@ -127,7 +127,7 @@ def transform_options():
 			print("No options file found.")
 			continue
 		
-		options = pd.read_csv(file, parse_dates=["date_current", "expiration_date"])
+		options = pd.read_csv(file)
 		options = transformation(options)
 		options.to_csv(f"{NEW['equity']}/{folder.name}/options.csv", index=False)
 
