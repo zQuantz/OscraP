@@ -1,6 +1,6 @@
 from const import DIR, DATE, DATA, CONFIG, _connector, logger
 
-from calculations import synth_surface
+from calculations import calculate_surface, calculate_iv
 from ticker import Ticker
 import pandas as pd
 import numpy as np
@@ -54,7 +54,7 @@ def collect_data_again(batch_id, faults):
 			logger.warning(f"{ticker},{batch_id},Re-Ticker,Failure,{e}")
 
 		pct = (i + 1) / len(faults)
-		pct = np.round(100 * pct, 4) 
+		pct = np.round(100 * pct, 4)
 		logger.info(f"SCRAPER,{batch_id},RE-PROGRESS,{pct}%,")
 
 	return faults
@@ -212,7 +212,13 @@ def index_data(batch_id, tickers):
 			_connector.write("keystats", pd.concat(keystats))
 
 		if len(options) > 0 and len(ohlc) > 0:
-			_connector.write("surface", synth_surface(options, ohlc, DATE))
+
+			cols = ["date_current", "ticker", "adjclose_price", "dividend_yield"]
+			options = options.merge(ohlc[cols], on=cols[:2], how="inner")
+			options = options.rename({"adjclose_price" : "stock_price"}, axis=1)
+			options = options.merge(CONFIG['ratemap'], on="days_to_expiry", how="inner")
+
+			_connector.write("surface", calculate_surface(options))
 
 		post = _connector.get_equities_table_count().row_count
 

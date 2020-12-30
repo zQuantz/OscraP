@@ -51,7 +51,6 @@ class Connector:
 				pool_pre_ping=True
 			)
 
-
 		self.max_tries = 10
 		self.date = date
 
@@ -160,6 +159,19 @@ class Connector:
 			""".format(1_000_000, N_USD))
 
 		return tuple(df.ticker.unique())
+
+	def get_ratemap(self):
+
+		return self.read("""
+				SELECT
+					days_to_expiry,
+					rate
+				FROM
+					treasuryratemap
+				ORDER BY
+					date_current DESC
+				LIMIT 3651;
+			""")
 
 	def get_lower_bounds(self, tablename, batch_id):
 

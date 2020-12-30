@@ -1,24 +1,26 @@
-from collections import defaultdict
+from const import DATE, CONFIG
 
-from scipy.stats import norm
 import pandas as pd
 import numpy as np
 import sys, os
 
+from scipy.optimize import brentq
+from scipy.stats import norm
+
 ###################################################################################################
 
-def greeks(options):
+def calculate_greeks(options):
 
 	o = options.copy()
 	m = o.option_type.map({"C" : 1, "P" : -1}).values
 
 	tau = o.days_to_expiry.values / 252
 	rtau = np.sqrt(tau)
-	iv = o.implied_volatility.values
+	iv = o.zimplied_volatility.values
 	S = o.stock_price.values
 	K = o.strike_price.values
-	q = o.dividend_yield.values
-	r = np.log(1 + o.rate.values)
+	q = np.log(1 + o.dividend_yield.values / 100)
+	r = np.log(1 + o.rate.values / 100)
 
 	###################################################################################################
 
@@ -51,7 +53,7 @@ def greeks(options):
 	theta *= -eqt / (2 * rtau)
 	theta -= m * r * kert * ncd2
 	theta += m * q * S * eqt * ncd1
-	theta /= 365
+	theta /= 252
 
 	###################################################################################################
 
@@ -64,13 +66,13 @@ def greeks(options):
 	charm /= 2 * tau * iv * rtau
 	charm *= eqt * npd1
 	charm = m * q * eqt * ncd1 - charm
-	charm /= 365
+	charm /= 252
 
 	veta = q.copy()
 	veta += ((r - q) * d1) / (iv * rtau)
 	veta -= (1 + d1 * d2) / (2 * tau)
 	veta *= -S * eqt * npd1 * rtau
-	veta /= 365 * 100
+	veta /= 252 * 100
 
 	speed = 1
 	speed += d1 / (iv * rtau)
@@ -84,7 +86,7 @@ def greeks(options):
 	color *= d1 / (iv * rtau)
 	color += 2 * q * tau + 1
 	color *= -eqt * npd1 / (2 * S * tau * iv * rtau)
-	color /= 365
+	color /= 252
 
 	ultima = d1 * d2 * (1 - d1 * d2) + d1 * d1 + d2 * d2
 	ultima *= -vega / (iv * iv)
@@ -113,205 +115,238 @@ def greeks(options):
 
 ###################################################################################################
 
-SURFACE_COLS = []
-for e in [1,3,6,9,12,18,24]:
-	for m in range(80,125,5):
-		SURFACE_COLS.append(f"m{e}m{m}")
+def calculate_surface(options):
 
-###################################################################################################
+	time_anchors = [1,3,6,9,12,18,24]
+	time_anchors = np.array(time_anchors) * 21
+	time_df = pd.DataFrame(time_anchors, columns = ['expiration'])
 
-def closest_surface(options, ohlc, date):
+	moneyness_anchors = list(range(80, 125, 5))
+	moneyness_anchors = np.array(moneyness_anchors)
+	moneyness_df = pd.DataFrame(moneyness_anchors, columns = ['moneyness'])
 
-	def by_ticker(df):
+	TDF_COLS = ['expiration'] + [f"m{m}" for m in range(80, 125, 5)]
+	MDF_COLS = ['moneyness', 'm1', 'm2', 'w1', 'w2', 'iv1', 'iv2']
+	SURFACE_COLS = [
+		f"m{m1}m{m2}"
+		for m2 in [1,3,6,9,12,18,24]
+		for m1 in range(80, 125, 5)
+	]
 
-		expirations = np.array([1,3,6,9,12,18,24]) / 12
-		expirations = expirations.reshape(1, -1)
+	def pre_filters(options):
 
-		moneynesses = np.arange(0.8, 1.25, 0.05)
-		moneynesses = moneynesses.reshape(-1, 1)
-		
-		T = df.days_to_expiry
-		T = (T.unique() / 365).reshape(-1, 1)
-		expirations = np.repeat(expirations, len(T), axis=0)
+		options = options[options.zimplied_volatility != 0]
+		options = options[options.bid_price != 0]
+		return options[options.ask_price != 0]
 
-		diff = abs(np.subtract(expirations, T))
-		idc = np.argmin(diff, axis=0)
-		T = T[idc].reshape(-1, )
+	def post_filters(options):
 
-		yearmap = defaultdict(list)
-		for k, v in zip(T, expirations[0]):
-			yearmap[k].append( int(12 * v) )
-		yearmap = dict(yearmap)
+		ticker_exp = options.ticker + " " + options.expiration_date
+		x = ticker_exp.value_counts()
+		x = x[x >= 20]
 
-		df['expiration'] = df.years.map(yearmap)
-		df = df.explode('expiration').dropna()
+		return options[ticker_exp.isin(x.index)]
 
-		def by_expiration(e):
+	def calculate_implied_forward(options):
 
-			e = e.sort_values("moneyness")
-			m = e.moneyness.values.reshape(1, -1)
-			m = m.repeat(len(moneynesses), axis=0)
+		def by_ticker(ticker_exp):
 
-			ivs = e.implied_volatility.values
+			cols = ['strike_price', 'mid_price']
+			calls = ticker_exp[ticker_exp.option_type == "C"][cols]
+			puts = ticker_exp[ticker_exp.option_type != "C"][cols]
 
-			diff = np.subtract(m, moneynesses)
-			sign = np.sign(diff)
-			idc = np.argwhere(np.diff(sign))
-			idc = {k : v for k, v in zip(idc[:, 0], idc[:, 1])}
+			if len(calls) == 0 or len(puts) == 0:
+				return None
 
-			surface = []
+			prices = calls.merge(puts, on="strike_price", how="outer")
+			prices = prices.reset_index(drop=True)
 
-			for i in range(len(moneynesses)):
+			diff = (prices.mid_price_x - prices.mid_price_y)
+			idc = diff.abs().argmin()
 
-				if i in idc:
+			r = np.log(1 + ticker_exp.rate.values[0] / 100)
+			T = ticker_exp.days_to_expiry.values[0] / 252
+			K = ticker_exp.strike_price.values[idc]
 
-					idx = idc[i]
+			return K + np.exp(-r * T) * diff.iloc[idc]
 
-					weights = m[i][idx:idx+2]
-					weights -= moneynesses[i]
-					weights[weights == 0] = 1e-6
+		cols = ["ticker", "expiration_date"]
+		forwards = options.groupby(cols).apply(by_ticker)
+		forwards = forwards.reset_index(name="F")
+		return options.merge(forwards, on=cols, how="inner").dropna()
 
-					weights = 1 / abs(weights)
-					weights = weights / weights.sum()
+	def brackets(values, anchors):
+	    
+	    N = len(values)
+	    M = len(anchors)
+	    
+	    values = np.array(values)
+	    matrix = values.repeat(M).reshape(N, M)
+	    
+	    matrix -= anchors
+	    signed_matrix = np.sign(matrix)
+	    dsigned_matrix = np.diff(signed_matrix, axis=0)
+	    
+	    return matrix, signed_matrix, dsigned_matrix
 
-					iv = (ivs[idx:idx+2] * weights).sum()
+	def calculate_bracket_coords(values, anchors, idx, extra_values=None):
 
-				elif sign[i][0] == 1:
+		v1 = values[idx[0]]
+		v2 = values[idx[0] + 1]
+		v = anchors[idx[1]]
 
-					iv = ivs[0]
+		p1 = 1 / abs(v1 - v)
+		p2 = 1 / abs(v2 - v)
+		d = p1 + p2
 
-				else:
+		p1 /= d
+		p2 /= d
 
-					iv = ivs[-1]
+		coords = [v, v1, v2, p1, p2]
 
-				surface.append([
-					int(100 * moneynesses[i][0]),
-					iv
-				])
+		if extra_values is not None:
+			coords.extend([
+				extra_values[idx[0]],
+				extra_values[idx[0] + 1],
+			])
 
-			return pd.DataFrame(surface, columns = ['moneyness', 'iv'])
+		return coords
 
-		return df.groupby('expiration').apply(by_expiration)
+	def calculate_brackets(values, anchors, sm, dsm, extra_values=None):
 
-	start = date
-	end = f"{int(start[:4]) + 4}-{start[4:]}"
+		brackets = [
+			calculate_bracket_coords(values, anchors, idx, extra_values)
+			for idx in np.argwhere(dsm == 2)
+		]
 
-	fridays = pd.date_range(start, end, freq="WOM-3FRI").astype(str)
-	thursdays = pd.date_range(start, end, freq="WOM-3THU").astype(str)
-	regulars = list(fridays) + list(thursdays)
+		for idx in np.argwhere(sm == 0):
 
-	ohlc = ohlc[['date_current', 'ticker', 'adjclose_price']]
-	options = options.merge(ohlc, on=['date_current', 'ticker'], how="inner")
-	options['years'] = options.days_to_expiry / 365
-	
-	options['moneyness'] = options.strike_price / options.adjclose_price
-	options['otm'] = options.adjclose_price - options.strike_price
-	options['otm'] = options.otm * options.option_type.map({"C" : 1, "P" : -1})
+			bracket = calculate_bracket_coords(values, anchors, idx, extra_values)
+			bracket[2] = bracket[1]
+			bracket[3:5] = [0.5]*2
 
-	options = options[options.otm < 0]
-	options = options[options.expiration_date.astype(str).isin(regulars)]
+			if extra_values is not None:
+				bracket[6] = bracket[5]
 
-	surface = options.groupby(["date_current", "ticker"]).apply(by_ticker)
-	surface = surface.reset_index()
-	
-	label = "m" + surface.expiration.astype(str)
-	label += "m" + surface.moneyness.astype(str)
-	surface['label'] = label
-	
-	surface = surface.pivot(index="ticker", values="iv", columns="label")
-	surface = surface[label.unique()].reset_index()
-	surface['date_current'] = date
-	
+			brackets.append(bracket)
+
+		return brackets
+
+	def by_ticker(options):
+
+		expirations = options[options.expiration_date.isin(CONFIG['reg_expirations'])]
+		expirations = expirations.days_to_expiry.unique()
+
+		m, sm, dsm = brackets(expirations, time_anchors)
+		time_brackets = calculate_brackets(expirations, time_anchors, sm, dsm)
+
+		idc = np.argwhere(dsm.sum(axis=0) == 0)
+		if len(idc) != 0:
+
+			idc = idc.reshape(-1, )
+			expirations = options.days_to_expiry.unique()
+			m, sm, dsm = brackets(expirations, time_anchors[idc])
+			time_brackets.extend(
+				calculate_brackets(expirations, time_anchors[idc], sm, dsm)
+			)
+
+		time_brackets = np.array(sorted(time_brackets))
+		expirations = np.unique(time_brackets[:, 1:3].reshape(-1, ))
+
+		ivs = {}
+		for expiration in expirations:
+
+			_options = options[options.days_to_expiry == expiration]
+			moneyness = _options.moneyness.values
+			iv = _options.zimplied_volatility.values
+
+			m, sm, dsm = brackets(moneyness, moneyness_anchors)
+			moneyness_brackets = calculate_brackets(
+				moneyness,
+				moneyness_anchors,
+				sm,
+				dsm,
+				iv
+			)
+
+			df = pd.DataFrame(moneyness_brackets, columns = MDF_COLS)
+			df['iv'] = df.iv1 * df.w1 + df.iv2 * df.w2
+			
+			df = df[['moneyness', 'iv']]
+			df = df.groupby("moneyness").mean().reset_index()
+			df = moneyness_df.merge(df, on='moneyness', how='outer')
+
+			df['expiration'] = expiration
+			df = df.fillna(0)
+			ivs[expiration] = df.iv.values
+
+		surface = [
+			[b[0]] + (ivs[b[1]] * b[3] + ivs[b[2]] * b[4]).tolist()
+			for b in time_brackets
+		]
+		surface = pd.DataFrame(surface, columns = TDF_COLS)
+		surface = time_df.merge(surface, on="expiration", how="outer")
+		surface = surface.fillna(0).values[:, 1:].reshape(1, -1)
+		return pd.DataFrame(surface, columns = SURFACE_COLS)
+
+	print(len(options))
+	options = options[options.days_to_expiry > 0]
+	print(len(options))
+	options['mid_price'] = (options.bid_price + options.ask_price) / 2
+
+	options = pre_filters(options)	
+	print(len(options))
+	options = calculate_implied_forward(options)
+	print(len(options))
+
+	omap = options.option_type.map({
+		"C" : 1,
+		"P" : -1
+	})	
+	options = options[omap * (options.F - options.strike_price) <= 0]
+	options['moneyness'] = options.strike_price / options.F * 100
+
+	options = post_filters(options)
+
+	cols = ["ticker", "days_to_expiry", "option_type", "strike_price"]
+	options = options.sort_values(cols)
+
+	surface = options.groupby("ticker").apply(by_ticker)
+	surface = surface.reset_index(level=0)
+	surface['date_current'] = DATE
+
 	return surface
 
-def synth_surface(options, ohlc, date):
+def calculate_iv(options):
 
-	def brackets(reference, target, values):
+	def bs_price(v, S, K, T, r, q, t, M):
 	
-		reference = reference.repeat(len(target), axis=0)
-		
-		diff = np.subtract(reference, target)
-		sign = np.sign(diff)
-		diffsign = np.diff(sign, axis=1)
+		d1 = np.log(S / K) + (r + 0.5 * v * v) * T
+		d1 /= np.sqrt(T) * v
+		d2 = d1 - np.sqrt(T) * v
 
-		idc = np.argwhere(diffsign)
-		midc = idc[:, 0]
+		return t * (S * np.exp(-q * T) * norm.cdf(t * d1) - K * np.exp(-r * T) * norm.cdf(t * d2))
 
-		sidc = idc[:, 1]
-		sidc = np.stack([sidc, sidc+1], axis=1).reshape(-1, )
+	def root(v, *args):
+		return bs_price(v, *args) - args[-1]
 
-		vm = values[sidc].reshape(-1, 2)
-		vw = diff[midc.repeat(2), sidc].reshape(-1, 2)
+	Ss = options.stock_price.values
+	Ks = options.strike_price.values
+	Ts = options.days_to_expiry.values / 252
+	rs = options.rate.values / 100
+	qs = options.dividend_yield.values / 100
+	ts = options.option_type.map({"C" : 1, "P" : -1}).values
+	Ms = ((options.bid_price + options.ask_price) / 2).values
 
-		vw[vw == 0] = 1e-6
-		vw = 1 / abs(vw)
-		vw = vw / vw.sum(axis=1, keepdims=True)
-		
-		return vm, vw, midc, sidc
+	zivs = []
+	values = zip(Ss, Ks, Ts, rs, qs, ts, Ms)
+	for S, K, T, r, q, t, M in values:
+		try:
+			iv = brentq(root, 0, 10_000, args=(S, K, T, r, q, t, M), maxiter=10_000)
+		except Exception as e:
+			iv = 0
+		zivs.append(round(iv * 100, 4))
 
-	def by_ticker(df):
+	options['zimplied_volatility'] = zivs
 
-		def by_expiration(e):
-
-			moneynesses = np.arange(0.8, 1.25, 0.05)
-			moneynesses = moneynesses.reshape(-1, 1)
-
-			e = e.sort_values("moneyness")
-			ivs = e.implied_volatility.values
-			m = e.moneyness.values.reshape(1, -1)
-			
-			vm, vw, midc, sidc = brackets(m, moneynesses, ivs)
-			
-			surface_ivs = np.array([np.nan]*9)
-			surface_ivs[midc] = (vm * vw).sum(axis=1)
-
-			cols = [f"m{int(v * 100)}" for v in moneynesses]
-			return pd.DataFrame([surface_ivs], columns = cols)
-
-		mivs = df.groupby("expiration_date", as_index=False).apply(by_expiration).values
-
-		expirations = np.array([1,3,6,9,12,18,24]) / 12
-		expirations = expirations.reshape(1, -1)
-
-		T = df.days_to_expiry
-		T = (T.unique() / 365).reshape(-1, 1)
-		
-		vm, vw, midc, sidc = brackets(T.T, expirations.T, df.days_to_expiry.values)
-
-		tivs = mivs[sidc] * vw.reshape(-1, 1)
-		tivs = tivs.reshape(-1, 2, 9).round(2).sum(axis=1)
-
-		surfacem = np.ones((7, 9))
-		surfacem[:, :] = np.nan
-		surfacem[midc, :] = tivs
-		surfacem = surfacem.reshape(-1, )
-		
-		return pd.DataFrame(surfacem).T
-
-	###############################################################################################
-
-	start = date
-	end = f"{int(start[:4]) + 4}-{start[4:]}"
-
-	fridays = pd.date_range(start, end, freq="WOM-3FRI").astype(str)
-	thursdays = pd.date_range(start, end, freq="WOM-3THU").astype(str)
-	regulars = list(fridays) + list(thursdays)
-
-	ohlc = ohlc[['date_current', 'ticker', 'adjclose_price']]
-	options = options.merge(ohlc, on=['date_current', 'ticker'], how="inner")
-	options['years'] = options.days_to_expiry / 365
-	
-	options['moneyness'] = options.strike_price / options.adjclose_price
-	options['otm'] = options.adjclose_price - options.strike_price
-	options['otm'] = options.otm * options.option_type.map({"C" : 1, "P" : -1})
-
-	options = options[options.otm < 0]
-	options = options[options.expiration_date.astype(str).isin(regulars)]
-
-	cols = ["date_current", "ticker"]
-	surface_df = options.groupby(cols).apply(by_ticker)
-	surface_df = surface_df.reset_index().drop("level_2", axis=1)
-	surface_df.columns = cols + SURFACE_COLS
-	
-	return surface_df
-	
+	return options

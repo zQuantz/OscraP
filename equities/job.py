@@ -1,8 +1,10 @@
 from const import DIR, DATA, DATE, CONFIG, logger, _connector
+import pandas_market_calendars as mcal
 from batch import main as batch_main
 from store import main as store
 from ticker import Ticker
 from report import report
+import pandas as pd
 import sys, os
 
 sys.path.append(f"{DIR}/../utils")
@@ -10,8 +12,8 @@ from gcp import send_gcp_metric
 
 ###################################################################################################
 
-BATCH_SIZE = 50
-N_USD = 1500
+BATCH_SIZE = 2
+N_USD = 10
 
 ###################################################################################################
 
@@ -38,9 +40,9 @@ def send_metrics(success, failure):
 	for key in success:
 		metric = success[key]
 		metric /= success[key] + failure[key]
-		send_gcp_metric(CONFIG, f"oscrap_{key}_sucess", "double_value", metric)
+		# send_gcp_metric(CONFIG, f"oscrap_{key}_sucess", "double_value", metric)
 
-def init_folders():
+def init():
 
 	DATA.mkdir()
 	(DATA / "options").mkdir()
@@ -48,12 +50,27 @@ def init_folders():
 	(DATA / "keystats").mkdir()
 	(DATA / "analysis").mkdir()
 
+	nyse = mcal.get_calendar('NYSE')
+	min_date = DATE
+	max_date = f"{int(DATE[:4])+5}"+DATE[4:]
+
+	schedule = nyse.schedule(start_date=min_date, end_date=max_date)
+	trading_days = mcal.date_range(schedule, frequency="1D").tolist()
+	CONFIG['trading_days'] = [str(day)[:10] for day in trading_days]
+
+	fridays = pd.date_range(min_date, max_date, freq="WOM-3FRI").astype(str)
+	thursdays = pd.date_range(min_date, max_date, freq="WOM-3THU").astype(str)
+	CONFIG['reg_expirations'] = list(fridays) + list(thursdays)
+
+	CONFIG['ratemap'] = _connector.get_ratemap()
+
+	_connector.init_date_series()
+
 def main():
 
 	logger.info(f"SCRAPER,JOB,INITIATED,{DATE},")
 
-	init_folders()
-	_connector.init_date_series()
+	init()
 
 	tickers = _connector.get_equity_tickers(N_USD)
 	checkpoint = len(tickers) / BATCH_SIZE
@@ -103,10 +120,10 @@ if __name__ == '__main__':
 
 	try:
 	
-		send_gcp_metric(CONFIG, "oscrap_job_status", "int64_value", 1)
+		# send_gcp_metric(CONFIG, "oscrap_job_status", "int64_value", 1)
 		main()
 	
 	except Exception as e:
 
-		send_gcp_metric(CONFIG, "oscrap_job_status", "int64_value", 0)
+		# send_gcp_metric(CONFIG, "oscrap_job_status", "int64_value", 0)
 		logger.warning(f"SCRAPER,JOB,MAIN ERROR,{e},")

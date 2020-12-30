@@ -1,6 +1,7 @@
 from const import DIR, DATE, DTDATE, DATA, CONVERTER, NUMBERS, CONFIG
 
 from datetime import datetime, timedelta
+from calculations import calculate_iv
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
@@ -266,7 +267,13 @@ class Ticker():
 
 			expiry_date = datetime.strptime(expiry_date, NAMED_DATE_FMT)
 			expiry_date_fmt = expiry_date.strftime("%Y-%m-%d")
-			expiration_days = ((expiry_date + timedelta(hours=17)) - DTDATE).days
+			
+			tdays = CONFIG['trading_days']
+			try:
+				expiration_days = tdays.index(expiry_date_fmt) - tdays.index(DATE)
+			except Exception as e:
+				expiration_days = -1
+				print(e)
 
 			page = url+f"&date={str(expiry)}"
 			bs, _ = get_page(page)
@@ -285,6 +292,19 @@ class Ticker():
 		sp = df.strike_price.round(2).astype(str)
 		sp = sp.str.rstrip("0").str.rstrip(".")
 		df['option_id'] = oid + sp
+
+		try:
+
+			df['stock_price'] = self.adj_close
+			df['dividend_yield'] = self.div
+			df = df.merge(CONFIG['ratemap'], on="days_to_expiry", how="inner")
+			df = calculate_iv(df)
+			df = df.drop(["stock_price", "dividend_yield", "rate"], axis=1)
+
+		except Exception as e:
+
+			self.logger.warning(f"{self.ticker},{self.batch_id},Calculate IV,Failure,{e}")
+			df['zimplied_volatility'] = 0
 
 		if not self.retries and len(df) > 0:
 			
