@@ -218,7 +218,12 @@ def index_data(batch_id, tickers):
 			options = options.rename({"adjclose_price" : "stock_price"}, axis=1)
 			options = options.merge(CONFIG['ratemap'], on="days_to_expiry", how="inner")
 
-			_connector.write("surface", calculate_surface(options))
+			surface = calculate_surface(options)
+
+			info = f"{surface.ticker.nunique()} / {options.ticker.nunique()}"
+			logger.info(f"SCRAPER,{batch_id},SURFACE,{info}")
+			
+			_connector.write("surface", surface)
 
 		post = _connector.get_equities_table_count().row_count
 
@@ -230,6 +235,7 @@ def index_data(batch_id, tickers):
 	except Exception as e:
 
 		logger.warning(f"SCRAPER,{batch_id},INDEXING,FAILURE,{e}")
+		print_exc()
 		
 		db_stats = ([0]*4, [0]*4)
 		db_flag = 0

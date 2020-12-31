@@ -12,8 +12,8 @@ from gcp import send_gcp_metric
 
 ###################################################################################################
 
-BATCH_SIZE = 2
-N_USD = 10
+BATCH_SIZE = 20
+N_USD = 500
 
 ###################################################################################################
 
@@ -52,7 +52,7 @@ def init():
 
 	nyse = mcal.get_calendar('NYSE')
 	min_date = DATE
-	max_date = f"{int(DATE[:4])+5}"+DATE[4:]
+	max_date = f"{int(DATE[:4])+10}"+DATE[4:]
 
 	schedule = nyse.schedule(start_date=min_date, end_date=max_date)
 	trading_days = mcal.date_range(schedule, frequency="1D").tolist()

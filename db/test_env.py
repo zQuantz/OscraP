@@ -23,8 +23,9 @@ def initialize():
 		"keystatscounts",
 		"treasuryratemap",
 		"treasuryrates",
-		"instruments",
 	]
+
+
 
 	conn = engine.connect()
 
@@ -49,7 +50,6 @@ def initialize():
 
 		if name in insert_tables:
 
-			field = "date_current" if name != "instruments" else "last_updated"
 			insert_query = """
 				INSERT INTO
 					compour9_test.{name}
@@ -58,10 +58,24 @@ def initialize():
 				FROM
 					compour9_finance.{name}
 				WHERE
-					{field} >= "2020-12-15"
-			""".format(name = name, field = field)
+					date_current >= "2020-12-15"
+				AND date_current < "2020-12-30"
+			""".format(name = name)
 			conn.execute(insert_query)
 			print("Insert Query Executed.")
+
+		elif name == "instruments":
+
+			insert_query = """
+				INSERT INTO
+					compour9_test.instruments
+				SELECT
+					*
+				FROM
+					compour9_finance.instruments
+			""".format(name = name)
+			conn.execute(insert_query)
+			print("Instrument Insert Query Executed.")
 
 		print()
 
