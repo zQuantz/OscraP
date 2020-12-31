@@ -129,21 +129,22 @@ def calculate_surface(options):
 	MDF_COLS = ['moneyness', 'm1', 'm2', 'w1', 'w2', 'iv1', 'iv2']
 	SURFACE_COLS = [
 		f"m{m1}m{m2}"
-		for m2 in [1,3,6,9,12,18,24]
-		for m1 in range(80, 125, 5)
+		for m1 in [1,3,6,9,12,18,24]
+		for m2 in range(80, 125, 5)
 	]
 
 	def pre_filters(options):
 
-		options = options[options.zimplied_volatility != 0]
 		options = options[options.bid_price != 0]
-		return options[options.ask_price != 0]
+		options = options[options.ask_price != 0]
+		options = options[options.zimplied_volatility != 0]
+		return options[options.days_to_expiry > 5]
 
 	def post_filters(options):
 
 		ticker_exp = options.ticker + " " + options.expiration_date
 		x = ticker_exp.value_counts()
-		x = x[x >= 20]
+		x = x[x > 1]
 
 		return options[ticker_exp.isin(x.index)]
 
@@ -190,7 +191,7 @@ def calculate_surface(options):
 	    return matrix, signed_matrix, dsigned_matrix
 
 	def calculate_bracket_coords(values, anchors, idx, extra_values=None):
-
+		
 		v1 = values[idx[0]]
 		v2 = values[idx[0] + 1]
 		v = anchors[idx[1]]
@@ -237,6 +238,9 @@ def calculate_surface(options):
 		expirations = options[options.expiration_date.isin(CONFIG['reg_expirations'])]
 		expirations = expirations.days_to_expiry.unique()
 
+		if len(expirations) < 2:
+			return pd.DataFrame(columns = SURFACE_COLS)
+
 		m, sm, dsm = brackets(expirations, time_anchors)
 		time_brackets = calculate_brackets(expirations, time_anchors, sm, dsm)
 
@@ -257,6 +261,8 @@ def calculate_surface(options):
 		for expiration in expirations:
 
 			_options = options[options.days_to_expiry == expiration]
+			_options = _options.sort_values("moneyness", ascending=True)
+
 			moneyness = _options.moneyness.values
 			iv = _options.zimplied_volatility.values
 
@@ -269,6 +275,10 @@ def calculate_surface(options):
 				iv
 			)
 
+			if len(moneyness_brackets) == 0:
+				ivs[expiration] = np.zeros(len(moneyness_df))
+				continue 
+
 			df = pd.DataFrame(moneyness_brackets, columns = MDF_COLS)
 			df['iv'] = df.iv1 * df.w1 + df.iv2 * df.w2
 			
@@ -277,7 +287,6 @@ def calculate_surface(options):
 			df = moneyness_df.merge(df, on='moneyness', how='outer')
 
 			df['expiration'] = expiration
-			df = df.fillna(0)
 			ivs[expiration] = df.iv.values
 
 		surface = [
@@ -286,18 +295,14 @@ def calculate_surface(options):
 		]
 		surface = pd.DataFrame(surface, columns = TDF_COLS)
 		surface = time_df.merge(surface, on="expiration", how="outer")
-		surface = surface.fillna(0).values[:, 1:].reshape(1, -1)
+		surface = surface.values[:, 1:].reshape(1, -1)
 		return pd.DataFrame(surface, columns = SURFACE_COLS)
 
-	print(len(options))
 	options = options[options.days_to_expiry > 0]
-	print(len(options))
 	options['mid_price'] = (options.bid_price + options.ask_price) / 2
 
-	options = pre_filters(options)	
-	print(len(options))
+	options = pre_filters(options)
 	options = calculate_implied_forward(options)
-	print(len(options))
 
 	omap = options.option_type.map({
 		"C" : 1,
@@ -350,3 +355,14 @@ def calculate_iv(options):
 	options['zimplied_volatility'] = zivs
 
 	return options
+
+if __name__ == '__main__':
+
+	min_date = "2019-01-01"
+	max_date = "2030-01-01"
+	fridays = pd.date_range(min_date, max_date, freq="WOM-3FRI").astype(str)
+	thursdays = pd.date_range(min_date, max_date, freq="WOM-3THU").astype(str)
+	CONFIG['reg_expirations'] = list(fridays) + list(thursdays)
+
+	df = pd.read_csv("financial_data/2020-12-30/6.csv")
+	surface = calculate_surface(df)

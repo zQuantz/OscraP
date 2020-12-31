@@ -10,6 +10,7 @@ import sys, os
 import time
 
 sys.path.append(f"{DIR}/../utils")
+from gcp import send_gcp_metric
 from request import request
 
 ###################################################################################################
@@ -272,8 +273,14 @@ class Ticker():
 			try:
 				expiration_days = tdays.index(expiry_date_fmt) - tdays.index(DATE)
 			except Exception as e:
-				expiration_days = -1
-				print(e)
+				self.logger.warning(f"{self.ticker},{self.batch_id},Trading Days Fault,{e}")
+				for i in range(1, 3):
+					expd = (expiry_date - timedelta(days=i)).strftime("%Y-%m-%d")
+					if expd in tdays:
+						expiration_days = tdays.index(expd) - tdays.index(DATE)
+						warning = f"{self.ticker},{self.batch_id},Not a Trading Day,{expiry},{expiration_days}"
+						self.logger.warning(warning)
+						break
 
 			page = url+f"&date={str(expiry)}"
 			bs, _ = get_page(page)
@@ -305,6 +312,9 @@ class Ticker():
 
 			self.logger.warning(f"{self.ticker},{self.batch_id},Calculate IV,Failure,{e}")
 			df['zimplied_volatility'] = 0
+
+		zba = df[(df.bid_price == 0) | (df.ask_price == 0)].shape[0]
+		# send_gcp_metric(CONFIG, "zero_bid_ask", "double_value", zba / (1 + len(df)))
 
 		if not self.retries and len(df) > 0:
 			
