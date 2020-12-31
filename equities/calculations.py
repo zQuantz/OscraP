@@ -289,15 +289,11 @@ def calculate_surface(options):
 		surface = surface.fillna(0).values[:, 1:].reshape(1, -1)
 		return pd.DataFrame(surface, columns = SURFACE_COLS)
 
-	print(len(options))
 	options = options[options.days_to_expiry > 0]
-	print(len(options))
 	options['mid_price'] = (options.bid_price + options.ask_price) / 2
 
 	options = pre_filters(options)	
-	print(len(options))
 	options = calculate_implied_forward(options)
-	print(len(options))
 
 	omap = options.option_type.map({
 		"C" : 1,

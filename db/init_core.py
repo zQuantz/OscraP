@@ -26,24 +26,30 @@ def get_trading_days(x):
     except:
         return None
 
+SUBSET = [
+	"2020-12-31"
+]
+
 ###################################################################################################
 
 def download_data():
 
-	os.mkdir(f"{DIR}/data/old")
-	os.mkdir(f"{DIR}/data/new")
-	os.mkdir(f"{DIR}/data/tar")
-	os.mkdir(f"{DIR}/data/tar/old")
-	os.mkdir(f"{DIR}/data/tar/new")
-
 	FOLDERS = ["equities", "treasuryrates", "instruments", "splits"]
-	for folder in FOLDERS:
+	if not SUBSET:
 
-		os.mkdir(f"{DIR}/data/old/{folder}")
-		os.mkdir(f"{DIR}/data/tar/old/{folder}")
+		os.mkdir(f"{DIR}/data/old")
+		os.mkdir(f"{DIR}/data/new")
+		os.mkdir(f"{DIR}/data/tar")
+		os.mkdir(f"{DIR}/data/tar/old")
+		os.mkdir(f"{DIR}/data/tar/new")
 
-		os.mkdir(f"{DIR}/data/new/{folder}")
-		os.mkdir(f"{DIR}/data/tar/new/{folder}")
+		for folder in FOLDERS:
+
+			os.mkdir(f"{DIR}/data/old/{folder}")
+			os.mkdir(f"{DIR}/data/tar/old/{folder}")
+
+			os.mkdir(f"{DIR}/data/new/{folder}")
+			os.mkdir(f"{DIR}/data/tar/new/{folder}")
 
 	for blob in BUCKET.list_blobs():
 
@@ -57,6 +63,9 @@ def download_data():
 			continue
 
 		if folder not in FOLDERS:
+			continue
+
+		if SUBSET and filedate not in SUBSET:
 			continue
 
 		modifier = ""
@@ -79,8 +88,11 @@ def compress_data():
 		if key == "equity":
 
 			for folder in sorted(NEW[key].iterdir()):
+
+				if SUBSET and folder.name not in SUBSET:
+					continue
 				
-				print("Compressing Equity Folder:", folder.name)											
+				print("Compressing Equity Folder:", folder.name)										
 
 				with tar.open(f"{TAR[key]}/{folder.name}.tar.xz", "x:xz") as tar_file:
 
@@ -90,6 +102,9 @@ def compress_data():
 		else:
 
 			for file in sorted(NEW[key].iterdir()):
+
+				if SUBSET and file.name.split(".")[0] not in SUBSET:
+					continue
 
 				print(f"Compressing {key.capitalize()} File:", file.name)
 
@@ -120,6 +135,9 @@ def transform_options():
 
 	for folder in sorted(OLD['equity'].iterdir()):
 
+		if SUBSET and folder.name not in SUBSET:
+			continue
+
 		print("Options Core Transformation:", folder.name)
 
 		file = folder / "options.csv"
@@ -138,6 +156,9 @@ def transform_keystats():
 		return keystats
 
 	for folder in sorted(OLD['equity'].iterdir()):
+
+		if SUBSET and folder.name not in SUBSET:
+			continue
 
 		print("Key Stats Core Transformation:", folder.name)
 
@@ -158,6 +179,9 @@ def transform_analysis():
 
 	for folder in sorted(OLD['equity'].iterdir()):
 
+		if SUBSET and folder.name not in SUBSET:
+			continue
+
 		print("Analysis Core Transformation:", folder.name)
 
 		file = folder / "analysis.csv"
@@ -176,6 +200,9 @@ def transform_ohlc():
 		return ohlc
 
 	for folder in sorted(OLD['equity'].iterdir()):
+
+		if SUBSET and folder.name not in SUBSET:
+			continue
 
 		print("OHLC Core Transformation:", folder.name)
 
@@ -196,6 +223,9 @@ def transform_rates():
 
 	for file in sorted(OLD['treasuryrates'].iterdir()):
 
+		if SUBSET and file.name.split(".")[0] not in SUBSET:
+			continue
+
 		print("Rates Core Transformation:", file.name)
 		
 		rates = pd.read_csv(file)
@@ -209,6 +239,9 @@ def transform_instruments():
 		return instruments
 
 	for file in sorted(OLD['instruments'].iterdir()):
+
+		if SUBSET and file.name.split(".")[0] not in SUBSET:
+			continue
 
 		if "_" in file.name or ".log" in file.name:
 			continue
@@ -226,6 +259,9 @@ def transform_splits():
 		return splits
 
 	for file in sorted(OLD['splits'].iterdir()):
+
+		if SUBSET and file.name.split(".")[0] not in SUBSET:
+			continue
 
 		print("Splits Core Transofmration", file.name)
 
@@ -288,6 +324,10 @@ def init_instruments():
 
 	instruments = []
 	for file in sorted((NEWDIR / "instruments").iterdir()):
+
+		if SUBSET and file.name.split(".")[0] not in SUBSET:
+			continue
+
 		instruments.append(pd.read_csv(file, parse_dates=['last_updated']))
 	
 	instruments = pd.concat(instruments)
@@ -297,8 +337,10 @@ def init_instruments():
 	print("Indexing Instruments")
 	print(instruments)
 
-	_connector.execute("DROP TABLE IF EXISTS instrumentsBACK;")
-	_connector.execute(INSTRUMENT_TABLE)
+	if not SUBSET:
+		_connector.execute("DROP TABLE IF EXISTS instrumentsBACK;")
+		_connector.execute(INSTRUMENT_TABLE)
+
 	_connector.write("instrumentsBACK", instruments)
 
 def init_rates():
@@ -307,6 +349,10 @@ def init_rates():
 
 	treasuryrates = []
 	for file in sorted((NEWDIR / "treasuryrates").iterdir()):
+
+		if SUBSET and file.name.split(".")[0] not in SUBSET:
+			continue
+
 		treasuryrates.append(pd.read_csv(file, parse_dates=["date_current"]))
 	
 	treasuryrates = pd.concat(treasuryrates)
@@ -344,6 +390,11 @@ def init_equities(splits):
 	analysis, ohlc, keystats = [], [], []
 	for folder in sorted((NEWDIR / "equities").iterdir()):
 
+		if SUBSET and folder.name not in SUBSET:
+			continue
+
+		print("Equities Excl. Options", folder.name)
+
 		if (folder / "ohlc.csv").exists():
 			ohlc.append(pd.read_csv(folder / "ohlc.csv"))
 		
@@ -361,14 +412,16 @@ def init_equities(splits):
 
 	###############################################################################################
 
-	_connector.execute("DROP TABLE IF EXISTS ohlcBACK;")
-	_connector.execute(OHLC_TABLE)
-	
-	_connector.execute("DROP TABLE IF EXISTS analysisBACK;")
-	_connector.execute(ANALYSIS_TABLE)
-	
-	_connector.execute("DROP TABLE IF EXISTS keystatsBACK;")
-	_connector.execute(KEYSTATS_TABLE)
+	if not SUBSET:
+
+		_connector.execute("DROP TABLE IF EXISTS ohlcBACK;")
+		_connector.execute(OHLC_TABLE)
+		
+		_connector.execute("DROP TABLE IF EXISTS analysisBACK;")
+		_connector.execute(ANALYSIS_TABLE)
+		
+		_connector.execute("DROP TABLE IF EXISTS keystatsBACK;")
+		_connector.execute(KEYSTATS_TABLE)
 
 	print("Indexing OHLC")
 	print(ohlc)
@@ -407,12 +460,17 @@ def init_options(splits):
 
 		return options.drop(["split_factor"], axis=1)
 
-	print("Initializing Options")
-	_connector.execute("DROP TABLE IF EXISTS optionsBACK;")
-	_connector.execute(OPTIONS_TABLE)
+	if not SUBSET:
+
+		print("Initializing Options")
+		_connector.execute("DROP TABLE IF EXISTS optionsBACK;")
+		_connector.execute(OPTIONS_TABLE)
 
 	options = []
 	for folder in sorted((NEWDIR / "equities").iterdir()):
+
+		if SUBSET and folder.name not in SUBSET:
+			continue
 
 		print("Processing Folder:", folder.name)
 
@@ -437,21 +495,28 @@ def init_options(splits):
 
 def init_splits():
 
-	print("Initializing Splits")
-	_connector.execute("DROP TABLE IF EXISTS stocksplitsBACK;")
-	_connector.execute(STOCKSPLITS_TABLE)
+	if not SUBSET:
 
-	print("Initializing Tmp Splits")
-	_connector.execute("DROP TABLE IF EXISTS stocksplitstmpBACK;")
-	_connector.execute(STOCKSPLITSTMP_TABLE)
+		print("Initializing Splits")
+		_connector.execute("DROP TABLE IF EXISTS stocksplitsBACK;")
+		_connector.execute(STOCKSPLITS_TABLE)
 
-	print("Initializing Splits Status")
-	_connector.execute("DROP TABLE IF EXISTS stocksplitstatusBACK;")
-	_connector.execute(STOCKSPLITSTATUS_TABLE)
+		print("Initializing Tmp Splits")
+		_connector.execute("DROP TABLE IF EXISTS stocksplitstmpBACK;")
+		_connector.execute(STOCKSPLITSTMP_TABLE)
+
+		print("Initializing Splits Status")
+		_connector.execute("DROP TABLE IF EXISTS stocksplitstatusBACK;")
+		_connector.execute(STOCKSPLITSTATUS_TABLE)
 
 	splits = []
 	for file in sorted((NEWDIR / "splits").iterdir()):
+
+		if SUBSET and file.name.split(".")[0] not in SUBSET:
+			continue
+
 		splits.append(pd.read_csv(file))
+
 	splits = pd.concat(splits).drop_duplicates()
 	splits['processed_timestamp'] = datetime.now()
 
