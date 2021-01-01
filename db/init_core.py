@@ -534,7 +534,7 @@ def init():
 
 def main():
 
-	# download_data()
+	download_data()
 	transform()
 	init()
 	compress_data()
