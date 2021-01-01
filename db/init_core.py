@@ -129,6 +129,8 @@ def transform_options():
 
 		# print(options.shape)
 
+		options = options.drop(["Unnamed: 0"], axis=1)
+
 		return options
 
 	for folder in sorted(OLD['equity'].iterdir()):
@@ -532,7 +534,7 @@ def init():
 
 def main():
 
-	download_data()
+	# download_data()
 	transform()
 	init()
 	compress_data()

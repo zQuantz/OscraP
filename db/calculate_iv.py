@@ -123,7 +123,7 @@ def finder(dates, ohlc, ratemap, job_id):
 
 		cols = ["stock_price", "dividend_yield", "rate"]
 		options = options.drop(cols, axis=1) 
-		options.to_csv(EQUITIES / date / "options.csv")
+		options.to_csv(EQUITIES / date / "options.csv", index=False)
 
 if __name__ == "__main__":
 
