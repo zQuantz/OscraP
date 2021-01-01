@@ -1,36 +1,10 @@
-DATESERIES_TABLE = """
-	CREATE TABLE dateseries (
-		lag SMALLINT,
-		lag_date DATE,
-		prev_lag_date DATE, 
-		_5 SMALLINT,
-		_10 SMALLINT,
-		_20 SMALLINT,
-		_21 SMALLINT,
-		_42 SMALLINT,
-		_63 SMALLINT,
-		_126 SMALLINT,
-		_189 SMALLINT,
-		_252 SMALLINT,
-		_0d SMALLINT,
-		_1d SMALLINT,
-		_5d SMALLINT,
-		_10d SMALLINT,
-		_20d SMALLINT,
-		_21d SMALLINT,
-		_42d SMALLINT,
-		_63d SMALLINT,
-		_126d SMALLINT,
-		_189d SMALLINT,
-		_252d SMALLINT
-	)
-"""
 
-BATCHTICKERS_TABLE = """
-	CREATE TABLE batchtickers (
-		ticker VARCHAR(10) PRIMARY KEY NOT NULL
-	)
-"""
+EXPIRATIONS = [1,2,3,6,12,18,24]
+MONEYNESSES = list(range(80, 125, 5))
+PCTILES = [10, 21, 63, 126, 252]
+DELTAS = [1, 10, 21, 63, 126]
+
+###################################################################################################
 
 OPTIONS_TABLE = """
 	CREATE TABLE optionsBACK (
@@ -57,10 +31,6 @@ OPTIONSTATS_TABLE = """
 		date_current DATE,
 		ticker VARCHAR(10),
 		option_id VARCHAR(40),
-		pctchange1d FLOAT(4),
-		pctchange5d FLOAT(4),
-		pctchange10d FLOAT(4),
-		pctchange20d FLOAT(4),
 		midpctchange1d FLOAT(4),
 		midpctchange5d FLOAT(4),
 		midpctchange10d FLOAT(4),
@@ -78,63 +48,6 @@ OPTIONSTATS_TABLE = """
 		INDEX(date_current, option_id)
 	)
 """
-
-SURFACESKEW_TABLE = """
-	CREATE TABLE surfaceskewBACK (
-		date_current DATE,
-		ticker VARCHAR(10),
-		m1fskew FLOAT(4),
-		m1dskew FLOAT(4),
-		m1uskew FLOAT(4),
-		m3fskew FLOAT(4),
-		m3dskew FLOAT(4),
-		m3uskew FLOAT(4),
-		m6fskew FLOAT(4),
-		m6dskew FLOAT(4),
-		m6uskew FLOAT(4),
-		m9fskew FLOAT(4),
-		m9dskew FLOAT(4),
-		m9uskew FLOAT(4),
-		m12fskew FLOAT(4),
-		m12dskew FLOAT(4),
-		m12uskew FLOAT(4),
-		m18fskew FLOAT(4),
-		m18dskew FLOAT(4),
-		m18uskew FLOAT(4),
-		m24fskew FLOAT(4),
-		m24dskew FLOAT(4),
-		m24uskew FLOAT(4),
-		PRIMARY KEY(date_current, ticker)
-	)
-"""
-
-###################################################################################################
-
-expirations = [1,3,6,12,18,24]
-moneys = list(range(80, 125, 5))
-lags = ["_63", "_126", "_252"]
-lag_names = ["3", "6", "12"]
-
-columns = ""
-for lag, lag_name in zip(lags, lag_names):
-	for e in expirations:
-		for m in moneys:
-			columns += f"m{e}m{m}w{lag_name}min FLOAT(4), \n"
-			columns += f"m{e}m{m}w{lag_name}max FLOAT(4), \n"
-			columns += f"m{e}m{m}w{lag_name}mean FLOAT(4), \n"
-			columns += f"m{e}m{m}w{lag_name}rank FLOAT(4), \n"
-			columns += f"m{e}m{m}w{lag_name}zscore FLOAT(4), \n"
-
-SURFACESTATS_TABLE = """
-	CREATE TABLE surfacestatsBACK (
-		date_current DATE,
-		ticker VARCHAR(10),
-		{columns}
-		PRIMARY KEY(date_current, ticker)
-	)
-""".format(columns = columns)
-
-###################################################################################################
 
 AGGOPTIONSTATS_TABLE = """
 	CREATE TABLE aggoptionstatsBACK (
@@ -175,6 +88,8 @@ AGGOPTIONSTATS_TABLE = """
 	)
 """
 
+###################################################################################################
+
 OHLC_TABLE = """
 	CREATE TABLE ohlcBACK (
 		date_current DATE,
@@ -194,12 +109,6 @@ OHLCSTATS_TABLE = """
 	CREATE TABLE ohlcstatsBACK (
 		date_current DATE,
 		ticker VARCHAR(10),
-		hvol1m FLOAT(4),
-		hvol2m FLOAT(4),
-		hvol3m FLOAT(4),
-		hvol6m FLOAT(4),
-		hvol9m FLOAT(4),
-		hvol12m FLOAT(4),
 		relvolume10 FLOAT(4),
 		relvolume21 FLOAT(4),
 		relvolume42 FLOAT(4),
@@ -219,6 +128,118 @@ OHLCSTATS_TABLE = """
 		PRIMARY KEY(date_current, ticker)
 	)
 """
+
+columns = []
+for expiry in EXPIRATIONS:
+	columns.append(f"rvol{expiry}m FLOAT(4), ")
+	for pctile in PCTILES:
+		columns.append(f"rvol{expiry}mp{pctile} FLOAT(4), ")
+
+OHLCRVOL_TABLE = """
+	CREATE TABLE ohlcrvolBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		{columns}
+		PRIMARY KEY(date_current, ticker)
+	)
+""".format("".join(columns))
+
+###################################################################################################
+
+columns = []
+for expiry in EXPIRATIONS:
+	for moneyness in MONEYNESSES:
+		columns.append(f"m{expiry}m{moneyness} FLOAT(4), ")
+
+SURFACE_TABLE = """
+	CREATE TABLE surfaceBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		{columns}
+		PRIMARY KEY(ticker, date_current)
+	)
+""".format(columns="".join(columns))
+
+columns = []
+for expiry in EXPIRATIONS:
+	for pctile in PCTILES:
+		columns.append(f"m{expiry}m100p{pctile} FLOAT(4), ")
+	for delta in DELTAS:
+		columns.append(f"m{expiry}m100change{delta}d FLOAT(4), ")
+
+SURFACESTATS_TABLE = """
+	CREATE TABLE surfacestatsBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		{columns}
+		PRIMARY KEY(ticker, date_current)
+	)
+""".format(columns="".join(columns))
+
+###################################################################################################
+
+columns = []
+for expiry in EXPIRATIONS:
+	for _type in "fdu":
+		columns.append(f"m{expiry}{_type} FLOAT(4),")
+
+SURFACESKEW_TABLE = """
+	CREATE TABLE surfaceskewBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		{columns}
+		PRIMARY KEY(date_current, ticker)
+	)
+""".format(columns = "".join(columns))
+
+pct_columns = []
+for column in columns:
+	column = column[:-11]
+	for pctile in PCTILES:
+		columns.append(f"{column}p{pctile} FLOAT(4),")
+
+SURFACESKEWPCTILE_TABLE = """
+	CREATE TABLE surfaceskewpctileBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		{columns}
+		PRIMARY KEY(date_current, ticker)
+	)
+""".format(columns = "".join(pct_columns))
+
+###################################################################################################
+
+columns = []
+for t1 in EXPIRATIONS:
+	for t2 in EXPIRATIONS:
+		if t2 - t1 > 0:
+			columns.append(f"t{t1}t{t2} FLOAT(4), ")
+
+TERMSTRUCTURE_TABLE = """
+	CREATE TABLE termstructureBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		{columns}
+		PRIMARY KEY(ticker, date_current)
+	)
+""".format(columns = "".join(columns))
+
+pct_columns = []
+for column in columns:
+	column = column[:-11]
+	for pctile in PCTILES:
+		pct_columns.append(f"{column}p{pctile} FLOAT(4), ")
+
+TERMSTRUCTUREPCTILE_TABLE = """
+	CREATE TABLE termstructurepctileBACK (
+		date_current DATE,
+		ticker VARCHAR(10),
+		{columns}
+		PRIMARY KEY(ticker, date_current)
+	)
+""".format(columns = "".join(pct_columns))
+
+###################################################################################################
 
 KEYSTATS_TABLE = """
 	CREATE TABLE keystatsBACK (
@@ -284,19 +305,45 @@ TREASURYRATEMAP_TABLE = """
 	)
 """
 
-columns = ""
-for expiry in [1, 3, 6, 9, 12, 18, 24]:
-	for moneyness in range(80, 125, 5):
-		columns += f"m{expiry}m{moneyness} FLOAT(6), "
+###################################################################################################
 
-SURFACE_TABLE = """
-	CREATE TABLE surfaceBACK (
-		date_current DATE,
-		ticker VARCHAR(10),
-		{columns}
-		PRIMARY KEY(ticker, date_current)
+DATESERIES_TABLE = """
+	CREATE TABLE dateseries (
+		lag SMALLINT,
+		lag_date DATE,
+		prev_lag_date DATE, 
+		_5 SMALLINT,
+		_10 SMALLINT,
+		_20 SMALLINT,
+		_21 SMALLINT,
+		_42 SMALLINT,
+		_63 SMALLINT,
+		_126 SMALLINT,
+		_189 SMALLINT,
+		_252 SMALLINT,
+		_378 SMALLINT,
+		_504 SMALLINT,
+		_0d SMALLINT,
+		_1d SMALLINT,
+		_5d SMALLINT,
+		_10d SMALLINT,
+		_20d SMALLINT,
+		_21d SMALLINT,
+		_42d SMALLINT,
+		_63d SMALLINT,
+		_126d SMALLINT,
+		_189d SMALLINT,
+		_252d SMALLINT,
+		_378d SMALLINT,
+		_504d SMALLINT
 	)
-""".format(columns=columns)
+"""
+
+BATCHTICKERS_TABLE = """
+	CREATE TABLE batchtickers (
+		ticker VARCHAR(10) PRIMARY KEY NOT NULL
+	)
+"""
 
 TICKERDATES_TABLE = """
 	CREATE TABLE tickerdatesBACK (
