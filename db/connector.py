@@ -43,7 +43,7 @@ class Connector:
 			        password=CONFIG['db_password'],
 			        host=CONFIG['db_ip'],
 			        port=CONFIG['db_port'],
-			        database=CONFIG['db']
+			        database=CONFIG['db'].replace("test", "finance")
 			    ),
 			    pool_size=3,
 				max_overflow=0,
