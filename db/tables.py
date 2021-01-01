@@ -1,10 +1,4 @@
-
-EXPIRATIONS = [1,2,3,6,12,18,24]
-MONEYNESSES = list(range(80, 125, 5))
-PCTILES = [10, 21, 63, 126, 252]
-DELTAS = [1, 10, 21, 63, 126]
-
-###################################################################################################
+from const import EXPIRATIONS, MONEYNESSES, PCTILES, DELTAS 
 
 OPTIONS_TABLE = """
 	CREATE TABLE optionsBACK (
@@ -196,7 +190,7 @@ pct_columns = []
 for column in columns:
 	column = column[:-11]
 	for pctile in PCTILES:
-		columns.append(f"{column}p{pctile} FLOAT(4),")
+		pct_columns.append(f"{column}p{pctile} FLOAT(4),")
 
 SURFACESKEWPCTILE_TABLE = """
 	CREATE TABLE surfaceskewpctileBACK (
