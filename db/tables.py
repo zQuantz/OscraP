@@ -142,7 +142,7 @@ OHLCRVOL_TABLE = """
 		{columns}
 		PRIMARY KEY(date_current, ticker)
 	)
-""".format("".join(columns))
+""".format(columns="".join(columns))
 
 ###################################################################################################
 
