@@ -26,9 +26,7 @@ def get_trading_days(x):
     except:
         return None
 
-SUBSET = [
-	"2020-12-31"
-]
+SUBSET = None
 
 ###################################################################################################
 
@@ -119,17 +117,17 @@ def transform_options():
 
 	def transformation(options):
 
-		print(options.shape)
+		# print(options.shape)
 
-		cols = ['date_current', 'expiration_date']
-		pairs = options[cols].drop_duplicates(ignore_index=True)
-		pairs['days_to_expiry'] = pairs.apply(get_trading_days, axis=1)
-		pairs = pairs.dropna()
+		# cols = ['date_current', 'expiration_date']
+		# pairs = options[cols].drop_duplicates(ignore_index=True)
+		# pairs['days_to_expiry'] = pairs.apply(get_trading_days, axis=1)
+		# pairs = pairs.dropna()
 
-		options = options.drop("days_to_expiry", axis=1)
-		options = options.merge(pairs, on=cols, how='inner')
+		# options = options.drop("days_to_expiry", axis=1)
+		# options = options.merge(pairs, on=cols, how='inner')
 
-		print(options.shape)
+		# print(options.shape)
 
 		return options
 
@@ -536,8 +534,8 @@ def main():
 
 	download_data()
 	transform()
-	# init()
-	# compress_data()
+	init()
+	compress_data()
 
 if __name__ == "__main__":
 

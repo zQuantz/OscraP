@@ -22,7 +22,6 @@ OLD = {
 	"instruments" : f"{DIR}/data/old/instruments",
 	"equity" : f"{DIR}/data/old/equities",
 	"splits" : f"{DIR}/data/old/splits",
-	"rss" : f"{DIR}/data/old/rss"
 }
 
 NEW = {

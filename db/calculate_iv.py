@@ -14,6 +14,11 @@ BASE = Path("data/new")
 EQUITIES = BASE / "equities"
 RATES = BASE / "treasuryrates"
 
+SUBSET = [
+	"2020-12-30",
+	"2020-12-31"
+]
+
 ###################################################################################################
 
 def calculate_ratemap():
@@ -78,6 +83,9 @@ def finder(dates, ohlc, ratemap, job_id):
 
 	for i, date in enumerate(sorted(dates)[::-1]):
 
+		if SUBSET and date not in SUBSET:
+			continue
+
 		options = pd.read_csv(EQUITIES / date / "options.csv")
 		l1 = len(options)
 
@@ -136,7 +144,7 @@ if __name__ == "__main__":
 		for i in range(cs, len(dates) + cs, cs)
 	]
 
-	Parallel(n_jobs=8)(
+	Parallel(n_jobs=2)(
 		delayed(finder)(chunk, ohlc, ratemap, i)
 		for i, chunk in enumerate(chunks)
 	)
