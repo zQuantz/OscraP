@@ -1,5 +1,7 @@
 from const import EXPIRATIONS, MONEYNESSES, PCTILES, DELTAS
 
+###################################################################################################
+
 INIT_DATE_SERIES = """
 	INSERT INTO
 		dateseries (
@@ -49,6 +51,157 @@ UPDATE_DATE_SERIES = """
 		d1._189d = IF(d1.lag = 189, 1, NULL),
 		d1._252d = IF(d1.lag = 252, 1, NULL);
 """
+
+###################################################################################################
+
+INSERT_OHLC_STATS = """
+
+	INSERT INTO
+		ohlcstats{modifier}
+	SELECT
+		*
+	FROM
+		(
+			SELECT
+				MAX(date_current) AS date_current,
+				ticker,
+				SUM(volume * _0d) / AVG(volume * _10) AS relvolume10,
+				SUM(volume * _0d) / AVG(volume * _21) AS relvolume21,
+				SUM(volume * _0d) / AVG(volume * _42) AS relvolume42,
+				SUM(volume * _0d) / AVG(volume * _63) AS relvolume63,
+				SUM(volume * _0d) / AVG(volume * _126) AS relvolume126,
+				SUM(volume * _0d) / AVG(volume * _189) AS relvolume189,
+				SUM(volume * _0d) / AVG(volume * _252) AS relvolume252,
+				100 * t1.pct_change AS pctchange1d,
+				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _5d) - 1) AS pctchange5d,
+				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _10d) - 1) AS pctchange10d,
+				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _21d) - 1) AS pctchange21d,
+				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _42d) - 1) AS pctchange42d,
+				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _63d) - 1) AS pctchange63d,
+				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _126d) - 1) AS pctchange126d,
+				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _189d) - 1) AS pctchange189d,
+				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _252d) - 1) AS pctchange252d
+			FROM
+				(
+					SELECT
+						o1.date_current,
+						o1.ticker,
+						o1.volume,
+						o1.adjclose_price,
+						(o1.adjclose_price / o2.adjclose_price - 1) AS pct_change,
+						d1.*
+					FROM
+						ohlc{modifier} AS o1
+					INNER JOIN
+						dateseries AS d1
+						ON o1.date_current = d1.lag_date
+						INNER JOIN
+							ohlc{modifier} AS o2
+							ON o2.date_current = d1.prev_lag_date 
+							AND o2.ticker = o1.ticker
+					{subset}
+				) AS t1
+			GROUP BY
+				ticker
+			ORDER BY
+				date_current DESC
+		) as t2
+	WHERE
+		date_current = "{date}"
+"""
+
+columns, names = "", ""
+for expiry in EXPIRATIONS:
+	columns += f"STDDEV(pct_change * _{expiry * 21}) * SQRT(252) * 100 AS rvol{expiry}m,\n"
+	names += f"rvol{expiry}m, \n"
+
+INSERT_OHLC_RVOL = """
+	INSERT INTO
+		ohlcrvol{modifier} """ + f"""
+		(
+			{names}
+		)
+	SELECT
+		*
+	FROM
+		(
+			SELECT
+				MAX(date_current) AS date_current,
+				ticker,
+				{columns}
+			FROM
+				(
+					SELECT
+						o1.date_current,
+						o1.ticker,
+						o1.volume,
+						o1.adjclose_price,
+						(o1.adjclose_price / o2.adjclose_price - 1) AS pct_change,
+						d1.*
+					FROM """ + """
+						ohlc{modifier} as o1
+					INNER JOIN
+						dateseries AS d1
+						ON o1.date_current = d1.lag_date
+						INNER JOIN
+							ohlc{modifier} AS o2
+							ON o2.date_current = d1.prev_lag_date 
+							AND o2.ticker = o1.ticker
+					{subset}
+				) AS t1
+			GROUP BY
+				ticker
+			ORDER BY
+				date_current DESC
+		) as t2
+	WHERE
+		date_current = "{date}"
+"""
+
+columns, names = "", []
+for expiry in EXPIRATIONS:
+	for pctile in PCTILES:
+		
+		fn = f"rvol{expiry}m"
+		name = f"{fn}p{pctile}"
+		l = f"_{pctile}"
+
+		columns += f"( (SUM({fn} * _0d) - MIN({fn} * {l})) / (MAX({fn} * {l}) - MIN({fn} * {l})) ) AS {name}"
+		names.append("ohlcrvol{modifier}." + f"{name} = t2.{name}, ")
+
+UPDATE_OHLC_RVOL = """
+	UPDATE
+		ohlcrvol{modifier} """ + f"""
+	INNER JOIN
+		(
+			SELECT
+				*
+			FROM
+				(
+					SELECT
+						MAX(date_current) as date_current,
+						ticker,
+						{columns} """ + """
+					FROM
+						ohlcrvol{modifier} AS o
+					INNER JOIN
+						dateseries d
+						ON o.date_current = d.lag_date
+					{subset}
+					GROUP BY
+						ticker
+				) AS t1
+			WHERE
+				date_current = "{date}"
+		) as t2
+	USING
+		(ticker, date_current)
+		""" + f"""
+	SET
+		{"".join(names)}
+"""
+
+###################################################################################################
 
 INSERT_AGG_OPTION_STATS = """
 
@@ -105,114 +258,6 @@ INSERT_AGG_OPTION_STATS = """
 		) AS t1;
 
 """
-
-INSERT_OHLC_STATS = """
-
-	INSERT INTO
-		ohlcstats{modifier}
-	SELECT
-		*
-	FROM
-		(
-			SELECT
-				MAX(date_current) AS date_current,
-				ticker,
-				SUM(volume * _0d) / AVG(volume * _10) AS relvolume10,
-				SUM(volume * _0d) / AVG(volume * _21) AS relvolume21,
-				SUM(volume * _0d) / AVG(volume * _42) AS relvolume42,
-				SUM(volume * _0d) / AVG(volume * _63) AS relvolume63,
-				SUM(volume * _0d) / AVG(volume * _126) AS relvolume126,
-				SUM(volume * _0d) / AVG(volume * _189) AS relvolume189,
-				SUM(volume * _0d) / AVG(volume * _252) AS relvolume252,
-				100 * t1.pct_change AS pctchange1d,
-				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _5d) - 1) AS pctchange5d,
-				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _10d) - 1) AS pctchange10d,
-				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _21d) - 1) AS pctchange21d,
-				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _42d) - 1) AS pctchange42d,
-				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _63d) - 1) AS pctchange63d,
-				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _126d) - 1) AS pctchange126d,
-				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _189d) - 1) AS pctchange189d,
-				100 * (SUM(adjclose_price * _0d) / SUM(adjclose_price * _252d) - 1) AS pctchange252d
-			FROM
-				(
-					SELECT
-						o1.date_current,
-						o1.ticker,
-						o1.volume,
-						o1.adjclose_price,
-						(o1.adjclose_price / o2.adjclose_price - 1) AS pct_change,
-						d1.*
-					FROM
-						ohlc{modifier} AS o1
-					INNER JOIN
-						dateseries AS d1
-						ON o1.date_current = d1.lag_date
-						INNER JOIN
-							ohlc{modifier} AS o2
-							ON o2.date_current = d1.prev_lag_date 
-							AND o2.ticker = o1.ticker
-					{subset}
-				) AS t1
-			GROUP BY
-				ticker
-			ORDER BY
-				date_current DESC
-		) as t2
-	WHERE
-		date_current = "{date}"
-	
-"""
-
-INSERT_OHLC_RVOL = """
-
-	INSERT INTO
-		ohlcrvol{modifier}
-	SELECT
-		*
-	FROM
-		(
-			SELECT
-				MAX(date_current) AS date_current,
-				ticker,
-				STDDEV(pct_change * _21) * SQRT(252) * 100 AS hvol1m,
-				STDDEV(pct_change * _42) * SQRT(252) * 100 AS hvol2m,
-				STDDEV(pct_change * _63) * SQRT(252) * 100 AS hvol3m,
-				STDDEV(pct_change * _126) * SQRT(252) * 100 AS hvol6m,
-				STDDEV(pct_change * _189) * SQRT(252) * 100 AS hvol9m,
-				STDDEV(pct_change * _252) * SQRT(252) * 100 AS hvol12m,
-				STDDEV(pct_change * _252) * SQRT(252) * 100 AS hvol12m,
-				STDDEV(pct_change * _252) * SQRT(252) * 100 AS hvol12m,
-			FROM
-				(
-					SELECT
-						o1.date_current,
-						o1.ticker,
-						o1.volume,
-						o1.adjclose_price,
-						(o1.adjclose_price / o2.adjclose_price - 1) AS pct_change,
-						d1.*
-					FROM
-						ohlc{modifier} AS o1
-					INNER JOIN
-						dateseries AS d1
-						ON o1.date_current = d1.lag_date
-						INNER JOIN
-							ohlc{modifier} AS o2
-							ON o2.date_current = d1.prev_lag_date 
-							AND o2.ticker = o1.ticker
-					{subset}
-				) AS t1
-			GROUP BY
-				ticker
-			ORDER BY
-				date_current DESC
-		) as t2
-	WHERE
-		date_current = "{date}"
-	
-"""
-
-
 
 UPDATE_AGG_OPTION_STATS = """
 
@@ -342,38 +387,126 @@ INSERT_OPTION_STATS = """
 
 """
 
+###################################################################################################
+
+skews = {
+	"f" : [90, 110],
+	"d" : [90, 100],
+	"u" : [100, 110]
+}
+
+columns = ""
+for expiry in EXPIRATIONS:
+	for skew in skews:
+		s1, s2 = skews[skew]
+		columns += f"m{expiry}{s1} - m{expiry}{s2} AS m{expiry}{skew},"
+
 INSERT_SURFACE_SKEW = """
 	INSERT INTO
 		surfaceskew{modifier}
 	SELECT
 		date_current,
-		ticker,
-		m1m90 - m1m110 as m1fskew,
-		m1m90 - m1m100 as m1dskew,
-		m1m100 - m1m110 as m1uskew,
-		m3m90 - m3m110 as m3fskew,
-		m3m90 - m3m100 as m3dskew,
-		m3m100 - m3m110 as m3uskew,
-		m6m90 - m6m110 as m6fskew,
-		m6m90 - m6m100 as m6dskew,
-		m6m100 - m6m110 as m6uskew,
-		m9m90 - m9m110 as m9fskew,
-		m9m90 - m9m100 as m9dskew,
-		m9m100 - m9m110 as m9uskew,
-		m12m90 - m12m110 as m12fskew,
-		m12m90 - m12m100 as m12dskew,
-		m12m100 - m12m110 as m12uskew,
-		m18m90 - m18m110 as m18fskew,
-		m18m90 - m18m100 as m18dskew,
-		m18m100 - m18m110 as m18uskew,
-		m24m90 - m24m110 as m24fskew,
-		m24m90 - m24m100 as m24dskew,
-		m24m100 - m24m110 as m24uskew
-	FROM
+		ticker, """ + f"""
+		{columns}
+	FROM """ + """
 		surface{modifier}
 	WHERE
 		date_current = "{date}"
 	{subset}
+"""
+
+columns, names = "", ""
+for expiry in EXPIRATIONS:
+
+	for pctile in PCTILES:
+
+		fn = f"m{expiry}m100"
+		l = f"_{pctile}"
+		name = f"{fn}p{pctile}"
+
+		columns += f"( (SUM({fn} * _0d) - MIN({fn} * {l})) / (MAX({fn} * {l}) - MIN({fn} * {l})) ) AS {name}"
+		names += f"{name},"
+
+	for delta in DELTAS:
+	
+		fn = f"m{expiry}m100"
+		l = f"_{pctile}d"
+		name = f"{fn}change{delta}d"
+
+		columns += f"SUM(_0d * {fn}) - SUM({l} * {fn} AS {name}"
+		names += f"{name},"
+
+INSERT_SURFACE_STATS = """
+
+	INSERT INTO
+		surfacestats{modifier} ( """ + f"""
+			{names}
+		)
+	SELECT
+		*
+	FROM
+		(
+			SELECT
+				MAX(date_current) as date_current,
+				ticker,
+				{columns} """ + """
+			FROM
+				surface{modifier} AS o
+			INNER JOIN
+				dateseries d
+				ON o.date_current = d.lag_date
+			{subset}
+			GROUP BY
+				ticker
+			ORDER BY
+				date_current DESC
+		) as t1
+	WHERE
+		date_current = "{date}"
+
+"""
+
+columns, names = "", ""
+for expiry in EXPIRATIONS:
+	for skew in skews:
+		for pctile in PCTILES:
+
+			fn = f"m{expiry}{skew}"
+			l = f"_{pctile}"
+			name = f"{fn}p{pctile}"
+
+			columns += f"( (SUM({fn} * _0d) - MIN({fn} * {l})) / (MAX({fn} * {l}) - MIN({fn} * {l})) ) AS {name}, "
+			names += f"{name},"
+
+
+INSERT_SURFACE_SKEW_PCTILE = """
+
+	INSERT INTO
+		surfaceskewpctile{modifier} ( """ + f"""
+			{names}
+		)
+	SELECT
+		*
+	FROM
+		(
+			SELECT
+				MAX(date_current) as date_current,
+				ticker,
+				{columns} """ + """
+			FROM
+				surfaceskew{modifier} AS o
+			INNER JOIN
+				dateseries d
+				ON o.date_current = d.lag_date
+			{subset}
+			GROUP BY
+				ticker
+			ORDER BY
+				date_current DESC
+		) as t1
+	WHERE
+		date_current = "{date}"
+
 """
 
 ###################################################################################################

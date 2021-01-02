@@ -174,8 +174,8 @@ SURFACESTATS_TABLE = """
 
 columns = []
 for expiry in EXPIRATIONS:
-	for _type in "fdu":
-		columns.append(f"m{expiry}{_type} FLOAT(4),")
+	for skew in "fdu":
+		columns.append(f"m{expiry}{skew} FLOAT(4),")
 
 SURFACESKEW_TABLE = """
 	CREATE TABLE surfaceskewBACK (

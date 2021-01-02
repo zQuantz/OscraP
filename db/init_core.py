@@ -400,7 +400,7 @@ def init_equities(splits):
 		if SUBSET and folder.name not in SUBSET:
 			continue
 
-		print("Equities Excl. Options", folder.name)
+		print("OHLC", folder.name)
 
 		if (folder / "ohlc.csv").exists():
 			ohlc.append(pd.read_csv(folder / "ohlc.csv"))
