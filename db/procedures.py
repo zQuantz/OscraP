@@ -1,3 +1,5 @@
+from const import EXPIRATIONS, MONEYNESSES, PCTILES, DELTAS
+
 INIT_DATE_SERIES = """
 	INSERT INTO
 		dateseries (
@@ -115,12 +117,6 @@ INSERT_OHLC_STATS = """
 			SELECT
 				MAX(date_current) AS date_current,
 				ticker,
-				STDDEV(pct_change * _21) * SQRT(252) * 100 AS hvol1m,
-				STDDEV(pct_change * _42) * SQRT(252) * 100 AS hvol2m,
-				STDDEV(pct_change * _63) * SQRT(252) * 100 AS hvol3m,
-				STDDEV(pct_change * _126) * SQRT(252) * 100 AS hvol6m,
-				STDDEV(pct_change * _189) * SQRT(252) * 100 AS hvol9m,
-				STDDEV(pct_change * _252) * SQRT(252) * 100 AS hvol12m,
 				SUM(volume * _0d) / AVG(volume * _10) AS relvolume10,
 				SUM(volume * _0d) / AVG(volume * _21) AS relvolume21,
 				SUM(volume * _0d) / AVG(volume * _42) AS relvolume42,
@@ -166,6 +162,57 @@ INSERT_OHLC_STATS = """
 		date_current = "{date}"
 	
 """
+
+INSERT_OHLC_RVOL = """
+
+	INSERT INTO
+		ohlcrvol{modifier}
+	SELECT
+		*
+	FROM
+		(
+			SELECT
+				MAX(date_current) AS date_current,
+				ticker,
+				STDDEV(pct_change * _21) * SQRT(252) * 100 AS hvol1m,
+				STDDEV(pct_change * _42) * SQRT(252) * 100 AS hvol2m,
+				STDDEV(pct_change * _63) * SQRT(252) * 100 AS hvol3m,
+				STDDEV(pct_change * _126) * SQRT(252) * 100 AS hvol6m,
+				STDDEV(pct_change * _189) * SQRT(252) * 100 AS hvol9m,
+				STDDEV(pct_change * _252) * SQRT(252) * 100 AS hvol12m,
+				STDDEV(pct_change * _252) * SQRT(252) * 100 AS hvol12m,
+				STDDEV(pct_change * _252) * SQRT(252) * 100 AS hvol12m,
+			FROM
+				(
+					SELECT
+						o1.date_current,
+						o1.ticker,
+						o1.volume,
+						o1.adjclose_price,
+						(o1.adjclose_price / o2.adjclose_price - 1) AS pct_change,
+						d1.*
+					FROM
+						ohlc{modifier} AS o1
+					INNER JOIN
+						dateseries AS d1
+						ON o1.date_current = d1.lag_date
+						INNER JOIN
+							ohlc{modifier} AS o2
+							ON o2.date_current = d1.prev_lag_date 
+							AND o2.ticker = o1.ticker
+					{subset}
+				) AS t1
+			GROUP BY
+				ticker
+			ORDER BY
+				date_current DESC
+		) as t2
+	WHERE
+		date_current = "{date}"
+	
+"""
+
+
 
 UPDATE_AGG_OPTION_STATS = """
 

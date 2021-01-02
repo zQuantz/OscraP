@@ -117,7 +117,7 @@ def calculate_greeks(options):
 
 def calculate_surface(options):
 
-	time_anchors = [1,3,6,9,12,18,24]
+	time_anchors = [1,2,3,6,9,12,18,24]
 	time_anchors = np.array(time_anchors) * 21
 	time_df = pd.DataFrame(time_anchors, columns = ['expiration'])
 

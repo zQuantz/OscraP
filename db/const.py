@@ -6,14 +6,18 @@ import os
 
 ###################################################################################################
 
+EXPIRATIONS = [1,2,3,6,12,18,24]
+MONEYNESSES = list(range(80, 125, 5))
+PCTILES = [10, 21, 63, 126, 252]
+DELTAS = [1, 10, 21, 63, 126]
+
+###################################################################################################
+
 DIR = os.path.dirname(os.path.realpath(__file__))
 DATE = datetime.today().strftime("%Y-%m-%d")
 
 with open(f"{DIR}/../config.json", "r") as file:
 	CONFIG = json.loads(file.read())
-
-from connector import Connector
-_connector = Connector(CONFIG, DATE)
 
 ###################################################################################################
 
@@ -63,3 +67,6 @@ TABLE_NAMES = [
 	"stocksplitstmp",
 	"stocksplitstatus"
 ]
+
+from connector import Connector
+_connector = Connector(CONFIG, DATE)
