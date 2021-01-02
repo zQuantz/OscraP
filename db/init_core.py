@@ -385,9 +385,16 @@ def init_equities(splits):
 
 		return ohlc.drop(['split_factor'], axis=1)
 
-	print("Initializing Equities Excl. Options")
+	###############################################################################################
 
-	analysis, ohlc, keystats = [], [], []
+	print("Initializing OHLC")
+
+	if not SUBSET:
+
+		_connector.execute("DROP TABLE IF EXISTS ohlcBACK;")
+		_connector.execute(OHLC_TABLE)
+
+	ohlc = []
 	for folder in sorted((NEWDIR / "equities").iterdir()):
 
 		if SUBSET and folder.name not in SUBSET:
@@ -397,43 +404,83 @@ def init_equities(splits):
 
 		if (folder / "ohlc.csv").exists():
 			ohlc.append(pd.read_csv(folder / "ohlc.csv"))
-		
-		if (folder / "analysis.csv").exists():
-			analysis.append(pd.read_csv(folder / "analysis.csv"))
-		
-		if (folder / "keystats.csv").exists():
-			keystats.append(pd.read_csv(folder / "keystats.csv"))
 
 	ohlc = pd.concat(ohlc)
 	ohlc = adjust_for_splits(ohlc)
-
-	analysis = pd.concat(analysis)
-	keystats = pd.concat(keystats)
-
-	###############################################################################################
-
-	if not SUBSET:
-
-		_connector.execute("DROP TABLE IF EXISTS ohlcBACK;")
-		_connector.execute(OHLC_TABLE)
-		
-		_connector.execute("DROP TABLE IF EXISTS analysisBACK;")
-		_connector.execute(ANALYSIS_TABLE)
-		
-		_connector.execute("DROP TABLE IF EXISTS keystatsBACK;")
-		_connector.execute(KEYSTATS_TABLE)
 
 	print("Indexing OHLC")
 	print(ohlc)
 	_connector.write("ohlcBACK", ohlc)
 
-	print("Indexing Analysis")
-	print(analysis)
-	_connector.write("analysisBACK", analysis)
+	###############################################################################################
 
-	print("Indexing Key Stats")
-	print(keystats)
-	_connector.write("keystatsBACK", keystats)
+	print("Initializing Key Stats")
+
+	if not SUBSET:
+
+		_connector.execute("DROP TABLE IF EXISTS keystatsBACK;")
+		_connector.execute(KEYSTATS_TABLE)
+
+	keystats = []
+	for folder in sorted((NEWDIR / "equities").iterdir()):
+
+		if SUBSET and folder.name not in SUBSET:
+			continue
+
+		print("Key Stats", folder.name)
+
+		if (folder / "keystats.csv").exists():
+			keystats.append(pd.read_csv(folder / "keystats.csv"))
+
+		if len(keystats) != 0 and len(keystats) % 10 == 0:
+
+			keystats = pd.concat(keystats)
+			print("Indexing Key Stats")
+			print(keystats)
+			_connector.write("keystatsBACK", keystats)
+			keystats = []
+
+	if len(keystats) != 0:
+
+		keystats = pd.concat(keystats)
+		print("Final Index for Key Stats")
+		print(keystats)
+		_connector.write("keystatsBACK", keystats)
+
+	###############################################################################################
+
+	print("Initializing Analysis")
+
+	if not SUBSET:
+
+		_connector.execute("DROP TABLE IF EXISTS analysisBACK;")
+		_connector.execute(ANALYSIS_TABLE)
+
+	analysis = []
+	for folder in sorted((NEWDIR / "equities").iterdir()):
+
+		if SUBSET and folder.name not in SUBSET:
+			continue
+
+		print("Analysis", folder.name)
+
+		if (folder / "analysis.csv").exists():
+			analysis.append(pd.read_csv(folder / "analysis.csv"))
+
+		if len(analysis) != 0 and len(analysis) % 10 == 0:
+
+			analysis = pd.concat(analysis)
+			print("Indexing Analysis")
+			print(analysis)
+			_connector.write("analysisBACK", analysis)
+			analysis = []
+
+	if len(analysis) != 0:
+
+		analysis = pd.concat(analysis)
+		print("Final Index for Analysis")
+		print(analysis)
+		_connector.write("analysisBACK", analysis)
 
 def init_options(splits):
 
@@ -534,7 +581,7 @@ def init():
 
 def main():
 
-	# download_data()
+	download_data()
 	transform()
 	init()
 	compress_data()
