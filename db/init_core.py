@@ -117,18 +117,6 @@ def transform_options():
 
 	def transformation(options):
 
-		# print(options.shape)
-
-		# cols = ['date_current', 'expiration_date']
-		# pairs = options[cols].drop_duplicates(ignore_index=True)
-		# pairs['days_to_expiry'] = pairs.apply(get_trading_days, axis=1)
-		# pairs = pairs.dropna()
-
-		# options = options.drop("days_to_expiry", axis=1)
-		# options = options.merge(pairs, on=cols, how='inner')
-
-		# print(options.shape)
-
 		options = options.drop(["Unnamed: 0"], axis=1)
 
 		return options
@@ -283,12 +271,46 @@ def transform():
 
 ###################################################################################################
 
-def generate_split_series():
+def init_splits():
 
-	splits = pd.concat([
-		pd.read_csv(file)
-		for file in NEW['splits'].iterdir()
-	]).drop_duplicates()
+	if not SUBSET:
+
+		print("Initializing Splits")
+		_connector.execute("DROP TABLE IF EXISTS stocksplitsBACK;")
+		_connector.execute(STOCKSPLITS_TABLE)
+
+		print("Initializing Tmp Splits")
+		_connector.execute("DROP TABLE IF EXISTS stocksplitstmpBACK;")
+		_connector.execute(STOCKSPLITSTMP_TABLE)
+
+		print("Initializing Splits Status")
+		_connector.execute("DROP TABLE IF EXISTS stocksplitstatusBACK;")
+		_connector.execute(STOCKSPLITSTATUS_TABLE)
+
+	splits = []
+	for file in sorted((NEWDIR / "splits").iterdir()):
+
+		if SUBSET and file.name.split(".")[0] not in SUBSET:
+			continue
+
+		splits.append(pd.read_csv(file))
+
+	splits = pd.concat(splits).drop_duplicates()
+
+	def multiply(group):
+		group['split_factor'] = group.split_factor.product()
+		return group.iloc[-1, :]
+
+	splits = splits.groupby(["ticker", "ex_date"]).apply(multiply)
+	splits = splits.reset_index(drop=True)
+
+	splits['processed_timestamp'] = datetime.now()
+
+	_connector.write("stocksplitsBACK", splits)
+
+	return splits
+
+def generate_split_series(splits):
 
 	splits = splits[["ticker", "split_factor", "ex_date"]]
 	splits['ex_date'] = pd.to_datetime(splits.ex_date) - timedelta(days=1)
@@ -540,44 +562,15 @@ def init_options(splits):
 		print("Final Index.\nIndexing Options", len(options))
 		_connector.write("optionsBACK", options)
 
-def init_splits():
-
-	if not SUBSET:
-
-		print("Initializing Splits")
-		_connector.execute("DROP TABLE IF EXISTS stocksplitsBACK;")
-		_connector.execute(STOCKSPLITS_TABLE)
-
-		print("Initializing Tmp Splits")
-		_connector.execute("DROP TABLE IF EXISTS stocksplitstmpBACK;")
-		_connector.execute(STOCKSPLITSTMP_TABLE)
-
-		print("Initializing Splits Status")
-		_connector.execute("DROP TABLE IF EXISTS stocksplitstatusBACK;")
-		_connector.execute(STOCKSPLITSTATUS_TABLE)
-
-	splits = []
-	for file in sorted((NEWDIR / "splits").iterdir()):
-
-		if SUBSET and file.name.split(".")[0] not in SUBSET:
-			continue
-
-		splits.append(pd.read_csv(file))
-
-	splits = pd.concat(splits).drop_duplicates()
-	splits['processed_timestamp'] = datetime.now()
-
-	_connector.write("stocksplitsBACK", splits)
-
 def init():
 
-	splits = generate_split_series()
+	splits = init_splits()
+	splits = generate_split_series(splits)
 
 	init_instruments()
 	init_rates()
 	init_equities(splits)
 	init_options(splits)
-	init_splits()
 
 def main():
 
