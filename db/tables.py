@@ -1,22 +1,6 @@
 
 EXPIRATIONS = [1,2,3,6,9,12,18,24]
 MONEYNESSES = list(range(80, 125, 5))
-PCTILES = [10, 21, 63, 126, 252]
-DELTAS = [1, 10, 21, 63, 126]
-SKEWS = [
-	(80, 120),
-	(85, 115),
-	(90, 110),
-	(95, 105),
-	(100, 105),
-	(100, 110),
-	(100, 115),
-	(100, 120),
-	(80, 100),
-	(85, 100),
-	(90, 100),
-	(95, 100),
-]
 
 ###################################################################################################
 
@@ -40,64 +24,14 @@ OPTIONS_TABLE = """
 	)
 """
 
-OPTIONSTATS_TABLE = """
-	CREATE TABLE optionstatsBACK (
-		date_current DATE,
-		ticker VARCHAR(10),
-		option_id VARCHAR(40),
-		midpctchange1d FLOAT(4),
-		midpctchange5d FLOAT(4),
-		midpctchange10d FLOAT(4),
-		midpctchange20d FLOAT(4),
-		ivchange1d FLOAT(4),
-		ivchange5d FLOAT(4),
-		ivchange10d FLOAT(4),
-		ivchange20d FLOAT(4),
-		relvolume5 FLOAT(4),
-		relvolume10 FLOAT(4),
-		relvolume20 FLOAT(4),
-		relvolume2oi5 FLOAT(4),
-		relvolume2oi10 FLOAT(4),
-		relvolume2oi20 FLOAT(4),
-		INDEX(date_current, option_id)
-	)
-"""
-
 AGGOPTIONSTATS_TABLE = """
 	CREATE TABLE aggoptionstatsBACK (
 		date_current DATE,
 		ticker VARCHAR(10),
 		call_volume BIGINT,
 		put_volume BIGINT,
-		cpv_ratio FLOAT(6),
-		total_volume BIGINT,
 		call_open_interest BIGINT,
 		put_open_interest BIGINT,
-		total_open_interest BIGINT,
-		call_v2oi FLOAT(4),
-		put_v2oi FLOAT(4),
-		total_v2oi FLOAT(4),
-		rcv5 FLOAT(4),
-		rpv5 FLOAT(4),
-		rtv5 FLOAT(4),
-		rcv10 FLOAT(4),
-		rpv10 FLOAT(4),
-		rtv10 FLOAT(4),
-		rcv20 FLOAT(4),
-		rpv20 FLOAT(4),
-		rtv20 FLOAT(4),
-		rcpvs5 FLOAT(4),
-		rcpvs10 FLOAT(4),
-		rcpvs20 FLOAT(4),
-		rcv2oi5 FLOAT(4),
-		rcv2oi10 FLOAT(4),
-		rcv2oi20 FLOAT(4),
-		rpv2oi5 FLOAT(4),
-		rpv2oi10 FLOAT(4),
-		rpv2oi20 FLOAT(4),
-		rtv2oi5 FLOAT(4),
-		rtv2oi10 FLOAT(4),
-		rtv2oi20 FLOAT(4),
 		PRIMARY KEY(date_current, ticker)
 	)
 """
@@ -143,21 +77,6 @@ OHLCSTATS_TABLE = """
 	)
 """
 
-columns = []
-for expiry in EXPIRATIONS:
-	columns.append(f"rvol{expiry}m FLOAT(4), \n")
-	for pctile in PCTILES:
-		columns.append(f"rvol{expiry}mp{pctile} FLOAT(4), \n")
-
-OHLCRVOL_TABLE = """
-	CREATE TABLE ohlcrvolBACK (
-		date_current DATE,
-		ticker VARCHAR(10),
-		{columns}
-		PRIMARY KEY(date_current, ticker)
-	)
-""".format(columns="".join(columns))
-
 ###################################################################################################
 
 columns = []
@@ -173,86 +92,6 @@ SURFACE_TABLE = """
 		PRIMARY KEY(ticker, date_current)
 	)
 """.format(columns="".join(columns))
-
-columns = []
-for expiry in EXPIRATIONS:
-	for pctile in PCTILES:
-		columns.append(f"m{expiry}m100p{pctile} FLOAT(4), \n")
-	for delta in DELTAS:
-		columns.append(f"m{expiry}m100change{delta}d FLOAT(4), \n")
-
-SURFACESTATS_TABLE = """
-	CREATE TABLE surfacestatsBACK (
-		date_current DATE,
-		ticker VARCHAR(10),
-		{columns}
-		PRIMARY KEY(ticker, date_current)
-	)
-""".format(columns="".join(columns))
-
-###################################################################################################
-
-columns = []
-for expiry in EXPIRATIONS:
-	for skew in skews:
-		s1, s2 = skew
-		columns.append(f"m{expiry}s{s1}s{s2} FLOAT(4), \n")
-
-SURFACESKEW_TABLE = """
-	CREATE TABLE surfaceskewBACK (
-		date_current DATE,
-		ticker VARCHAR(10),
-		{columns}
-		PRIMARY KEY(date_current, ticker)
-	)
-""".format(columns = "".join(columns))
-
-pct_columns = []
-for column in columns:
-	column = column[:-11]
-	for pctile in PCTILES:
-		pct_columns.append(f"{column}p{pctile} FLOAT(4), \n")
-
-SURFACESKEWPCTILE_TABLE = """
-	CREATE TABLE surfaceskewpctileBACK (
-		date_current DATE,
-		ticker VARCHAR(10),
-		{columns}
-		PRIMARY KEY(date_current, ticker)
-	)
-""".format(columns = "".join(pct_columns))
-
-###################################################################################################
-
-columns = []
-for t1 in EXPIRATIONS:
-	for t2 in EXPIRATIONS:
-		if t2 - t1 > 0:
-			columns.append(f"t{t1}t{t2} FLOAT(4), \n")
-
-TERMSTRUCTURE_TABLE = """
-	CREATE TABLE termstructureBACK (
-		date_current DATE,
-		ticker VARCHAR(10),
-		{columns}
-		PRIMARY KEY(ticker, date_current)
-	)
-""".format(columns = "".join(columns))
-
-pct_columns = []
-for column in columns:
-	column = column[:-11]
-	for pctile in PCTILES:
-		pct_columns.append(f"{column}p{pctile} FLOAT(4), \n")
-
-TERMSTRUCTUREPCTILE_TABLE = """
-	CREATE TABLE termstructurepctileBACK (
-		date_current DATE,
-		ticker VARCHAR(10),
-		{columns}
-		PRIMARY KEY(ticker, date_current)
-	)
-""".format(columns = "".join(pct_columns))
 
 ###################################################################################################
 
