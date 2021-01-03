@@ -1,5 +1,7 @@
 from scipy.interpolate import CubicHermiteSpline
 from const import DIR, NEW, _connector
+from joblib import delayed, Parallel
+from pathlib import Path
 from procedures import *
 from tables import *
 
@@ -16,11 +18,11 @@ SUBSET = None
 
 def derive_treasuryratemap():
 
-	# if not SUBSET:
+	if not SUBSET:
 
-	# 	print("Initializing Treasury Rate Maps")
-	# 	_connector.execute("DROP TABLE IF EXISTS treasuryratemapBACK;")
-	# 	_connector.execute(TREASURYRATEMAP_TABLE)
+		print("Initializing Treasury Rate Maps")
+		_connector.execute("DROP TABLE IF EXISTS treasuryratemapBACK;")
+		_connector.execute(TREASURYRATEMAP_TABLE)
 
 	rates = []
 	for file in sorted(NEW['treasuryrates'].iterdir()):
@@ -79,11 +81,11 @@ def derive_treasuryratemap():
 
 def derive_surface(ratemap):
 
-	# if not SUBSET:
+	if not SUBSET:
 
-	# 	print("Initializing Surface")
-	# 	_connector.execute("DROP TABLE IF EXISTS surfaceBACK;")
-	# 	_connector.execute(SURFACE_TABLE)
+		print("Initializing Surface")
+		_connector.execute("DROP TABLE IF EXISTS surfaceBACK;")
+		_connector.execute(SURFACE_TABLE)
 
 	ohlcs = []
 	for folder in NEW['equity'].iterdir():
@@ -97,57 +99,68 @@ def derive_surface(ratemap):
 	ohlc = ohlc[['ticker', 'date_current', 'adjclose_price']]
 	ohlc = ohlc.rename({"adjclose_price" : "stock_price"}, axis=1)
 
-	surfaces = []
-	for folder in sorted(NEW['equity'].iterdir()):
+	def calculate_and_index(job_id, folders, ohlc, ratemap):
 
-		if SUBSET and folder.name not in SUBSET:
-			continue
+		for folder in folders:
 
-		file = folder / "options.csv"
-		if not file.exists():
-			continue
+			if SUBSET and folder.name not in SUBSET:
+				continue
 
-		min_date = folder.name
-		max_date = f"{int(min_date[:4])+10}"+min_date[4:]
-		reg_expirations = calculate_regular_expiries(min_date, max_date)
+			file = folder / "options.csv"
+			if not file.exists():
+				continue
 
-		print("Processing Surface", folder.name)
+			min_date = folder.name
+			max_date = f"{int(min_date[:4])+10}"+min_date[4:]
+			reg_expirations = calculate_regular_expiries(min_date, max_date)
 
-		options = pd.read_csv(file)
-		print(options.shape)
-		options = options.merge(ohlc, on=['ticker', 'date_current'], how='inner')
-		print(options.shape)
-		options = options.merge(ratemap, on=['date_current', 'days_to_expiry'], how='inner')
-		print(options.shape)
+			print("Processing Surface", folder.name)
 
-		surface = calculate_surface(options, reg_expirations)
-		surface['date_current'] = folder.name
-		surfaces.append(surface)
+			options = pd.read_csv(file)
+			options = options.merge(ohlc, on=['ticker', 'date_current'], how='inner')
+			options = options.merge(ratemap, on=['date_current', 'days_to_expiry'], how='inner')
 
-		print(surfaces[-1].ticker.nunique(), options.ticker.nunique())
-		print(surfaces[-1])
+			surface = calculate_surface(options, reg_expirations)
+			surface['date_current'] = folder.name
+
+			print(surface.ticker.nunique(), options.ticker.nunique())
+			print(surface)
+
+			surface.to_csv(f"surfaces/{folder.name}.csv", index=False)
+
+	CS = 50
+	folders = sorted(NEW['equity'].iterdir())[:5]
 	
-	print("Indexing IV Surface")
-	surfaces = pd.concat(surfaces)
-	# _connector.write("surfaceBACK", surfaces)
+	chunks = [
+		folders[i - CS : i]
+		for i in range(CS, len(folders) + CS, CS)
+	]
+
+	Parallel(n_jobs = 8)(
+		delayed(calculate_and_index)(job_id, chunk, ohlc, ratemap)
+		for job_id, chunk in enumerate(chunks)
+	)
+
+	surfaces = []
+	for file in sorted(Path("surfaces/").iterdir()):
+
+		print(file.name)
+		surfaces.append(pd.read_csv(file))
+
+		if len(surfaces) % 20 == 0:
+		
+			print("Indexing Surfaces.")
+			surfaces = pd.concat(surfaces).reset_index(drop=True)
+			_connector.write("surfaceBACK", surfaces)
+			surfaces = []
+
+	if len(surfaces) != 0:
+
+		print("Final Surface Index.")
+		surfaces = pd.concat(surfaces).reset_index(drop=True)
+		_connector.write("surfaceBACK", surfaces)
 
 def derive_stats():
-
-	print("Initializing Option Stats")
-	_connector.execute("DROP TABLE IF EXISTS optionstatsBACK;")
-	_connector.execute(OPTIONSTATS_TABLE)
-
-	print("Initializing Surface Skew")
-	_connector.execute("DROP TABLE IF EXISTS surfaceskewBACK;")
-	_connector.execute(SURFACESKEW_TABLE)
-
-	print("Initializing Surface Stats")
-	_connector.execute("DROP TABLE IF EXISTS surfacestatsBACK;")
-	_connector.execute(SURFACESTATS_TABLE)
-
-	print("Initializing OHLC Stats")
-	_connector.execute("DROP TABLE IF EXISTS ohlcstatsBACK;")
-	_connector.execute(OHLCSTATS_TABLE)
 
 	print("Initializing Aggregate Option Stats")
 	_connector.execute("DROP TABLE IF EXISTS aggoptionstatsBACK;")
@@ -167,55 +180,10 @@ def derive_stats():
 
 	###############################################################################################
 
-	SUBSET = """
-		WHERE
-			ticker IN
-			(
-				SELECT
-					ticker
-				FROM
-					tickerdatesBACK
-				WHERE
-					date_current = "{date}"
-				AND ASCII(SUBSTRING(ticker, 1, 1))
-					BETWEEN {n1} AND {n2}
-			)
-	"""
-
-	ranges = [
-		(65, 69),
-		(70, 79),
-		(80, 91)
-	]
-
-	###############################################################################################
-
 	for date in sorted(os.listdir(NEW['equity'])):
-
-		print(f"Creating dateseries table for date {date}.")
-		_connector.date = date
-		_connector.init_date_series("BACK")
-
-		print("Inserting OHLC Stats")
-		_connector.execute(INSERT_OHLC_STATS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Agg Option Stats")
 		_connector.execute(INSERT_AGG_OPTION_STATS.format(modifier="BACK", subset="", date=date))
-
-		print("Updating Agg Option Stats")
-		_connector.execute(UPDATE_AGG_OPTION_STATS.format(modifier="BACK", subset="", date=date))
-
-		print("Inserting Options Stats")
-		for i, _range in enumerate(ranges):
-			print(f"Batch #{i}. {_range}")
-			subset = SUBSET.format(date=date, n1=_range[0], n2=_range[1])
-			_connector.execute(INSERT_OPTION_STATS.format(modifier="BACK", subset=subset, date=date))
-
-		print("Inserting Surface Skew")
-		_connector.execute(INSERT_SURFACE_SKEW.format(modifier="BACK", subset="", date=date))
-
-		print("Inserting Surface Stats")
-		_connector.execute(INSERT_SURFACE_STATS.format(modifier="BACK", subset="", date=date))
 
 		print("Inserting Options Counts")
 		_connector.execute(INSERT_OPTION_COUNTS.format(modifier="BACK", subset="", date=date))
@@ -252,12 +220,11 @@ def derive_tickermaps():
 
 def derive():
 
-	# ratemap = derive_treasuryratemap()
-	# ratemap.to_csv("ratemap.csv", index=False)
-	derive_surface(pd.read_csv("ratemap.csv"))
+	ratemap = derive_treasuryratemap()
+	derive_surface(ratemap)
 	
-	# derive_tickermaps()
-	# derive_stats()
+	derive_tickermaps()
+	derive_stats()
 
 if __name__ == '__main__':
 

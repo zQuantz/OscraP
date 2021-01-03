@@ -1,7 +1,6 @@
-from procedures import INIT_DATE_SERIES, UPDATE_DATE_SERIES, SPLIT_PROCEDURES
-from procedures import get_derived_procedures
 from datetime import datetime
 from threading import Thread
+from procedures import *
 import sqlalchemy as sql
 from const import DIR
 import pandas as pd
@@ -29,7 +28,7 @@ class Connector:
 			        database=CONFIG['db'],
 			        query={"unix_socket":CONFIG['db_socket']}
 			    ),
-			    pool_size=3,
+			    pool_size=10,
 				max_overflow=0,
 				pool_recycle=299,
 				pool_pre_ping=True

@@ -42,15 +42,43 @@ with open(f"{DIR}/../config.json", "w") as file:
 ES_MAPPINGS = {
     "settings": {
         "number_of_shards": 1,
-        "number_of_replicas": 0
+        "number_of_replicas": 0,
+        "analysis" : {
+            "analyzer" : {
+                "search_analyzer" : {
+                    "tokenizer" : "classic",
+                    "filter" : [
+                        "classic",
+                        "lowercase",
+                        "stop",
+                        "trim",
+                        "length_limiter",
+                        "shingler"
+                    ]
+                }
+            },
+            "filter" : {
+                "length_limiter" : {
+                    "type" : "length",
+                    "min" : 2
+                },
+                "shingler" : {
+                    "type" : "shingle",
+                    "min_shingle_size" : 2,
+                    "max_shingle_size" : 3
+                },
+            }
+        }
     },
     "mappings": {
         "properties": {
                 "title": {
-                    "type" : "text"
+                    "type" : "text",
+                    "analyzer" : "search_analyzer"
                 },
                 "summary" : {
-                    "type" : "text"
+                    "type" : "text",
+                    "analyzer" : "search_analyzer"
                 },
                 "_summary" : {
                     "type" : "text"
@@ -59,7 +87,7 @@ ES_MAPPINGS = {
                 	"type" : "text"
                 },
                 "link" : {
-                    "type" : "text"
+                    "type" : "keyword"
                 },
                 "timestamp" : {
                     "type" : "date",

@@ -228,13 +228,15 @@ def calculate_surface(options, reg_expirations):
 
 		if match_type == 0:
 			idx2 = idx[0] + 1
+			bump = 0
 		else:
 			idx2 = idx[0]
+			bump = 1
 		
 		v2 = values[idx2]
 
-		p1 = 1 / abs(v1 - v)
-		p2 = 1 / abs(v2 - v)
+		p1 = 1 / abs(v1 - v + bump)
+		p2 = 1 / abs(v2 - v + bump)
 		d = p1 + p2
 
 		p1 /= d
@@ -285,6 +287,9 @@ def calculate_surface(options, reg_expirations):
 				calculate_brackets(expirations, time_anchors[idc], sm, dsm)
 			)
 
+		if len(time_brackets) == 0:
+			return
+
 		time_brackets = np.array(sorted(time_brackets))
 		expirations = np.unique(time_brackets[:, 1:3].reshape(-1, ))
 
@@ -329,8 +334,8 @@ def calculate_surface(options, reg_expirations):
 		surface = surface.values[:, 1:].reshape(1, -1)
 		return pd.DataFrame(surface, columns = SURFACE_COLS)
 
-	options = options[options.days_to_expiry > 0]
-	options['mid_price'] = ((options.bid_price + options.ask_price) / 2).values
+	options = options[options.days_to_expiry > 0].reset_index(drop=True)
+	options['mid_price'] = (options.bid_price * 0.5 + options.ask_price * 0.5).values
 
 	options = pre_filters(options)	
 	options = calculate_implied_forward(options)
@@ -348,9 +353,9 @@ def calculate_surface(options, reg_expirations):
 	options = options.sort_values(cols)
 
 	surface = options.groupby("ticker").apply(by_ticker)
-	surface = surface.reset_index(level=0)
+	surface = surface.dropna(axis=0, how="all", subset=SURFACE_COLS)
 
-	return surface
+	return surface.reset_index(level=0)
 
 def calculate_iv(options):
 
