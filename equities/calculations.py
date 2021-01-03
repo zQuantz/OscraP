@@ -7,7 +7,37 @@ import sys, os
 from scipy.optimize import brentq
 from scipy.stats import norm
 
+from datetime import datetime, timedelta
+
+DATE_FMT = "%Y-%m-%d"
+
 ###################################################################################################
+
+def calculate_trading_days(d1, d2, tdays):
+
+	if d1 in tdays and d2 in tdays:
+		return tdays.index(d2) - tdays.index(d1)
+
+	_d2 = datetime.strftime(d2, DATE_FMT)
+	ctr = 0
+	
+	while d2 not in tdays:
+		
+		_d2 -= timedelta(days=1)
+		d2 = _d2.strftime(DATE_FMT)
+		ctr += 1
+
+		if ctr > 3:
+			return None
+
+	return tdays.index(d2) - tdays.index(d1)
+
+def calculate_regular_expiries(d1, d2):
+
+	saturdays = pd.date_range(d1, d2, freq="WOM-3SAT").astype(str)
+	fridays = pd.date_range(d1, d2, freq="WOM-3FRI").astype(str)
+	thursdays = pd.date_range(d1, d2, freq="WOM-3THU").astype(str)
+	return list(saturdays) + list(fridays) + list(thursdays)
 
 def calculate_greeks(options):
 
@@ -115,23 +145,24 @@ def calculate_greeks(options):
 
 ###################################################################################################
 
-def calculate_surface(options):
+time_anchors = [1,2,3,6,9,12,18,24]
+moneyness_anchors = list(range(80, 125, 5))
 
-	time_anchors = [1,2,3,6,9,12,18,24]
-	time_anchors = np.array(time_anchors) * 21
-	time_df = pd.DataFrame(time_anchors, columns = ['expiration'])
+TDF_COLS = ['expiration'] + [f"m{m}" for m in range(80, 125, 5)]
+MDF_COLS = ['moneyness', 'm1', 'm2', 'w1', 'w2', 'iv1', 'iv2']
+SURFACE_COLS = [
+	f"m{m1}m{m2}"
+	for m1 in time_anchors
+	for m2 in moneyness_anchors
+]
 
-	moneyness_anchors = list(range(80, 125, 5))
-	moneyness_anchors = np.array(moneyness_anchors)
-	moneyness_df = pd.DataFrame(moneyness_anchors, columns = ['moneyness'])
+time_anchors = np.array(time_anchors) * 21
+time_df = pd.DataFrame(time_anchors, columns = ['expiration'])
 
-	TDF_COLS = ['expiration'] + [f"m{m}" for m in range(80, 125, 5)]
-	MDF_COLS = ['moneyness', 'm1', 'm2', 'w1', 'w2', 'iv1', 'iv2']
-	SURFACE_COLS = [
-		f"m{m1}m{m2}"
-		for m1 in [1,3,6,9,12,18,24]
-		for m2 in range(80, 125, 5)
-	]
+moneyness_anchors = np.array(moneyness_anchors)
+moneyness_df = pd.DataFrame(moneyness_anchors, columns = ['moneyness'])
+
+def calculate_surface(options, reg_expirations):
 
 	def pre_filters(options):
 
@@ -190,11 +221,17 @@ def calculate_surface(options):
 	    
 	    return matrix, signed_matrix, dsigned_matrix
 
-	def calculate_bracket_coords(values, anchors, idx, extra_values=None):
+	def calculate_bracket_coords(values, anchors, idx, match_type, extra_values=None):
 		
-		v1 = values[idx[0]]
-		v2 = values[idx[0] + 1]
 		v = anchors[idx[1]]
+		v1 = values[idx[0]]
+
+		if match_type == 0:
+			idx2 = idx[0] + 1
+		else:
+			idx2 = idx[0]
+		
+		v2 = values[idx2]
 
 		p1 = 1 / abs(v1 - v)
 		p2 = 1 / abs(v2 - v)
@@ -208,7 +245,7 @@ def calculate_surface(options):
 		if extra_values is not None:
 			coords.extend([
 				extra_values[idx[0]],
-				extra_values[idx[0] + 1],
+				extra_values[idx2],
 			])
 
 		return coords
@@ -216,26 +253,20 @@ def calculate_surface(options):
 	def calculate_brackets(values, anchors, sm, dsm, extra_values=None):
 
 		brackets = [
-			calculate_bracket_coords(values, anchors, idx, extra_values)
+			calculate_bracket_coords(values, anchors, idx, 0, extra_values)
 			for idx in np.argwhere(dsm == 2)
 		]
 
-		for idx in np.argwhere(sm == 0):
-
-			bracket = calculate_bracket_coords(values, anchors, idx, extra_values)
-			bracket[2] = bracket[1]
-			bracket[3:5] = [0.5]*2
-
-			if extra_values is not None:
-				bracket[6] = bracket[5]
-
-			brackets.append(bracket)
+		brackets.extend([
+			calculate_bracket_coords(values, anchors, idx, 1, extra_values)
+			for idx in np.argwhere(sm == 0)
+		])
 
 		return brackets
 
 	def by_ticker(options):
 
-		expirations = options[options.expiration_date.isin(CONFIG['reg_expirations'])]
+		expirations = options[options.expiration_date.isin(reg_expirations)]
 		expirations = expirations.days_to_expiry.unique()
 
 		if len(expirations) < 2:
@@ -276,7 +307,7 @@ def calculate_surface(options):
 			)
 
 			if len(moneyness_brackets) == 0:
-				ivs[expiration] = np.zeros(len(moneyness_df))
+				ivs[expiration] = np.ones(len(moneyness_df)) * np.nan
 				continue 
 
 			df = pd.DataFrame(moneyness_brackets, columns = MDF_COLS)
@@ -299,7 +330,7 @@ def calculate_surface(options):
 		return pd.DataFrame(surface, columns = SURFACE_COLS)
 
 	options = options[options.days_to_expiry > 0]
-	options['mid_price'] = (options.bid_price + options.ask_price) / 2
+	options['mid_price'] = ((options.bid_price + options.ask_price) / 2).values
 
 	options = pre_filters(options)	
 	options = calculate_implied_forward(options)
@@ -318,7 +349,6 @@ def calculate_surface(options):
 
 	surface = options.groupby("ticker").apply(by_ticker)
 	surface = surface.reset_index(level=0)
-	surface['date_current'] = DATE
 
 	return surface
 

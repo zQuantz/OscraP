@@ -8,6 +8,9 @@ from tables import *
 import pandas as pd
 import sys, os
 
+sys.path.append("../equities")
+from calculations import calculate_trading_days
+
 ###################################################################################################
 
 NEWDIR = Path(f"{DIR}/data/new")
@@ -17,14 +20,6 @@ nyse = mcal.get_calendar('NYSE')
 schedule = nyse.schedule(start_date="2019-01-01", end_date="2029-01-01")
 TDAYS = mcal.date_range(schedule, frequency="1D").tolist()
 TDAYS = [str(day)[:10] for day in TDAYS]
-
-def get_trading_days(x):
-    try:
-        i = TDAYS.index(x[0])
-        j = TDAYS.index(x[1])
-        return j - i
-    except:
-        return None
 
 SUBSET = None
 
@@ -116,6 +111,14 @@ def compress_data():
 def transform_options():
 
 	def transformation(options):
+
+		d1 = options.date_current.values[0]
+		days_to_expiry = [
+			calculate_trading_days(d1, expiration_date, TDAYS)
+			for expiration_date in options.expiration_date.values
+		]
+		options['days_to_expiry'] = days_to_expiry
+		print(options.days_to_expiry.value_counts())
 
 		options = options.drop(["Unnamed: 0"], axis=1)
 
@@ -549,7 +552,7 @@ def init_options(splits):
 
 		options.append(pd.read_csv(file))
 
-		if len(options) % 10 == 0:
+		if len(options) % 5 == 0:
 
 			options = pd.concat(options)
 			options = adjust_for_splits(options)

@@ -58,6 +58,7 @@ def init():
 	trading_days = mcal.date_range(schedule, frequency="1D").tolist()
 	CONFIG['trading_days'] = [str(day)[:10] for day in trading_days]
 
+	saturdays = pd.date_range(min_date, max_date, freq="WOM-3SAT").astype(str)
 	fridays = pd.date_range(min_date, max_date, freq="WOM-3FRI").astype(str)
 	thursdays = pd.date_range(min_date, max_date, freq="WOM-3THU").astype(str)
 	CONFIG['reg_expirations'] = list(fridays) + list(thursdays)

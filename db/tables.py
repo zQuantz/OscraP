@@ -1,4 +1,24 @@
-from const import EXPIRATIONS, MONEYNESSES, PCTILES, DELTAS 
+
+EXPIRATIONS = [1,2,3,6,9,12,18,24]
+MONEYNESSES = list(range(80, 125, 5))
+PCTILES = [10, 21, 63, 126, 252]
+DELTAS = [1, 10, 21, 63, 126]
+SKEWS = [
+	(80, 120),
+	(85, 115),
+	(90, 110),
+	(95, 105),
+	(100, 105),
+	(100, 110),
+	(100, 115),
+	(100, 120),
+	(80, 100),
+	(85, 100),
+	(90, 100),
+	(95, 100),
+]
+
+###################################################################################################
 
 OPTIONS_TABLE = """
 	CREATE TABLE optionsBACK (
@@ -125,9 +145,9 @@ OHLCSTATS_TABLE = """
 
 columns = []
 for expiry in EXPIRATIONS:
-	columns.append(f"rvol{expiry}m FLOAT(4), ")
+	columns.append(f"rvol{expiry}m FLOAT(4), \n")
 	for pctile in PCTILES:
-		columns.append(f"rvol{expiry}mp{pctile} FLOAT(4), ")
+		columns.append(f"rvol{expiry}mp{pctile} FLOAT(4), \n")
 
 OHLCRVOL_TABLE = """
 	CREATE TABLE ohlcrvolBACK (
@@ -143,7 +163,7 @@ OHLCRVOL_TABLE = """
 columns = []
 for expiry in EXPIRATIONS:
 	for moneyness in MONEYNESSES:
-		columns.append(f"m{expiry}m{moneyness} FLOAT(4), ")
+		columns.append(f"m{expiry}m{moneyness} FLOAT(4), \n")
 
 SURFACE_TABLE = """
 	CREATE TABLE surfaceBACK (
@@ -157,9 +177,9 @@ SURFACE_TABLE = """
 columns = []
 for expiry in EXPIRATIONS:
 	for pctile in PCTILES:
-		columns.append(f"m{expiry}m100p{pctile} FLOAT(4), ")
+		columns.append(f"m{expiry}m100p{pctile} FLOAT(4), \n")
 	for delta in DELTAS:
-		columns.append(f"m{expiry}m100change{delta}d FLOAT(4), ")
+		columns.append(f"m{expiry}m100change{delta}d FLOAT(4), \n")
 
 SURFACESTATS_TABLE = """
 	CREATE TABLE surfacestatsBACK (
@@ -174,8 +194,9 @@ SURFACESTATS_TABLE = """
 
 columns = []
 for expiry in EXPIRATIONS:
-	for skew in "fdu":
-		columns.append(f"m{expiry}{skew} FLOAT(4),")
+	for skew in skews:
+		s1, s2 = skew
+		columns.append(f"m{expiry}s{s1}s{s2} FLOAT(4), \n")
 
 SURFACESKEW_TABLE = """
 	CREATE TABLE surfaceskewBACK (
@@ -190,7 +211,7 @@ pct_columns = []
 for column in columns:
 	column = column[:-11]
 	for pctile in PCTILES:
-		pct_columns.append(f"{column}p{pctile} FLOAT(4),")
+		pct_columns.append(f"{column}p{pctile} FLOAT(4), \n")
 
 SURFACESKEWPCTILE_TABLE = """
 	CREATE TABLE surfaceskewpctileBACK (
@@ -207,7 +228,7 @@ columns = []
 for t1 in EXPIRATIONS:
 	for t2 in EXPIRATIONS:
 		if t2 - t1 > 0:
-			columns.append(f"t{t1}t{t2} FLOAT(4), ")
+			columns.append(f"t{t1}t{t2} FLOAT(4), \n")
 
 TERMSTRUCTURE_TABLE = """
 	CREATE TABLE termstructureBACK (
@@ -222,7 +243,7 @@ pct_columns = []
 for column in columns:
 	column = column[:-11]
 	for pctile in PCTILES:
-		pct_columns.append(f"{column}p{pctile} FLOAT(4), ")
+		pct_columns.append(f"{column}p{pctile} FLOAT(4), \n")
 
 TERMSTRUCTUREPCTILE_TABLE = """
 	CREATE TABLE termstructurepctileBACK (

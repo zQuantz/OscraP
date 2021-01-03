@@ -8,46 +8,29 @@ import numpy as np
 import sys, os
 
 sys.path.append("../equities")
-from calculations import synth_surface
+from calculations import calculate_surface, calculate_regular_expiries
 
-def derive_surface():
+SUBSET = None
 
-	print("Initializing Surface")
-	_connector.execute("DROP TABLE IF EXISTS surfaceBACK;")
-	_connector.execute(SURFACE_TABLE)
-
-	ohlcs = []
-	for folder in NEW['equity'].iterdir():
-		ohlcs.append(pd.read_csv(folder / "ohlc.csv"))
-	ohlc = pd.concat(ohlcs)
-	ohlc = ohlc[['ticker', 'date_current', 'adjclose_price']]
-
-	surfaces = []
-	for folder in sorted(NEW['equity'].iterdir()):
-
-		file = folder / "options.csv"
-		if not file.exists():
-			continue
-
-		print("Processing Surface", folder.name)
-		options = pd.read_csv(file)
-		surfaces.append(synth_surface(options, ohlc, folder.name))
-		print(surfaces[-1])
-	
-	print("Indexing IV Surface")
-	surfaces = pd.concat(surfaces)
-	_connector.write("surfaceBACK", surfaces)
+###################################################################################################
 
 def derive_treasuryratemap():
 
-	print("Initializing Treasury Rate Maps")
-	_connector.execute("DROP TABLE IF EXISTS treasuryratemapBACK;")
-	_connector.execute(TREASURYRATEMAP_TABLE)
+	# if not SUBSET:
 
-	rates = [
-		pd.read_csv(file)
-		for file in sorted(NEW['treasuryrates'].iterdir())
-	]
+	# 	print("Initializing Treasury Rate Maps")
+	# 	_connector.execute("DROP TABLE IF EXISTS treasuryratemapBACK;")
+	# 	_connector.execute(TREASURYRATEMAP_TABLE)
+
+	rates = []
+	for file in sorted(NEW['treasuryrates'].iterdir()):
+
+		print("Processing Ratemap:", file.name)
+
+		if SUBSET and file.name.split(".")[0] not in SUBSET:
+			continue
+
+		rates.append(pd.read_csv(file))
 
 	rates = pd.concat(rates)
 	rates['date_current'] = pd.to_datetime(rates.date_current)
@@ -89,7 +72,64 @@ def derive_treasuryratemap():
 	ratemap['date_current'] = ratemap.date_current.astype(str)
 	
 	print("Indexing Treasury Rate Map")
-	_connector.write("treasuryratemapBACK", ratemap)
+	print(ratemap)
+	# _connector.write("treasuryratemapBACK", ratemap)
+
+	return ratemap
+
+def derive_surface(ratemap):
+
+	# if not SUBSET:
+
+	# 	print("Initializing Surface")
+	# 	_connector.execute("DROP TABLE IF EXISTS surfaceBACK;")
+	# 	_connector.execute(SURFACE_TABLE)
+
+	ohlcs = []
+	for folder in NEW['equity'].iterdir():
+
+		if SUBSET and folder.name not in SUBSET:
+			continue
+
+		ohlcs.append(pd.read_csv(folder / "ohlc.csv"))
+	
+	ohlc = pd.concat(ohlcs)
+	ohlc = ohlc[['ticker', 'date_current', 'adjclose_price']]
+	ohlc = ohlc.rename({"adjclose_price" : "stock_price"}, axis=1)
+
+	surfaces = []
+	for folder in sorted(NEW['equity'].iterdir()):
+
+		if SUBSET and folder.name not in SUBSET:
+			continue
+
+		file = folder / "options.csv"
+		if not file.exists():
+			continue
+
+		min_date = folder.name
+		max_date = f"{int(min_date[:4])+10}"+min_date[4:]
+		reg_expirations = calculate_regular_expiries(min_date, max_date)
+
+		print("Processing Surface", folder.name)
+
+		options = pd.read_csv(file)
+		print(options.shape)
+		options = options.merge(ohlc, on=['ticker', 'date_current'], how='inner')
+		print(options.shape)
+		options = options.merge(ratemap, on=['date_current', 'days_to_expiry'], how='inner')
+		print(options.shape)
+
+		surface = calculate_surface(options, reg_expirations)
+		surface['date_current'] = folder.name
+		surfaces.append(surface)
+
+		print(surfaces[-1].ticker.nunique(), options.ticker.nunique())
+		print(surfaces[-1])
+	
+	print("Indexing IV Surface")
+	surfaces = pd.concat(surfaces)
+	# _connector.write("surfaceBACK", surfaces)
 
 def derive_stats():
 
@@ -212,10 +252,12 @@ def derive_tickermaps():
 
 def derive():
 
-	derive_treasuryratemap()
-	derive_tickermaps()
-	derive_surface()
-	derive_stats()
+	# ratemap = derive_treasuryratemap()
+	# ratemap.to_csv("ratemap.csv", index=False)
+	derive_surface(pd.read_csv("ratemap.csv"))
+	
+	# derive_tickermaps()
+	# derive_stats()
 
 if __name__ == '__main__':
 

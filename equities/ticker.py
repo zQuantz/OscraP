@@ -1,7 +1,7 @@
 from const import DIR, DATE, DTDATE, DATA, CONVERTER, NUMBERS, CONFIG
 
+from calculations import calculate_iv, calculate_trading_days
 from datetime import datetime, timedelta
-from calculations import calculate_iv
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
@@ -237,7 +237,7 @@ class Ticker():
 
 			return bs, options
 
-		def append_options(table, expiry_date_fmt, expiration_days, option_type):
+		def append_options(table, expiry_date_fmt, days_to_expiry, option_type):
 
 			for row in table.find_all("tr")[1:]:
 				es = [e for e in row.find_all("td")[2:]]
@@ -245,7 +245,7 @@ class Ticker():
 						DATE,
 						self.ticker,
 						expiry_date_fmt,
-						expiration_days,
+						days_to_expiry,
 						option_type,
 						self.option_fmt(es[0].text, 'Strike Price'),
 						self.option_fmt(es[2].text, 'Bid'),
@@ -270,17 +270,11 @@ class Ticker():
 			expiry_date_fmt = expiry_date.strftime("%Y-%m-%d")
 			
 			tdays = CONFIG['trading_days']
-			try:
-				expiration_days = tdays.index(expiry_date_fmt) - tdays.index(DATE)
-			except Exception as e:
-				self.logger.warning(f"{self.ticker},{self.batch_id},Trading Days Fault,{e}")
-				for i in range(1, 3):
-					expd = (expiry_date - timedelta(days=i)).strftime("%Y-%m-%d")
-					if expd in tdays:
-						expiration_days = tdays.index(expd) - tdays.index(DATE)
-						warning = f"{self.ticker},{self.batch_id},Not a Trading Day,{expiry},{expiration_days}"
-						self.logger.warning(warning)
-						break
+			days_to_expiry = calculate_trading_days(DATE, expiry_date_fmt, CONFIG['trading_days'])
+			
+			if days_to_expiry is None:
+				warning = f"{self.ticker},{self.batch_id},Null Days to Expiry,{expiry},{days_to_expiry}"
+				self.logger.warning(warning)
 
 			page = url+f"&date={str(expiry)}"
 			bs, _ = get_page(page)
@@ -289,10 +283,10 @@ class Ticker():
 			puts = bs.find("table", {"class" : "puts"})
 			
 			if calls:
-				append_options(calls, expiry_date_fmt, expiration_days, 'C')
+				append_options(calls, expiry_date_fmt, days_to_expiry, 'C')
 			
 			if puts:
-				append_options(puts, expiry_date_fmt, expiration_days, 'P')
+				append_options(puts, expiry_date_fmt, days_to_expiry, 'P')
 
 		df = pd.DataFrame(self.options, columns = OPTION_COLS)
 		oid = df.ticker + ' ' + df.expiration_date + ' ' + df.option_type

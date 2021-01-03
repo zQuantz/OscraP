@@ -1,4 +1,22 @@
-from const import EXPIRATIONS, MONEYNESSES, PCTILES, DELTAS
+
+EXPIRATIONS = [1,2,3,6,9,12,18,24]
+MONEYNESSES = list(range(80, 125, 5))
+PCTILES = [10, 21, 63, 126, 252]
+DELTAS = [1, 10, 21, 63, 126]
+SKEWS = [
+	(80, 120),
+	(85, 115),
+	(90, 110),
+	(95, 105),
+	(100, 105),
+	(100, 110),
+	(100, 115),
+	(100, 120),
+	(80, 100),
+	(85, 100),
+	(90, 100),
+	(95, 100),
+]
 
 ###################################################################################################
 
@@ -112,7 +130,7 @@ INSERT_OHLC_STATS = """
 
 columns, names = "", ""
 for expiry in EXPIRATIONS:
-	columns += f"STDDEV(pct_change * _{expiry * 21}) * SQRT(252) * 100 AS rvol{expiry}m,\n"
+	columns += f"STDDEV(pct_change * _{expiry * 21}) * SQRT(252) * 100 AS rvol{expiry}m, \n"
 	names += f"rvol{expiry}m, \n"
 
 INSERT_OHLC_RVOL = """
@@ -158,7 +176,7 @@ INSERT_OHLC_RVOL = """
 		date_current = "{date}"
 """
 
-columns, names = "", []
+columns, names = "", ""
 for expiry in EXPIRATIONS:
 	for pctile in PCTILES:
 		
@@ -166,8 +184,8 @@ for expiry in EXPIRATIONS:
 		name = f"{fn}p{pctile}"
 		l = f"_{pctile}"
 
-		columns += f"( (SUM({fn} * _0d) - MIN({fn} * {l})) / (MAX({fn} * {l}) - MIN({fn} * {l})) ) AS {name}"
-		names.append("ohlcrvol{modifier}." + f"{name} = t2.{name}, ")
+		columns += f"( (SUM({fn} * _0d) - MIN({fn} * {l})) / (MAX({fn} * {l}) - MIN({fn} * {l})) ) AS {name}, \n"
+		names += "ohlcrvol{modifier}." + f"{name} = t2.{name}, \n"
 
 UPDATE_OHLC_RVOL = """
 	UPDATE
@@ -389,17 +407,11 @@ INSERT_OPTION_STATS = """
 
 ###################################################################################################
 
-skews = {
-	"f" : [90, 110],
-	"d" : [90, 100],
-	"u" : [100, 110]
-}
-
 columns = ""
 for expiry in EXPIRATIONS:
-	for skew in skews:
-		s1, s2 = skews[skew]
-		columns += f"m{expiry}{s1} - m{expiry}{s2} AS m{expiry}{skew},"
+	for skew in SKEWS:
+		s1, s2 = skew
+		columns += f"m{expiry}m{s1} - m{expiry}m{s2} AS m{expiry}s{s1}s{s2}, \n"
 
 INSERT_SURFACE_SKEW = """
 	INSERT INTO
@@ -417,66 +429,16 @@ INSERT_SURFACE_SKEW = """
 
 columns, names = "", ""
 for expiry in EXPIRATIONS:
-
-	for pctile in PCTILES:
-
-		fn = f"m{expiry}m100"
-		l = f"_{pctile}"
-		name = f"{fn}p{pctile}"
-
-		columns += f"( (SUM({fn} * _0d) - MIN({fn} * {l})) / (MAX({fn} * {l}) - MIN({fn} * {l})) ) AS {name}"
-		names += f"{name},"
-
-	for delta in DELTAS:
-	
-		fn = f"m{expiry}m100"
-		l = f"_{pctile}d"
-		name = f"{fn}change{delta}d"
-
-		columns += f"SUM(_0d * {fn}) - SUM({l} * {fn} AS {name}"
-		names += f"{name},"
-
-INSERT_SURFACE_STATS = """
-
-	INSERT INTO
-		surfacestats{modifier} ( """ + f"""
-			{names}
-		)
-	SELECT
-		*
-	FROM
-		(
-			SELECT
-				MAX(date_current) as date_current,
-				ticker,
-				{columns} """ + """
-			FROM
-				surface{modifier} AS o
-			INNER JOIN
-				dateseries d
-				ON o.date_current = d.lag_date
-			{subset}
-			GROUP BY
-				ticker
-			ORDER BY
-				date_current DESC
-		) as t1
-	WHERE
-		date_current = "{date}"
-
-"""
-
-columns, names = "", ""
-for expiry in EXPIRATIONS:
-	for skew in skews:
+	for skew in SKEWS:
 		for pctile in PCTILES:
 
-			fn = f"m{expiry}{skew}"
+			s1, s2 = skew
+			fn = f"m{expiry}s{s1}s{s2}"
 			l = f"_{pctile}"
 			name = f"{fn}p{pctile}"
 
-			columns += f"( (SUM({fn} * _0d) - MIN({fn} * {l})) / (MAX({fn} * {l}) - MIN({fn} * {l})) ) AS {name}, "
-			names += f"{name},"
+			columns += f"( (SUM({fn} * _0d) - MIN({fn} * {l})) / (MAX({fn} * {l}) - MIN({fn} * {l})) ) AS {name}, \n"
+			names += f"{name}, \n"
 
 
 INSERT_SURFACE_SKEW_PCTILE = """
@@ -509,68 +471,116 @@ INSERT_SURFACE_SKEW_PCTILE = """
 
 """
 
+columns, names = "", ""
+for expiry in EXPIRATIONS:
+
+	for pctile in PCTILES:
+
+		fn = f"m{expiry}m100"
+		l = f"_{pctile}"
+		name = f"{fn}p{pctile}"
+
+		columns += f"( (SUM({fn} * _0d) - MIN({fn} * {l})) / (MAX({fn} * {l}) - MIN({fn} * {l})) ) AS {name}, \n"
+		names += f"{name}, \n"
+
+	for delta in DELTAS:
+	
+		fn = f"m{expiry}m100"
+		l = f"_{pctile}d"
+		name = f"{fn}change{delta}d"
+
+		columns += f"SUM(_0d * {fn}) - SUM({l} * {fn} AS {name}, \n"
+		names += f"{name}, \n"
+
+INSERT_SURFACE_STATS = """
+
+	INSERT INTO
+		surfacestats{modifier} ( """ + f"""
+			{names}
+		)
+	SELECT
+		*
+	FROM
+		(
+			SELECT
+				MAX(date_current) as date_current,
+				ticker,
+				{columns} """ + """
+			FROM
+				surface{modifier} AS o
+			INNER JOIN
+				dateseries d
+				ON o.date_current = d.lag_date
+			{subset}
+			GROUP BY
+				ticker
+			ORDER BY
+				date_current DESC
+		) as t1
+	WHERE
+		date_current = "{date}"
+
+"""
+
 ###################################################################################################
 
-expirations = [1,3,6,12,18,24]
-moneys = list(range(80, 125, 5))
-lags = ["_63", "_126", "_252"]
-lag_names = ["3", "6", "12"]
+columns = ""
+for t1 in EXPIRATIONS:
+	for t2 in EXPIRATIONS:
+		if t2 - t1 > 0:
+			columns += f"m{t2}m100 - m{t1}m100 AS t{t1}t{t2}, \n"
 
-first_ops = ""
-for e in expirations:
-	for m in moneys:
-		for lag, lag_name in zip(lags, lag_names):
-			first_ops += f"m{e}m{m} * {lag} AS m{e}m{m}w{lag_name}, \n"
-first_ops = first_ops[:-3]
+INSERT_TERM_STRUCTURE = """
+	INSERT INTO
+		termstructure{modifier}
+	SELECT
+		date_current,
+		ticker, """ + f"""
+		{columns}
+	FROM """ + """
+		surface{modifier}
+	WHERE
+		date_current = "{date}"
+	{subset}
+"""
 
-second_ops = ""
-for lag, lag_name in zip(lags, lag_names):
-	for e in expirations:
-		for m in moneys:
-			label = f"m{e}m{m}w{lag_name}"
-			second_ops += f"MIN({label}) AS {label}min, \n"
-			second_ops += f"MAX({label}) AS {label}max, \n"
-			second_ops += f"AVG({label}) AS {label}mean, \n"
-			second_ops += f"100 * (SUM({label} * _0d) - MIN({label})) / (MAX({label}) - MIN({label})) AS {label}rank, \n"
-			second_ops += f"(SUM({label} * _0d) - AVG({label})) / STDDEV({label}) AS {label}zscore, \n"
-second_ops = second_ops[:-3]
+columns = ""
+for t1 in EXPIRATIONS:
+	for t2 in EXPIRATIONS:
+		if t2 - t1 > 0:
+			for pctile in PCTILES:
+				fn = f"t{t1}t{t2}"
+				l = f"_{pctile}"
+				name = f"{fn}p{pctile}"
+				columns += f"( (SUM({fn} * _0d) - MIN({fn} * {l})) / (MAX({fn} * {l}) - MIN({fn} * {l})) ) AS {name}, \n"
 
-INSERT_SURFACE_STATS = ("""
-		INSERT INTO
-			surfacestats{modifier}
-		SELECT
-			*
-		FROM
-			(
-				SELECT
-		""" + f"""
-					MAX(date_current) as date_current,
-					ticker,
-					{second_ops}
-				FROM
-					(
-						SELECT
-							date_current,
-							ticker,
-							_0d,
-							{first_ops}
-			""" + """		
-						FROM
-							surface{modifier}
-						INNER JOIN
-							dateseries
-							on lag_date = date_current
-						{subset}
-					) as t1
-				GROUP BY
-					ticker
-				ORDER BY
-					ticker ASC,
-					date_current DESC
-			) as t2
-		WHERE
-			date_current = "{date}";
-""")
+INSERT_TERM_STRUCTURE_PCTILE = """
+
+	INSERT INTO
+		termstructurepctile{modifier}""" + f"""
+	SELECT
+		*
+	FROM
+		(
+			SELECT
+				MAX(date_current) as date_current,
+				ticker,
+				{columns} """ + """
+			FROM
+				termstructure{modifier} AS o
+			INNER JOIN
+				dateseries d
+				ON o.date_current = d.lag_date
+			{subset}
+			GROUP BY
+				ticker
+			ORDER BY
+				date_current DESC
+		) as t1
+	WHERE
+		date_current = "{date}"
+
+"""
 
 ###################################################################################################
 

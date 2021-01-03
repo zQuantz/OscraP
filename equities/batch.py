@@ -213,12 +213,13 @@ def index_data(batch_id, tickers):
 
 		if len(options) > 0 and len(ohlc) > 0:
 
-			cols = ["date_current", "ticker", "adjclose_price", "dividend_yield"]
+			cols = ["date_current", "ticker", "adjclose_price"]
 			options = options.merge(ohlc[cols], on=cols[:2], how="inner")
 			options = options.rename({"adjclose_price" : "stock_price"}, axis=1)
 			options = options.merge(CONFIG['ratemap'], on="days_to_expiry", how="inner")
 
-			surface = calculate_surface(options)
+			surface = calculate_surface(options, CONFIG['reg_expirations'])
+			surface['date_current'] = DATE
 
 			info = f"{surface.ticker.nunique()} / {options.ticker.nunique()}"
 			logger.info(f"SCRAPER,{batch_id},SURFACE,{info}")
