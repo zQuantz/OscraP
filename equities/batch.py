@@ -222,10 +222,10 @@ def index_data(batch_id, tickers):
 			zsurface['date_current'] = DATE
 			surface['date_current'] = DATE
 
-			info = f"{zsurface.ticker.nunique()} / {options.ticker.nunique()}"
+			info = f"{zsurface.ticker.nunique()}/{options.ticker.nunique()}"
 			logger.info(f"SCRAPER,{batch_id},zSURFACE,{info}")
 
-			info = f"{surface.ticker.nunique()} / {options.ticker.nunique()}"
+			info = f"{surface.ticker.nunique()}/{options.ticker.nunique()}"
 			logger.info(f"SCRAPER,{batch_id},SURFACE,{info}")
 			
 			_connector.write("zsurface", zsurface)
