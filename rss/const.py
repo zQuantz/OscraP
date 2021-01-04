@@ -53,7 +53,8 @@ ES_MAPPINGS = {
                         "stop",
                         "trim",
                         "length_limiter",
-                        "shingler"
+                        "shingler",
+                        "unique"
                     ]
                 }
             },
