@@ -53,30 +53,6 @@ OHLC_TABLE = """
 	)
 """
 
-OHLCSTATS_TABLE = """
-	CREATE TABLE ohlcstatsBACK (
-		date_current DATE,
-		ticker VARCHAR(10),
-		relvolume10 FLOAT(4),
-		relvolume21 FLOAT(4),
-		relvolume42 FLOAT(4),
-		relvolume63 FLOAT(4),
-		relvolume126 FLOAT(4),
-		relvolume189 FLOAT(4),
-		relvolume252 FLOAT(4),
-		pctchange1d FLOAT(4),
-		pctchange5d FLOAT(4),
-		pctchange10d FLOAT(4),
-		pctchange21d FLOAT(4),
-		pctchange42d FLOAT(4),
-		pctchange63d FLOAT(4),
-		pctchange126d FLOAT(4),
-		pctchange189d FLOAT(4),
-		pctchange252d FLOAT(4),
-		PRIMARY KEY(date_current, ticker)
-	)
-"""
-
 ###################################################################################################
 
 columns = []
@@ -160,38 +136,6 @@ TREASURYRATEMAP_TABLE = """
 """
 
 ###################################################################################################
-
-DATESERIES_TABLE = """
-	CREATE TABLE dateseries (
-		lag SMALLINT,
-		lag_date DATE,
-		prev_lag_date DATE, 
-		_5 SMALLINT,
-		_10 SMALLINT,
-		_20 SMALLINT,
-		_21 SMALLINT,
-		_42 SMALLINT,
-		_63 SMALLINT,
-		_126 SMALLINT,
-		_189 SMALLINT,
-		_252 SMALLINT,
-		_378 SMALLINT,
-		_504 SMALLINT,
-		_0d SMALLINT,
-		_1d SMALLINT,
-		_5d SMALLINT,
-		_10d SMALLINT,
-		_20d SMALLINT,
-		_21d SMALLINT,
-		_42d SMALLINT,
-		_63d SMALLINT,
-		_126d SMALLINT,
-		_189d SMALLINT,
-		_252d SMALLINT,
-		_378d SMALLINT,
-		_504d SMALLINT
-	)
-"""
 
 BATCHTICKERS_TABLE = """
 	CREATE TABLE batchtickers (

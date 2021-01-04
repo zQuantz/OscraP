@@ -1,4 +1,5 @@
 from const import DIR, DATA, DATE, CONFIG, logger, _connector
+from calculations import calculate_regular_expiries
 import pandas_market_calendars as mcal
 from batch import main as batch_main
 from store import main as store
@@ -12,7 +13,7 @@ from gcp import send_gcp_metric
 
 ###################################################################################################
 
-BATCH_SIZE = 50
+BATCH_SIZE = 2
 N_USD = 1500
 
 ###################################################################################################
@@ -50,19 +51,15 @@ def init():
 	(DATA / "keystats").mkdir()
 	(DATA / "analysis").mkdir()
 
-	nyse = mcal.get_calendar('NYSE')
 	min_date = DATE
 	max_date = f"{int(DATE[:4])+10}"+DATE[4:]
 
+	nyse = mcal.get_calendar('NYSE')
 	schedule = nyse.schedule(start_date=min_date, end_date=max_date)
-	trading_days = mcal.date_range(schedule, frequency="1D").tolist()
+	trading_days = mcal.date_range(schedule, frequency="1D")
+
 	CONFIG['trading_days'] = [str(day)[:10] for day in trading_days]
-
-	saturdays = pd.date_range(min_date, max_date, freq="WOM-3SAT").astype(str)
-	fridays = pd.date_range(min_date, max_date, freq="WOM-3FRI").astype(str)
-	thursdays = pd.date_range(min_date, max_date, freq="WOM-3THU").astype(str)
-	CONFIG['reg_expirations'] = list(fridays) + list(thursdays)
-
+	CONFIG['reg_expirations'] = calculate_regular_expiries(min_date, max_date)
 	CONFIG['ratemap'] = _connector.get_ratemap()
 
 def main():
