@@ -308,7 +308,7 @@ class Ticker():
 			df['zimplied_volatility'] = 0
 
 		zba = df[(df.bid_price == 0) | (df.ask_price == 0)].shape[0]
-		# send_gcp_metric(CONFIG, "zero_bid_ask", "double_value", zba / (1 + len(df)))
+		send_gcp_metric(CONFIG, "zero_bid_ask", "double_value", zba / (1 + len(df)))
 
 		if not self.retries and len(df) > 0:
 			

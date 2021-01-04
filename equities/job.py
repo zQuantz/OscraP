@@ -12,8 +12,8 @@ from gcp import send_gcp_metric
 
 ###################################################################################################
 
-BATCH_SIZE = 2
-N_USD = 500
+BATCH_SIZE = 50
+N_USD = 1500
 
 ###################################################################################################
 
@@ -40,7 +40,7 @@ def send_metrics(success, failure):
 	for key in success:
 		metric = success[key]
 		metric /= success[key] + failure[key]
-		# send_gcp_metric(CONFIG, f"oscrap_{key}_sucess", "double_value", metric)
+		send_gcp_metric(CONFIG, f"oscrap_{key}_sucess", "double_value", metric)
 
 def init():
 
@@ -119,10 +119,10 @@ if __name__ == '__main__':
 
 	try:
 	
-		# send_gcp_metric(CONFIG, "oscrap_job_status", "int64_value", 1)
+		send_gcp_metric(CONFIG, "oscrap_job_status", "int64_value", 1)
 		main()
 	
 	except Exception as e:
 
-		# send_gcp_metric(CONFIG, "oscrap_job_status", "int64_value", 0)
+		send_gcp_metric(CONFIG, "oscrap_job_status", "int64_value", 0)
 		logger.warning(f"SCRAPER,JOB,MAIN ERROR,{e},")
