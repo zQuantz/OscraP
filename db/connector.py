@@ -43,7 +43,7 @@ class Connector:
 			        password=CONFIG['db_password'],
 			        host=CONFIG['db_ip'],
 			        port=CONFIG['db_port'],
-			        database=CONFIG['db'].replace("test", "finance")
+			        database=CONFIG['db']
 			    ),
 			    pool_size=3,
 				max_overflow=0,
@@ -126,22 +126,6 @@ class Connector:
 		self.execute(f"""CREATE TABLE batchtickers{batch_id} (ticker VARCHAR(10) PRIMARY KEY NOT NULL);""")
 		batchtickers = pd.DataFrame(tickers, columns = ['ticker'])
 		self.write(f"batchtickers{batch_id}", batchtickers)
-
-	def init_date_series(self, modifier=""):
-
-		self.execute("DELETE FROM dateseries;")
-		self.execute("""
-				INSERT INTO 
-					dateseries (
-						lag,
-						lag_date
-					)
-				VALUES
-					(0, "{date}");
-			""".format(date=self.date))
-		self.execute("SET @i = 0;")
-		self.execute(INIT_DATE_SERIES.format(modifier=modifier, date=self.date))
-		self.execute(UPDATE_DATE_SERIES)
 
 	def get_equity_tickers(self, N_USD):
 

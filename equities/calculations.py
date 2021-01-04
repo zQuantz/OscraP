@@ -18,7 +18,7 @@ def calculate_trading_days(d1, d2, tdays):
 	if d1 in tdays and d2 in tdays:
 		return tdays.index(d2) - tdays.index(d1)
 
-	_d2 = datetime.strftime(d2, DATE_FMT)
+	_d2 = datetime.strptime(d2, DATE_FMT)
 	ctr = 0
 	
 	while d2 not in tdays:
