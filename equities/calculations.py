@@ -149,7 +149,7 @@ time_anchors = [1,2,3,6,9,12,18,24]
 moneyness_anchors = list(range(80, 125, 5))
 
 TDF_COLS = ['expiration'] + [f"m{m}" for m in range(80, 125, 5)]
-MDF_COLS = ['moneyness', 'm1', 'm2', 'w1', 'w2', 'iv1', 'iv2']
+MDF_COLS = ['moneyness', 'm1', 'm2', 'w1', 'w2', 'ziv1', 'ziv2', 'iv1', 'iv2']
 SURFACE_COLS = [
 	f"m{m1}m{m2}"
 	for m1 in time_anchors
@@ -246,8 +246,10 @@ def calculate_surface(options, reg_expirations):
 
 		if extra_values is not None:
 			coords.extend([
-				extra_values[idx[0]],
-				extra_values[idx2],
+				extra_values[0][idx[0]],
+				extra_values[0][idx2],
+				extra_values[1][idx[0]],
+				extra_values[1][idx2],
 			])
 
 		return coords
@@ -293,14 +295,15 @@ def calculate_surface(options, reg_expirations):
 		time_brackets = np.array(sorted(time_brackets))
 		expirations = np.unique(time_brackets[:, 1:3].reshape(-1, ))
 
-		ivs = {}
+		zivs, ivs = {}, {}
 		for expiration in expirations:
 
 			_options = options[options.days_to_expiry == expiration]
 			_options = _options.sort_values("moneyness", ascending=True)
 
 			moneyness = _options.moneyness.values
-			iv = _options.zimplied_volatility.values
+			ziv = _options.zimplied_volatility.values
+			iv = _options.implied_volatility.values
 
 			m, sm, dsm = brackets(moneyness, moneyness_anchors)
 			moneyness_brackets = calculate_brackets(
@@ -308,22 +311,40 @@ def calculate_surface(options, reg_expirations):
 				moneyness_anchors,
 				sm,
 				dsm,
-				iv
+				[ziv, iv]
 			)
 
 			if len(moneyness_brackets) == 0:
+				zivs[expiration] = np.ones(len(moneyness_df)) * np.nan
 				ivs[expiration] = np.ones(len(moneyness_df)) * np.nan
 				continue 
 
 			df = pd.DataFrame(moneyness_brackets, columns = MDF_COLS)
+			df['ziv'] = df.ziv1 * df.w1 + df.ziv2 * df.w2
 			df['iv'] = df.iv1 * df.w1 + df.iv2 * df.w2
 			
+			zdf = df[['moneyness', 'ziv']]
+			zdf = zdf.groupby("moneyness").mean().reset_index()
+			zdf = moneyness_df.merge(zdf, on='moneyness', how='outer')
+
 			df = df[['moneyness', 'iv']]
 			df = df.groupby("moneyness").mean().reset_index()
 			df = moneyness_df.merge(df, on='moneyness', how='outer')
 
-			df['expiration'] = expiration
+			zivs[expiration] = zdf.ziv.values
 			ivs[expiration] = df.iv.values
+
+		###########################################################################################
+
+		surface = [
+			[b[0]] + (zivs[b[1]] * b[3] + zivs[b[2]] * b[4]).tolist()
+			for b in time_brackets
+		]
+		surface = pd.DataFrame(surface, columns = TDF_COLS)
+		surface = time_df.merge(surface, on="expiration", how="outer")
+		surface = surface.values[:, 1:].reshape(1, -1)
+		zsurface = pd.DataFrame(surface, columns = SURFACE_COLS)
+		zsurface['method'] = 'in_house'
 
 		surface = [
 			[b[0]] + (ivs[b[1]] * b[3] + ivs[b[2]] * b[4]).tolist()
@@ -332,7 +353,12 @@ def calculate_surface(options, reg_expirations):
 		surface = pd.DataFrame(surface, columns = TDF_COLS)
 		surface = time_df.merge(surface, on="expiration", how="outer")
 		surface = surface.values[:, 1:].reshape(1, -1)
-		return pd.DataFrame(surface, columns = SURFACE_COLS)
+		surface = pd.DataFrame(surface, columns = SURFACE_COLS)
+		surface['method'] = 'yahoo'
+
+		return pd.concat([zsurface, surface], axis=0)
+
+	###############################################################################################
 
 	options = options[options.days_to_expiry > 0].reset_index(drop=True)
 	options['mid_price'] = (options.bid_price * 0.5 + options.ask_price * 0.5).values
@@ -354,8 +380,14 @@ def calculate_surface(options, reg_expirations):
 
 	surface = options.groupby("ticker").apply(by_ticker)
 	surface = surface.dropna(axis=0, how="all", subset=SURFACE_COLS)
+	
+	zsurface = surface[surface.method == 'in_house'].reset_index(level=0)
+	zsurface = zsurface.drop("method", axis=1)
 
-	return surface.reset_index(level=0)
+	surface = surface[surface.method != 'in_house'].reset_index(level=0)
+	surface = surface.drop("method", axis=1)
+
+	return zsurface, surface
 
 def calculate_iv(options):
 

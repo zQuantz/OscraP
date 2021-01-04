@@ -6,7 +6,7 @@ tmp/
 db/data
 db/tmp
 db/test.py
-db/surfaces
+db/*surfaces
 
 equities/utils/tmp
 equities/utils/tformed

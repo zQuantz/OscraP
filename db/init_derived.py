@@ -18,11 +18,11 @@ SUBSET = None
 
 def derive_treasuryratemap():
 
-	if not SUBSET:
+	# if not SUBSET:
 
-		print("Initializing Treasury Rate Maps")
-		_connector.execute("DROP TABLE IF EXISTS treasuryratemapBACK;")
-		_connector.execute(TREASURYRATEMAP_TABLE)
+	# 	print("Initializing Treasury Rate Maps")
+	# 	_connector.execute("DROP TABLE IF EXISTS treasuryratemapBACK;")
+	# 	_connector.execute(TREASURYRATEMAP_TABLE)
 
 	rates = []
 	for file in sorted(NEW['treasuryrates'].iterdir()):
@@ -87,6 +87,10 @@ def derive_surface(ratemap):
 		_connector.execute("DROP TABLE IF EXISTS surfaceBACK;")
 		_connector.execute(SURFACE_TABLE)
 
+		print("Initializing zSurface")
+		_connector.execute("DROP TABLE IF EXISTS zsurfaceBACK;")
+		_connector.execute(SURFACE_TABLE.replace("surfaceBACK", "zsurfaceBACK"))
+
 	ohlcs = []
 	for folder in NEW['equity'].iterdir():
 
@@ -120,16 +124,23 @@ def derive_surface(ratemap):
 			options = options.merge(ohlc, on=['ticker', 'date_current'], how='inner')
 			options = options.merge(ratemap, on=['date_current', 'days_to_expiry'], how='inner')
 
-			surface = calculate_surface(options, reg_expirations)
+			zsurface, surface = calculate_surface(options, reg_expirations)
+			zsurface['date_current'] = folder.name
 			surface['date_current'] = folder.name
+
+			print(zsurface.ticker.nunique(), options.ticker.nunique())
+			print(zsurface)
 
 			print(surface.ticker.nunique(), options.ticker.nunique())
 			print(surface)
 
+			zsurface.to_csv(f"zsurfaces/{folder.name}.csv", index=False)
 			surface.to_csv(f"surfaces/{folder.name}.csv", index=False)
 
+			print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ")
+
 	CS = 50
-	folders = sorted(NEW['equity'].iterdir())[:5]
+	folders = sorted(NEW['equity'].iterdir())
 	
 	chunks = [
 		folders[i - CS : i]
@@ -141,20 +152,32 @@ def derive_surface(ratemap):
 		for job_id, chunk in enumerate(chunks)
 	)
 
-	surfaces = []
-	for file in sorted(Path("surfaces/").iterdir()):
+	zsurfaces, surfaces = [], []
+	zpath, path = Path("zsurfaces/"), Path("surfaces/")
+	for zfile, file in zip(sorted(zpath.iterdir()), sorted(path.iterdir())):
 
-		print(file.name)
+		print(zfile.name, file.name)
+		
+		zsurfaces.append(pd.read_csv(zfile))
 		surfaces.append(pd.read_csv(file))
 
 		if len(surfaces) % 20 == 0:
 		
+			print("Indexing zSurfaces.")
+			zsurfaces = pd.concat(zsurfaces).reset_index(drop=True)
+			_connector.write("zsurfaceBACK", zsurfaces)
+			zsurfaces = []
+
 			print("Indexing Surfaces.")
 			surfaces = pd.concat(surfaces).reset_index(drop=True)
 			_connector.write("surfaceBACK", surfaces)
 			surfaces = []
 
 	if len(surfaces) != 0:
+
+		print("Final zSurface Index.")
+		zsurfaces = pd.concat(zsurfaces).reset_index(drop=True)
+		_connector.write("zsurfaceBACK", zsurfaces)
 
 		print("Final Surface Index.")
 		surfaces = pd.concat(surfaces).reset_index(drop=True)
@@ -181,6 +204,8 @@ def derive_stats():
 	###############################################################################################
 
 	for date in sorted(os.listdir(NEW['equity'])):
+
+		print("Processing date:", date)
 
 		print("Inserting Agg Option Stats")
 		_connector.execute(INSERT_AGG_OPTION_STATS.format(modifier="BACK", subset="", date=date))

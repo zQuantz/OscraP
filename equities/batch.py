@@ -218,12 +218,17 @@ def index_data(batch_id, tickers):
 			options = options.rename({"adjclose_price" : "stock_price"}, axis=1)
 			options = options.merge(CONFIG['ratemap'], on="days_to_expiry", how="inner")
 
-			surface = calculate_surface(options, CONFIG['reg_expirations'])
+			zsurface, surface = calculate_surface(options, CONFIG['reg_expirations'])
+			zsurface['date_current'] = DATE
 			surface['date_current'] = DATE
+
+			info = f"{zsurface.ticker.nunique()} / {options.ticker.nunique()}"
+			logger.info(f"SCRAPER,{batch_id},zSURFACE,{info}")
 
 			info = f"{surface.ticker.nunique()} / {options.ticker.nunique()}"
 			logger.info(f"SCRAPER,{batch_id},SURFACE,{info}")
 			
+			_connector.write("zsurface", zsurface)
 			_connector.write("surface", surface)
 
 		post = _connector.get_equities_table_count().row_count

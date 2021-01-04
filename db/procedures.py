@@ -8,7 +8,7 @@ INSERT_AGG_OPTION_STATS = """
 			call_volume, 
 			put_volume, 
 			call_open_interest,
-			put_open_interest,
+			put_open_interest
 		)
 	SELECT
 		date_current,
@@ -16,7 +16,7 @@ INSERT_AGG_OPTION_STATS = """
 		call_volume,
 		put_volume,
 		call_open_interest,
-		put_open_interest,
+		put_open_interest
 	FROM
 		(
 		SELECT
@@ -25,7 +25,7 @@ INSERT_AGG_OPTION_STATS = """
 			SUM(IF(option_type = "C", volume, 0)) AS call_volume,
 			SUM(IF(option_type = "P", volume, 0)) AS put_volume,
 			SUM(IF(option_type = "C", open_interest, 0)) AS call_open_interest,
-			SUM(IF(option_type = "P", open_interest, 0)) AS put_open_interest,
+			SUM(IF(option_type = "P", open_interest, 0)) AS put_open_interest
 		FROM
 			options{modifier}
 		WHERE
