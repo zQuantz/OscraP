@@ -25,8 +25,6 @@ def initialize():
 		"treasuryrates",
 	]
 
-
-
 	conn = engine.connect()
 
 	for name in TABLE_NAMES:
@@ -59,7 +57,7 @@ def initialize():
 					compour9_finance.{name}
 				WHERE
 					date_current >= "2020-12-15"
-				AND date_current < "2020-12-30"
+				AND date_current <= "2021-01-03"
 			""".format(name = name)
 			conn.execute(insert_query)
 			print("Insert Query Executed.")
@@ -78,14 +76,6 @@ def initialize():
 			print("Instrument Insert Query Executed.")
 
 		print()
-
-	alter_query = """
-		ALTER TABLE
-			compour9_test.options
-		ADD COLUMN zimplied_volatility FLOAT(4) AFTER implied_volatility
-	"""
-	conn.execute(alter_query)
-	print("Alter Query Executed")
 
 	conn.close()
 

@@ -12,7 +12,7 @@ from gcp import send_gcp_metric
 
 ###################################################################################################
 
-BATCH_SIZE = 20
+BATCH_SIZE = 2
 N_USD = 500
 
 ###################################################################################################
@@ -64,8 +64,6 @@ def init():
 	CONFIG['reg_expirations'] = list(fridays) + list(thursdays)
 
 	CONFIG['ratemap'] = _connector.get_ratemap()
-
-	_connector.init_date_series()
 
 def main():
 
