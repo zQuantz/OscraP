@@ -112,15 +112,11 @@ def transform_options():
 
 	def transformation(options):
 
-		d1 = options.date_current.values[0]
-		days_to_expiry = [
-			calculate_trading_days(d1, expiration_date, TDAYS)
-			for expiration_date in options.expiration_date.values
-		]
-		options['days_to_expiry'] = days_to_expiry
-		print(options.days_to_expiry.value_counts())
+		volume = options.volume.values.copy()
+		oi = options.open_interest.values.copy()
 
-		options = options.drop(["Unnamed: 0"], axis=1)
+		options['volume'] = oi
+		options['open_interest'] = volume
 
 		return options
 
