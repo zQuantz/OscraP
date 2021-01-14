@@ -71,6 +71,14 @@ def clean_items():
 			if item.get('title')
 		]
 
+		for item in items:
+
+			item['search'] = [item.get("title")]
+			summary = item.get("summary", "")
+
+			if summary:
+				item['search'].append(summary)
+
 		with open(CPATH / file.name, "w") as _file:
 			_file.write(json.dumps(items))
 
@@ -91,9 +99,9 @@ def remove_duplicates():
 		for item in items:
 
 			_hash = sha256(json.dumps({
-				'title' : item['title'],
-				'summary' : item['summary'],
-				'link' : item['link']
+				'title' : item['title'].lower(),
+				'summary' : item['summary'].lower(),
+				'link' : item['link'].lower()
 			}).encode()).hexdigest()
 
 			if _hash in hashs:
@@ -173,7 +181,7 @@ def index():
 
 		new_items = [
 			{
-				"_index" : "rss",
+				"_index" : "news",
 				"_op_type" : "create",
 				"_id" : _hash,
 				"_source" : item
