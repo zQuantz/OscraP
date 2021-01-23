@@ -302,10 +302,16 @@ def clean(item):
 		new_item['_tickers'] = list(set(ticker_misses))
 
 	if categories:
-		new_item['categories'] = list(set(categories))
+		new_item['categories'] = [
+			cat.lower()
+			for cat in list(set(categories))
+		]
 
 	if _authors:
-		new_item['authors'] = list(set(_authors))
+		new_item['authors'] = [
+			author.lower()
+			for author in list(set(_authors)) + [article_source]
+		]
 
 	if contribs:
 		new_item['related'] = list(set(contribs))
@@ -386,6 +392,7 @@ def cleaning_loop():
 			for item, score in zip(new_items, scores):
 				item['_source']['sentiment'] = score['prediction']
 				item['_source']['sentiment_score'] = score['sentiment_score']
+				item['_source']['abs_sentiment_score'] = abs(score['sentiment_score'])
 
 			successes, failures = helpers.bulk(ES_CLIENT,
 											   new_items,
