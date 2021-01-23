@@ -366,16 +366,22 @@ def cleaning_loop():
 				continue
 
 			item = clean(item)
+			item['search'] = [item.get("title")]
+			
+			summary = item.get("summary", "")
+			if summary:
+				item['search'].append(summary)
+
 			dummy_item = {
-				"title" : item['title'],
-				'summary' : item['summary'],
-				"link" : item['link']
+				"title" : item['title'].lower(),
+				'summary' : item['summary'].lower(),
+				"link" : item['link'].lower()
 			}
 			dummy_item = json.dumps(dummy_item, sort_keys = True)
 			_hash = sha256(dummy_item.encode()).hexdigest()
 
 			new_items.append({
-				"_index" : "rss",
+				"_index" : "news",
 				"_id" : _hash,
 				"_op_type" : "create",
 				"_source" : item
