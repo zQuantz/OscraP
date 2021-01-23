@@ -1,1 +1,0 @@
-kill -SIGTERM `ls pids/`
